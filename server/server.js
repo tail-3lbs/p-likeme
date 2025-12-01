@@ -10,6 +10,7 @@ const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, l
 const authRoutes = require('./routes/auth');
 const { authMiddleware } = require('./routes/auth');
 const threadsRoutes = require('./routes/threads');
+const repliesRoutes = require('./routes/replies');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,6 +27,9 @@ app.use('/api/auth', authRoutes);
 
 // Threads Routes
 app.use('/api/threads', threadsRoutes);
+
+// Replies Routes (nested under threads)
+app.use('/api/threads', repliesRoutes);
 
 // API Routes
 

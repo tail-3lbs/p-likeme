@@ -2,10 +2,11 @@
  * Database setup and initialization
  * Uses SQLite with better-sqlite3
  *
- * Three separate databases:
+ * Four separate databases:
  * - communities.db: Community data
  * - users.db: User accounts
  * - threads.db: User threads/shares
+ * - replies.db: Thread replies/comments
  */
 
 const Database = require('better-sqlite3');
@@ -15,16 +16,19 @@ const path = require('path');
 const communitiesDbPath = path.join(__dirname, 'db', 'communities.db');
 const usersDbPath = path.join(__dirname, 'db', 'users.db');
 const threadsDbPath = path.join(__dirname, 'db', 'threads.db');
+const repliesDbPath = path.join(__dirname, 'db', 'replies.db');
 
 // Create database connections
 const communitiesDb = new Database(communitiesDbPath);
 const usersDb = new Database(usersDbPath);
 const threadsDb = new Database(threadsDbPath);
+const repliesDb = new Database(repliesDbPath);
 
 // Enable WAL mode for better performance
 communitiesDb.pragma('journal_mode = WAL');
 usersDb.pragma('journal_mode = WAL');
 threadsDb.pragma('journal_mode = WAL');
+repliesDb.pragma('journal_mode = WAL');
 
 // ============ Communities Database ============
 
@@ -391,11 +395,86 @@ function updateThread({ id, user_id, title, content, community_ids = [] }) {
     return updateWithCommunities({ id, user_id, title, content, community_ids });
 }
 
+// ============ Replies Database ============
+
+function initRepliesDb() {
+    // Replies table - stores replies to threads
+    // parent_reply_id: if null, it's a top-level reply (starts a new card)
+    //                  if set, it's a reply to another reply (stacked in same card)
+    repliesDb.exec(`
+        CREATE TABLE IF NOT EXISTS replies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            parent_reply_id INTEGER DEFAULT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Create index for faster queries
+    repliesDb.exec(`
+        CREATE INDEX IF NOT EXISTS idx_replies_thread_id ON replies(thread_id)
+    `);
+
+    const count = repliesDb.prepare('SELECT COUNT(*) as count FROM replies').get();
+    console.log(`Replies DB: ${count.count} replies`);
+}
+
+// Create a new reply
+function createReply({ thread_id, user_id, content, parent_reply_id = null }) {
+    const stmt = repliesDb.prepare(`
+        INSERT INTO replies (thread_id, user_id, parent_reply_id, content)
+        VALUES (@thread_id, @user_id, @parent_reply_id, @content)
+    `);
+    const result = stmt.run({ thread_id, user_id, parent_reply_id, content });
+    return result.lastInsertRowid;
+}
+
+// Get all replies for a thread (flat list, sorted by date)
+function getRepliesByThreadId(thread_id) {
+    return repliesDb.prepare(`
+        SELECT * FROM replies
+        WHERE thread_id = ?
+        ORDER BY created_at ASC
+    `).all(thread_id);
+}
+
+// Get a single reply by ID
+function getReplyById(id) {
+    return repliesDb.prepare('SELECT * FROM replies WHERE id = ?').get(id);
+}
+
+// Delete a reply (only by owner)
+function deleteReply(id, user_id) {
+    const result = repliesDb.prepare(`
+        DELETE FROM replies WHERE id = ? AND user_id = ?
+    `).run(id, user_id);
+    return result.changes > 0;
+}
+
+// Delete all replies for a thread (used when deleting a thread)
+function deleteRepliesByThreadId(thread_id) {
+    const result = repliesDb.prepare(`
+        DELETE FROM replies WHERE thread_id = ?
+    `).run(thread_id);
+    return result.changes;
+}
+
+// Get reply count for a thread
+function getReplyCountByThreadId(thread_id) {
+    const result = repliesDb.prepare(`
+        SELECT COUNT(*) as count FROM replies WHERE thread_id = ?
+    `).get(thread_id);
+    return result.count;
+}
+
 // ============ Initialize ============
 
 initCommunitiesDb();
 initUsersDb();
 initThreadsDb();
+initRepliesDb();
 
 // ============ Exports ============
 
@@ -404,6 +483,7 @@ module.exports = {
     communitiesDb,
     usersDb,
     threadsDb,
+    repliesDb,
     // Community functions
     getAllCommunities,
     searchCommunities,
@@ -425,5 +505,12 @@ module.exports = {
     getThreadById,
     getThreadsByCommunityId,
     deleteThread,
-    updateThread
+    updateThread,
+    // Reply functions
+    createReply,
+    getRepliesByThreadId,
+    getReplyById,
+    deleteReply,
+    deleteRepliesByThreadId,
+    getReplyCountByThreadId
 };

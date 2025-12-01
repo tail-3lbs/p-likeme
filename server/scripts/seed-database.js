@@ -13,10 +13,12 @@ const path = require('path');
 const communitiesDbPath = path.join(__dirname, '..', 'db', 'communities.db');
 const usersDbPath = path.join(__dirname, '..', 'db', 'users.db');
 const threadsDbPath = path.join(__dirname, '..', 'db', 'threads.db');
+const repliesDbPath = path.join(__dirname, '..', 'db', 'replies.db');
 
 const communitiesDb = new Database(communitiesDbPath);
 const usersDb = new Database(usersDbPath);
 const threadsDb = new Database(threadsDbPath);
+const repliesDb = new Database(repliesDbPath);
 
 // ============ SEED DATA ============
 
@@ -91,10 +93,57 @@ const sampleContents = [
     '最近天气变化大，大家要注意身体。我这几天状态有些波动，正在调整中。'
 ];
 
+// Sample reply content
+const sampleReplies = [
+    '谢谢分享，对我很有帮助！',
+    '我也有类似的经历，深有同感。',
+    '加油！我们一起坚持！',
+    '请问具体是怎么做的呢？能详细说说吗？',
+    '感谢你的分享，收藏了！',
+    '你说得对，心态真的很重要。',
+    '希望你越来越好！',
+    '我最近也在尝试这个方法，效果还不错。',
+    '太好了，恭喜你！',
+    '同意楼主的观点，我也是这么做的。',
+    '这个建议很实用，谢谢！',
+    '请问你是在哪家医院看的？',
+    '我也想试试，请问有什么需要注意的吗？',
+    '支持你！我们都会好起来的。',
+    '感同身受，抱抱你。',
+    '你的分享给了我很大的信心，谢谢！',
+    '我之前也遇到过，后来慢慢就好了。',
+    '坚持就是胜利，一起加油！',
+    '请问这个方法适合所有人吗？',
+    '学习了，感谢分享！',
+    '我觉得你说得很有道理。',
+    '这个信息很有用，记下来了。',
+    '希望我们都能早日康复！',
+    '你真棒，继续保持！',
+    '感谢你的鼓励，我会继续努力的。'
+];
+
+// Replies to replies (for stacked conversation)
+const sampleReplyToReplies = [
+    '对的，我也觉得是这样。',
+    '谢谢你的回复！',
+    '嗯嗯，同意你说的。',
+    '确实如此，我也有同感。',
+    '谢谢你的建议！',
+    '好的，我会注意的。',
+    '是的，这点很重要。',
+    '明白了，谢谢解答！',
+    '你说得很对！',
+    '感谢你的分享！'
+];
+
 // ============ MAIN FUNCTIONS ============
 
 function clearAllData() {
     console.log('Step 1: Clearing all data...');
+
+    // Clear replies database
+    repliesDb.exec('DELETE FROM replies');
+    repliesDb.exec("DELETE FROM sqlite_sequence WHERE name='replies'");
 
     // Clear threads database
     threadsDb.exec('DELETE FROM thread_communities');
@@ -266,6 +315,91 @@ function generateThreads(userCommunities) {
     console.log(`   ${threadCommunityCount.count} thread-community links created.`);
 }
 
+function generateReplies() {
+    console.log('Step 6: Generating replies...');
+
+    // Get all threads and users
+    const threads = threadsDb.prepare('SELECT id, user_id FROM threads').all();
+    const users = usersDb.prepare('SELECT id FROM users').all();
+    const userIds = users.map(u => u.id);
+
+    const insertReply = repliesDb.prepare(`
+        INSERT INTO replies (thread_id, user_id, parent_reply_id, content, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
+    let totalReplies = 0;
+    let stackedReplies = 0;
+
+    const generateAllReplies = repliesDb.transaction(() => {
+        for (const thread of threads) {
+            // Each thread gets 0-6 top-level replies
+            const numTopLevelReplies = Math.floor(Math.random() * 7);
+            if (numTopLevelReplies === 0) continue;
+
+            // Select random users to reply (excluding thread author for variety)
+            const otherUsers = userIds.filter(id => id !== thread.user_id);
+            const shuffledUsers = [...otherUsers].sort(() => Math.random() - 0.5);
+            const repliers = shuffledUsers.slice(0, Math.min(numTopLevelReplies + 5, shuffledUsers.length));
+
+            const topLevelReplyIds = [];
+
+            // Generate top-level replies (starting new cards)
+            for (let i = 0; i < numTopLevelReplies; i++) {
+                const userId = repliers[i % repliers.length];
+                const content = sampleReplies[Math.floor(Math.random() * sampleReplies.length)];
+
+                // Random base time (5-30 days ago)
+                const now = new Date();
+                const daysAgo = Math.floor(Math.random() * 25) + 5;
+                const hoursAgo = Math.floor(Math.random() * 24);
+                const baseTime = new Date(now.getTime() - (daysAgo * 24 + hoursAgo) * 60 * 60 * 1000);
+                const timestamp = baseTime.toISOString().replace('T', ' ').substring(0, 19);
+
+                const result = insertReply.run(thread.id, userId, null, content, timestamp);
+                topLevelReplyIds.push({ id: Number(result.lastInsertRowid), userId, timestamp: baseTime });
+                totalReplies++;
+            }
+
+            // Generate stacked replies (replies to existing replies within same card)
+            // 50% chance for each top-level reply to get 1-3 stacked replies
+            for (const topReply of topLevelReplyIds) {
+                if (Math.random() < 0.5) continue;
+
+                const numStackedReplies = Math.floor(Math.random() * 3) + 1;
+                let lastReplyId = topReply.id;
+                let lastReplyUserId = topReply.userId;
+                let lastReplyTime = topReply.timestamp;
+
+                for (let j = 0; j < numStackedReplies; j++) {
+                    // Pick a random user (could be thread author replying back, or another user)
+                    const availableUsers = [...repliers, thread.user_id].filter(id => id !== lastReplyUserId);
+                    const userId = availableUsers[Math.floor(Math.random() * availableUsers.length)];
+                    const content = sampleReplyToReplies[Math.floor(Math.random() * sampleReplyToReplies.length)];
+
+                    // Timestamp AFTER the parent reply (1-48 hours later)
+                    const hoursLater = Math.floor(Math.random() * 47) + 1;
+                    const replyTime = new Date(lastReplyTime.getTime() + hoursLater * 60 * 60 * 1000);
+                    const timestamp = replyTime.toISOString().replace('T', ' ').substring(0, 19);
+
+                    const result = insertReply.run(thread.id, userId, lastReplyId, content, timestamp);
+                    lastReplyId = Number(result.lastInsertRowid);
+                    lastReplyUserId = userId;
+                    lastReplyTime = replyTime;
+                    totalReplies++;
+                    stackedReplies++;
+                }
+            }
+        }
+    });
+
+    generateAllReplies();
+
+    console.log(`   ${totalReplies} replies created.`);
+    console.log(`   ${totalReplies - stackedReplies} top-level replies (new cards).`);
+    console.log(`   ${stackedReplies} stacked replies (within cards).`);
+}
+
 function printSummary() {
     console.log('\n========== SEED COMPLETE ==========\n');
 
@@ -274,6 +408,8 @@ function printSummary() {
     const membershipCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_communities').get();
     const threadCount = threadsDb.prepare('SELECT COUNT(*) as count FROM threads').get();
     const threadCommunityCount = threadsDb.prepare('SELECT COUNT(*) as count FROM thread_communities').get();
+    const replyCount = repliesDb.prepare('SELECT COUNT(*) as count FROM replies').get();
+    const topLevelReplyCount = repliesDb.prepare('SELECT COUNT(*) as count FROM replies WHERE parent_reply_id IS NULL').get();
 
     console.log('Database Statistics:');
     console.log(`  Communities:            ${communityCount.count}`);
@@ -281,6 +417,9 @@ function printSummary() {
     console.log(`  User-Community links:   ${membershipCount.count}`);
     console.log(`  Threads:                ${threadCount.count}`);
     console.log(`  Thread-Community links: ${threadCommunityCount.count}`);
+    console.log(`  Replies:                ${replyCount.count}`);
+    console.log(`    - Top-level (cards):  ${topLevelReplyCount.count}`);
+    console.log(`    - Stacked:            ${replyCount.count - topLevelReplyCount.count}`);
 
     console.log('\nSample member counts:');
     const sampleCommunities = communitiesDb.prepare('SELECT name, member_count FROM communities LIMIT 5').all();
@@ -306,6 +445,7 @@ function main() {
     seedUsers();
     const userCommunities = linkUsersToCommunities();
     generateThreads(userCommunities);
+    generateReplies();
     printSummary();
 }
 

@@ -1,0 +1,209 @@
+/**
+ * Replies API Routes
+ * CRUD operations for thread replies
+ */
+
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const { createReply, getRepliesByThreadId, getReplyById, deleteReply, getThreadById, findUserById } = require('../database');
+
+const router = express.Router();
+
+// JWT Secret (same as auth.js)
+const JWT_SECRET = 'p-likeme-secret-key-change-in-production';
+
+/**
+ * Middleware: Verify JWT token
+ */
+function authMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ success: false, error: '未登录' });
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, error: '登录已过期，请重新登录' });
+    }
+}
+
+/**
+ * Optional auth middleware - doesn't fail if no token, just sets req.user if valid
+ */
+function optionalAuthMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            req.user = decoded;
+        } catch (error) {
+            // Invalid token, but we continue without user
+        }
+    }
+    next();
+}
+
+/**
+ * GET /api/threads/:threadId/replies
+ * Get all replies for a thread (public)
+ */
+router.get('/:threadId/replies', optionalAuthMiddleware, (req, res) => {
+    try {
+        const threadId = parseInt(req.params.threadId);
+
+        // Check if thread exists
+        const thread = getThreadById(threadId);
+        if (!thread) {
+            return res.status(404).json({
+                success: false,
+                error: '分享不存在'
+            });
+        }
+
+        const replies = getRepliesByThreadId(threadId);
+
+        // Add author info to each reply
+        const repliesWithAuthors = replies.map(reply => {
+            const author = findUserById(reply.user_id);
+            return {
+                ...reply,
+                author: author ? author.username : '匿名用户',
+                isOwner: req.user ? reply.user_id === req.user.id : false
+            };
+        });
+
+        res.json({
+            success: true,
+            data: repliesWithAuthors,
+            count: replies.length
+        });
+    } catch (error) {
+        console.error('Error fetching replies:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取回复失败'
+        });
+    }
+});
+
+/**
+ * POST /api/threads/:threadId/replies
+ * Create a new reply (requires auth)
+ * If parent_reply_id is provided, this reply is stacked under that reply's card
+ */
+router.post('/:threadId/replies', authMiddleware, (req, res) => {
+    try {
+        const threadId = parseInt(req.params.threadId);
+        const { content, parent_reply_id } = req.body;
+
+        // Check if thread exists
+        const thread = getThreadById(threadId);
+        if (!thread) {
+            return res.status(404).json({
+                success: false,
+                error: '分享不存在'
+            });
+        }
+
+        // Validate content
+        if (!content || !content.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: '回复内容不能为空'
+            });
+        }
+
+        // If replying to another reply, validate it exists
+        let parentReplyId = null;
+        if (parent_reply_id) {
+            const parentReply = getReplyById(parseInt(parent_reply_id));
+            if (!parentReply || parentReply.thread_id !== threadId) {
+                return res.status(400).json({
+                    success: false,
+                    error: '要回复的评论不存在'
+                });
+            }
+            // Store the immediate parent for @mention display
+            // Frontend will handle grouping by finding the root
+            parentReplyId = parentReply.id;
+        }
+
+        // Create reply
+        const replyId = createReply({
+            thread_id: threadId,
+            user_id: req.user.id,
+            content: content.trim(),
+            parent_reply_id: parentReplyId
+        });
+
+        const reply = getReplyById(replyId);
+        const author = findUserById(reply.user_id);
+
+        res.status(201).json({
+            success: true,
+            message: '回复成功',
+            data: {
+                ...reply,
+                author: author ? author.username : '匿名用户',
+                isOwner: true
+            }
+        });
+    } catch (error) {
+        console.error('Error creating reply:', error);
+        res.status(500).json({
+            success: false,
+            error: '回复失败'
+        });
+    }
+});
+
+/**
+ * DELETE /api/threads/:threadId/replies/:replyId
+ * Delete a reply (requires auth, only owner can delete)
+ */
+router.delete('/:threadId/replies/:replyId', authMiddleware, (req, res) => {
+    try {
+        const threadId = parseInt(req.params.threadId);
+        const replyId = parseInt(req.params.replyId);
+
+        // Check if reply exists and belongs to this thread
+        const reply = getReplyById(replyId);
+        if (!reply || reply.thread_id !== threadId) {
+            return res.status(404).json({
+                success: false,
+                error: '回复不存在'
+            });
+        }
+
+        // Delete reply (ownership verified in deleteReply function)
+        const deleted = deleteReply(replyId, req.user.id);
+
+        if (!deleted) {
+            return res.status(403).json({
+                success: false,
+                error: '无权删除此回复'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: '回复已删除'
+        });
+    } catch (error) {
+        console.error('Error deleting reply:', error);
+        res.status(500).json({
+            success: false,
+            error: '删除回复失败'
+        });
+    }
+});
+
+module.exports = router;
