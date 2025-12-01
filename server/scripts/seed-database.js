@@ -318,8 +318,8 @@ function generateThreads(userCommunities) {
 function generateReplies() {
     console.log('Step 6: Generating replies...');
 
-    // Get all threads and users
-    const threads = threadsDb.prepare('SELECT id, user_id FROM threads').all();
+    // Get all threads (with created_at) and users
+    const threads = threadsDb.prepare('SELECT id, user_id, created_at FROM threads').all();
     const users = usersDb.prepare('SELECT id FROM users').all();
     const userIds = users.map(u => u.id);
 
@@ -344,16 +344,17 @@ function generateReplies() {
 
             const topLevelReplyIds = [];
 
+            // Parse thread creation time
+            const threadTime = new Date(thread.created_at);
+
             // Generate top-level replies (starting new cards)
             for (let i = 0; i < numTopLevelReplies; i++) {
                 const userId = repliers[i % repliers.length];
                 const content = sampleReplies[Math.floor(Math.random() * sampleReplies.length)];
 
-                // Random base time (5-30 days ago)
-                const now = new Date();
-                const daysAgo = Math.floor(Math.random() * 25) + 5;
-                const hoursAgo = Math.floor(Math.random() * 24);
-                const baseTime = new Date(now.getTime() - (daysAgo * 24 + hoursAgo) * 60 * 60 * 1000);
+                // Random time AFTER thread creation (1 hour to 5 days later)
+                const hoursAfterThread = Math.floor(Math.random() * 119) + 1; // 1-120 hours (5 days)
+                const baseTime = new Date(threadTime.getTime() + hoursAfterThread * 60 * 60 * 1000);
                 const timestamp = baseTime.toISOString().replace('T', ' ').substring(0, 19);
 
                 const result = insertReply.run(thread.id, userId, null, content, timestamp);
