@@ -106,20 +106,26 @@ function renderThreads(threads) {
 }
 
 /**
- * Load communities for the form
+ * Load user's joined communities for the form
  */
 async function loadCommunities() {
     try {
-        const response = await fetch(COMMUNITIES_API);
+        const response = await fetch('/api/user/communities?details=true', {
+            headers: getAuthHeaders()
+        });
         const data = await response.json();
 
-        if (data.success) {
+        if (data.success && data.data.length > 0) {
             communityCheckboxes.innerHTML = data.data.map(c => `
                 <div class="community-checkbox">
                     <input type="checkbox" id="community-${c.id}" name="communities" value="${c.id}">
                     <label for="community-${c.id}">${escapeHtml(c.name)}</label>
                 </div>
             `).join('');
+        } else {
+            communityCheckboxes.innerHTML = `
+                <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
+            `;
         }
     } catch (error) {
         console.error('Error loading communities:', error);

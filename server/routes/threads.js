@@ -5,7 +5,7 @@
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { createThread, getThreadsByUserId, getThreadById, deleteThread, getAllCommunities } = require('./database');
+const { createThread, getThreadsByUserId, getThreadById, deleteThread, getAllCommunities } = require('../database');
 
 const router = express.Router();
 

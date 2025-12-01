@@ -6,9 +6,10 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { getAllCommunities, searchCommunities, getCommunityById } = require('./database');
-const authRoutes = require('./auth');
-const threadsRoutes = require('./threads');
+const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities } = require('./database');
+const authRoutes = require('./routes/auth');
+const { authMiddleware } = require('./routes/auth');
+const threadsRoutes = require('./routes/threads');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -94,6 +95,108 @@ app.get('/api/communities/:id', (req, res) => {
         res.status(500).json({
             success: false,
             error: '获取社区信息失败'
+        });
+    }
+});
+
+/**
+ * GET /api/user/communities
+ * Get communities the current user has joined
+ * Query params: ?details=true for full community objects, otherwise returns IDs only
+ */
+app.get('/api/user/communities', authMiddleware, (req, res) => {
+    try {
+        const { details } = req.query;
+
+        if (details === 'true') {
+            const communities = getUserCommunities(req.user.id);
+            res.json({
+                success: true,
+                data: communities
+            });
+        } else {
+            const communityIds = getUserCommunityIds(req.user.id);
+            res.json({
+                success: true,
+                data: communityIds
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching user communities:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取已加入社区失败'
+        });
+    }
+});
+
+/**
+ * POST /api/communities/:id/join
+ * Join a community (requires authentication)
+ */
+app.post('/api/communities/:id/join', authMiddleware, (req, res) => {
+    try {
+        const communityId = parseInt(req.params.id);
+        const community = getCommunityById(communityId);
+
+        if (!community) {
+            return res.status(404).json({
+                success: false,
+                error: '社区不存在'
+            });
+        }
+
+        const joined = joinCommunity(req.user.id, communityId);
+
+        if (joined) {
+            res.json({
+                success: true,
+                message: '加入成功',
+                data: { community_id: communityId }
+            });
+        } else {
+            res.json({
+                success: true,
+                message: '您已经是该社区成员',
+                data: { community_id: communityId }
+            });
+        }
+    } catch (error) {
+        console.error('Error joining community:', error);
+        res.status(500).json({
+            success: false,
+            error: '加入社区失败'
+        });
+    }
+});
+
+/**
+ * DELETE /api/communities/:id/leave
+ * Leave a community (requires authentication)
+ */
+app.delete('/api/communities/:id/leave', authMiddleware, (req, res) => {
+    try {
+        const communityId = parseInt(req.params.id);
+        const left = leaveCommunity(req.user.id, communityId);
+
+        if (left) {
+            res.json({
+                success: true,
+                message: '已退出社区',
+                data: { community_id: communityId }
+            });
+        } else {
+            res.json({
+                success: true,
+                message: '您尚未加入该社区',
+                data: { community_id: communityId }
+            });
+        }
+    } catch (error) {
+        console.error('Error leaving community:', error);
+        res.status(500).json({
+            success: false,
+            error: '退出社区失败'
         });
     }
 });

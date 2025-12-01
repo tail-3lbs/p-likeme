@@ -8,7 +8,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { createUser, findUserByUsername, findUserById, usernameExists } = require('./database');
+const { createUser, findUserByUsername, findUserById, usernameExists } = require('../database');
 
 const router = express.Router();
 
@@ -250,3 +250,4 @@ router.get('/me', authMiddleware, (req, res) => {
 });
 
 module.exports = router;
+module.exports.authMiddleware = authMiddleware;

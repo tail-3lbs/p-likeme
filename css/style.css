@@ -116,6 +116,21 @@ ul {
     background: #239997;
 }
 
+.btn-joined {
+    background: #e8f5f5;
+    color: #2AB3B1;
+    border: 1px solid #2AB3B1;
+}
+
+.btn-joined:hover {
+    background: #fff;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* Hero Section - Split Layout */
 .hero {
     background: #fff;
@@ -796,6 +811,22 @@ ul {
     font-size: 0.95rem;
     color: #333;
     cursor: pointer;
+}
+
+.no-communities-hint {
+    color: #666;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.no-communities-hint a {
+    color: #2AB3B1;
+    font-weight: 500;
+}
+
+.no-communities-hint a:hover {
+    text-decoration: underline;
 }
 
 /* Responsive */

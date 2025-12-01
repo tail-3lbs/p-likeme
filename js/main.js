@@ -13,6 +13,10 @@ console.log('P-LikeMe learning project loaded');
 (function() {
     const slides = document.querySelectorAll('.carousel-slide');
     const dots = document.querySelectorAll('.dot');
+
+    // Only run carousel code if slides exist (homepage only)
+    if (slides.length === 0) return;
+
     let currentIndex = 0;
     const intervalTime = 3000; // 3 seconds
 

@@ -12,9 +12,9 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 // Database file paths
-const communitiesDbPath = path.join(__dirname, 'communities.db');
-const usersDbPath = path.join(__dirname, 'users.db');
-const threadsDbPath = path.join(__dirname, 'threads.db');
+const communitiesDbPath = path.join(__dirname, 'db', 'communities.db');
+const usersDbPath = path.join(__dirname, 'db', 'users.db');
+const threadsDbPath = path.join(__dirname, 'db', 'threads.db');
 
 // Create database connections
 const communitiesDb = new Database(communitiesDbPath);
@@ -106,7 +106,7 @@ function seedCommunities() {
 }
 
 function getAllCommunities() {
-    return communitiesDb.prepare('SELECT * FROM communities ORDER BY member_count DESC').all();
+    return communitiesDb.prepare('SELECT * FROM communities ORDER BY RANDOM()').all();
 }
 
 function searchCommunities(query) {
@@ -134,6 +134,16 @@ function initUsersDb() {
         )
     `);
 
+    // Junction table for user-community membership
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS user_communities (
+            user_id INTEGER NOT NULL,
+            community_id INTEGER NOT NULL,
+            joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, community_id)
+        )
+    `);
+
     const count = usersDb.prepare('SELECT COUNT(*) as count FROM users').get();
     console.log(`Users DB: ${count.count} users`);
 }
@@ -157,6 +167,67 @@ function findUserById(id) {
 
 function usernameExists(username) {
     const result = usersDb.prepare('SELECT COUNT(*) as count FROM users WHERE username = ?').get(username);
+    return result.count > 0;
+}
+
+// Join a community
+function joinCommunity(user_id, community_id) {
+    const stmt = usersDb.prepare(`
+        INSERT OR IGNORE INTO user_communities (user_id, community_id)
+        VALUES (?, ?)
+    `);
+    const result = stmt.run(user_id, community_id);
+
+    // Update member_count in communities table
+    if (result.changes > 0) {
+        communitiesDb.prepare(`
+            UPDATE communities SET member_count = member_count + 1 WHERE id = ?
+        `).run(community_id);
+    }
+
+    return result.changes > 0;
+}
+
+// Leave a community
+function leaveCommunity(user_id, community_id) {
+    const stmt = usersDb.prepare(`
+        DELETE FROM user_communities WHERE user_id = ? AND community_id = ?
+    `);
+    const result = stmt.run(user_id, community_id);
+
+    // Update member_count in communities table
+    if (result.changes > 0) {
+        communitiesDb.prepare(`
+            UPDATE communities SET member_count = member_count - 1 WHERE id = ?
+        `).run(community_id);
+    }
+
+    return result.changes > 0;
+}
+
+// Get all community IDs a user has joined
+function getUserCommunityIds(user_id) {
+    return usersDb.prepare(`
+        SELECT community_id FROM user_communities WHERE user_id = ?
+    `).all(user_id).map(row => row.community_id);
+}
+
+// Get full community details for communities a user has joined
+function getUserCommunities(user_id) {
+    const communityIds = getUserCommunityIds(user_id);
+    if (communityIds.length === 0) return [];
+
+    const placeholders = communityIds.map(() => '?').join(',');
+    return communitiesDb.prepare(`
+        SELECT * FROM communities WHERE id IN (${placeholders})
+    `).all(...communityIds);
+}
+
+// Check if user is member of a community
+function isUserInCommunity(user_id, community_id) {
+    const result = usersDb.prepare(`
+        SELECT COUNT(*) as count FROM user_communities WHERE user_id = ? AND community_id = ?
+    `).get(user_id, community_id);
     return result.count > 0;
 }
 
@@ -280,6 +351,12 @@ module.exports = {
     findUserByUsername,
     findUserById,
     usernameExists,
+    // User-community membership functions
+    joinCommunity,
+    leaveCommunity,
+    getUserCommunityIds,
+    getUserCommunities,
+    isUserInCommunity,
     // Thread functions
     createThread,
     getThreadsByUserId,

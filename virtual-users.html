@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用户 - 像我一样</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .users-header {
+            background: linear-gradient(135deg, #2AB3B1 0%, #1a8a88 100%);
+            padding: 3rem 0;
+            color: white;
+            text-align: center;
+        }
+        .users-header h1 {
+            margin-bottom: 0.5rem;
+        }
+        .users-header p {
+            opacity: 0.9;
+        }
+        .users-table-wrapper {
+            padding: 2rem 0;
+        }
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .users-table th,
+        .users-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .users-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        .users-table tr:hover {
+            background: #f8f9fa;
+        }
+        .users-table tr:last-child td {
+            border-bottom: none;
+        }
+        .password-cell {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .note-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .note-box p {
+            margin: 0;
+            color: #856404;
+        }
+        .btn-login {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.85rem;
+            background: #2AB3B1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-login:hover {
+            background: #1a8a88;
+        }
+        .btn-login:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-logo">
+                <a href="index.html">像我一样</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="community.html">社区</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 页面标题 -->
+        <section class="users-header">
+            <div class="container">
+                <h1>测试用户列表</h1>
+                <p>以下是用于测试的 100 个虚拟用户账号</p>
+            </div>
+        </section>
+
+        <!-- 用户列表 -->
+        <section class="users-table-wrapper">
+            <div class="container">
+                <div class="note-box">
+                    <p><strong>注意：</strong>这些是测试账号，仅供开发调试使用。每个用户已随机加入 1-4 个社区。</p>
+                </div>
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>用户名</th>
+                            <th>密码</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td>user001</td><td><code class="password-cell">Pass001!</code></td><td><button class="btn-login" data-user="user001" data-pass="Pass001!">登录</button></td></tr>
+                        <tr><td>2</td><td>user002</td><td><code class="password-cell">Pass002!</code></td><td><button class="btn-login" data-user="user002" data-pass="Pass002!">登录</button></td></tr>
+                        <tr><td>3</td><td>user003</td><td><code class="password-cell">Pass003!</code></td><td><button class="btn-login" data-user="user003" data-pass="Pass003!">登录</button></td></tr>
+                        <tr><td>4</td><td>user004</td><td><code class="password-cell">Pass004!</code></td><td><button class="btn-login" data-user="user004" data-pass="Pass004!">登录</button></td></tr>
+                        <tr><td>5</td><td>user005</td><td><code class="password-cell">Pass005!</code></td><td><button class="btn-login" data-user="user005" data-pass="Pass005!">登录</button></td></tr>
+                        <tr><td>6</td><td>user006</td><td><code class="password-cell">Pass006!</code></td><td><button class="btn-login" data-user="user006" data-pass="Pass006!">登录</button></td></tr>
+                        <tr><td>7</td><td>user007</td><td><code class="password-cell">Pass007!</code></td><td><button class="btn-login" data-user="user007" data-pass="Pass007!">登录</button></td></tr>
+                        <tr><td>8</td><td>user008</td><td><code class="password-cell">Pass008!</code></td><td><button class="btn-login" data-user="user008" data-pass="Pass008!">登录</button></td></tr>
+                        <tr><td>9</td><td>user009</td><td><code class="password-cell">Pass009!</code></td><td><button class="btn-login" data-user="user009" data-pass="Pass009!">登录</button></td></tr>
+                        <tr><td>10</td><td>user010</td><td><code class="password-cell">Pass010!</code></td><td><button class="btn-login" data-user="user010" data-pass="Pass010!">登录</button></td></tr>
+                        <tr><td>11</td><td>user011</td><td><code class="password-cell">Pass011!</code></td><td><button class="btn-login" data-user="user011" data-pass="Pass011!">登录</button></td></tr>
+                        <tr><td>12</td><td>user012</td><td><code class="password-cell">Pass012!</code></td><td><button class="btn-login" data-user="user012" data-pass="Pass012!">登录</button></td></tr>
+                        <tr><td>13</td><td>user013</td><td><code class="password-cell">Pass013!</code></td><td><button class="btn-login" data-user="user013" data-pass="Pass013!">登录</button></td></tr>
+                        <tr><td>14</td><td>user014</td><td><code class="password-cell">Pass014!</code></td><td><button class="btn-login" data-user="user014" data-pass="Pass014!">登录</button></td></tr>
+                        <tr><td>15</td><td>user015</td><td><code class="password-cell">Pass015!</code></td><td><button class="btn-login" data-user="user015" data-pass="Pass015!">登录</button></td></tr>
+                        <tr><td>16</td><td>user016</td><td><code class="password-cell">Pass016!</code></td><td><button class="btn-login" data-user="user016" data-pass="Pass016!">登录</button></td></tr>
+                        <tr><td>17</td><td>user017</td><td><code class="password-cell">Pass017!</code></td><td><button class="btn-login" data-user="user017" data-pass="Pass017!">登录</button></td></tr>
+                        <tr><td>18</td><td>user018</td><td><code class="password-cell">Pass018!</code></td><td><button class="btn-login" data-user="user018" data-pass="Pass018!">登录</button></td></tr>
+                        <tr><td>19</td><td>user019</td><td><code class="password-cell">Pass019!</code></td><td><button class="btn-login" data-user="user019" data-pass="Pass019!">登录</button></td></tr>
+                        <tr><td>20</td><td>user020</td><td><code class="password-cell">Pass020!</code></td><td><button class="btn-login" data-user="user020" data-pass="Pass020!">登录</button></td></tr>
+                        <tr><td>21</td><td>user021</td><td><code class="password-cell">Pass021!</code></td><td><button class="btn-login" data-user="user021" data-pass="Pass021!">登录</button></td></tr>
+                        <tr><td>22</td><td>user022</td><td><code class="password-cell">Pass022!</code></td><td><button class="btn-login" data-user="user022" data-pass="Pass022!">登录</button></td></tr>
+                        <tr><td>23</td><td>user023</td><td><code class="password-cell">Pass023!</code></td><td><button class="btn-login" data-user="user023" data-pass="Pass023!">登录</button></td></tr>
+                        <tr><td>24</td><td>user024</td><td><code class="password-cell">Pass024!</code></td><td><button class="btn-login" data-user="user024" data-pass="Pass024!">登录</button></td></tr>
+                        <tr><td>25</td><td>user025</td><td><code class="password-cell">Pass025!</code></td><td><button class="btn-login" data-user="user025" data-pass="Pass025!">登录</button></td></tr>
+                        <tr><td>26</td><td>user026</td><td><code class="password-cell">Pass026!</code></td><td><button class="btn-login" data-user="user026" data-pass="Pass026!">登录</button></td></tr>
+                        <tr><td>27</td><td>user027</td><td><code class="password-cell">Pass027!</code></td><td><button class="btn-login" data-user="user027" data-pass="Pass027!">登录</button></td></tr>
+                        <tr><td>28</td><td>user028</td><td><code class="password-cell">Pass028!</code></td><td><button class="btn-login" data-user="user028" data-pass="Pass028!">登录</button></td></tr>
+                        <tr><td>29</td><td>user029</td><td><code class="password-cell">Pass029!</code></td><td><button class="btn-login" data-user="user029" data-pass="Pass029!">登录</button></td></tr>
+                        <tr><td>30</td><td>user030</td><td><code class="password-cell">Pass030!</code></td><td><button class="btn-login" data-user="user030" data-pass="Pass030!">登录</button></td></tr>
+                        <tr><td>31</td><td>user031</td><td><code class="password-cell">Pass031!</code></td><td><button class="btn-login" data-user="user031" data-pass="Pass031!">登录</button></td></tr>
+                        <tr><td>32</td><td>user032</td><td><code class="password-cell">Pass032!</code></td><td><button class="btn-login" data-user="user032" data-pass="Pass032!">登录</button></td></tr>
+                        <tr><td>33</td><td>user033</td><td><code class="password-cell">Pass033!</code></td><td><button class="btn-login" data-user="user033" data-pass="Pass033!">登录</button></td></tr>
+                        <tr><td>34</td><td>user034</td><td><code class="password-cell">Pass034!</code></td><td><button class="btn-login" data-user="user034" data-pass="Pass034!">登录</button></td></tr>
+                        <tr><td>35</td><td>user035</td><td><code class="password-cell">Pass035!</code></td><td><button class="btn-login" data-user="user035" data-pass="Pass035!">登录</button></td></tr>
+                        <tr><td>36</td><td>user036</td><td><code class="password-cell">Pass036!</code></td><td><button class="btn-login" data-user="user036" data-pass="Pass036!">登录</button></td></tr>
+                        <tr><td>37</td><td>user037</td><td><code class="password-cell">Pass037!</code></td><td><button class="btn-login" data-user="user037" data-pass="Pass037!">登录</button></td></tr>
+                        <tr><td>38</td><td>user038</td><td><code class="password-cell">Pass038!</code></td><td><button class="btn-login" data-user="user038" data-pass="Pass038!">登录</button></td></tr>
+                        <tr><td>39</td><td>user039</td><td><code class="password-cell">Pass039!</code></td><td><button class="btn-login" data-user="user039" data-pass="Pass039!">登录</button></td></tr>
+                        <tr><td>40</td><td>user040</td><td><code class="password-cell">Pass040!</code></td><td><button class="btn-login" data-user="user040" data-pass="Pass040!">登录</button></td></tr>
+                        <tr><td>41</td><td>user041</td><td><code class="password-cell">Pass041!</code></td><td><button class="btn-login" data-user="user041" data-pass="Pass041!">登录</button></td></tr>
+                        <tr><td>42</td><td>user042</td><td><code class="password-cell">Pass042!</code></td><td><button class="btn-login" data-user="user042" data-pass="Pass042!">登录</button></td></tr>
+                        <tr><td>43</td><td>user043</td><td><code class="password-cell">Pass043!</code></td><td><button class="btn-login" data-user="user043" data-pass="Pass043!">登录</button></td></tr>
+                        <tr><td>44</td><td>user044</td><td><code class="password-cell">Pass044!</code></td><td><button class="btn-login" data-user="user044" data-pass="Pass044!">登录</button></td></tr>
+                        <tr><td>45</td><td>user045</td><td><code class="password-cell">Pass045!</code></td><td><button class="btn-login" data-user="user045" data-pass="Pass045!">登录</button></td></tr>
+                        <tr><td>46</td><td>user046</td><td><code class="password-cell">Pass046!</code></td><td><button class="btn-login" data-user="user046" data-pass="Pass046!">登录</button></td></tr>
+                        <tr><td>47</td><td>user047</td><td><code class="password-cell">Pass047!</code></td><td><button class="btn-login" data-user="user047" data-pass="Pass047!">登录</button></td></tr>
+                        <tr><td>48</td><td>user048</td><td><code class="password-cell">Pass048!</code></td><td><button class="btn-login" data-user="user048" data-pass="Pass048!">登录</button></td></tr>
+                        <tr><td>49</td><td>user049</td><td><code class="password-cell">Pass049!</code></td><td><button class="btn-login" data-user="user049" data-pass="Pass049!">登录</button></td></tr>
+                        <tr><td>50</td><td>user050</td><td><code class="password-cell">Pass050!</code></td><td><button class="btn-login" data-user="user050" data-pass="Pass050!">登录</button></td></tr>
+                        <tr><td>51</td><td>user051</td><td><code class="password-cell">Pass051!</code></td><td><button class="btn-login" data-user="user051" data-pass="Pass051!">登录</button></td></tr>
+                        <tr><td>52</td><td>user052</td><td><code class="password-cell">Pass052!</code></td><td><button class="btn-login" data-user="user052" data-pass="Pass052!">登录</button></td></tr>
+                        <tr><td>53</td><td>user053</td><td><code class="password-cell">Pass053!</code></td><td><button class="btn-login" data-user="user053" data-pass="Pass053!">登录</button></td></tr>
+                        <tr><td>54</td><td>user054</td><td><code class="password-cell">Pass054!</code></td><td><button class="btn-login" data-user="user054" data-pass="Pass054!">登录</button></td></tr>
+                        <tr><td>55</td><td>user055</td><td><code class="password-cell">Pass055!</code></td><td><button class="btn-login" data-user="user055" data-pass="Pass055!">登录</button></td></tr>
+                        <tr><td>56</td><td>user056</td><td><code class="password-cell">Pass056!</code></td><td><button class="btn-login" data-user="user056" data-pass="Pass056!">登录</button></td></tr>
+                        <tr><td>57</td><td>user057</td><td><code class="password-cell">Pass057!</code></td><td><button class="btn-login" data-user="user057" data-pass="Pass057!">登录</button></td></tr>
+                        <tr><td>58</td><td>user058</td><td><code class="password-cell">Pass058!</code></td><td><button class="btn-login" data-user="user058" data-pass="Pass058!">登录</button></td></tr>
+                        <tr><td>59</td><td>user059</td><td><code class="password-cell">Pass059!</code></td><td><button class="btn-login" data-user="user059" data-pass="Pass059!">登录</button></td></tr>
+                        <tr><td>60</td><td>user060</td><td><code class="password-cell">Pass060!</code></td><td><button class="btn-login" data-user="user060" data-pass="Pass060!">登录</button></td></tr>
+                        <tr><td>61</td><td>user061</td><td><code class="password-cell">Pass061!</code></td><td><button class="btn-login" data-user="user061" data-pass="Pass061!">登录</button></td></tr>
+                        <tr><td>62</td><td>user062</td><td><code class="password-cell">Pass062!</code></td><td><button class="btn-login" data-user="user062" data-pass="Pass062!">登录</button></td></tr>
+                        <tr><td>63</td><td>user063</td><td><code class="password-cell">Pass063!</code></td><td><button class="btn-login" data-user="user063" data-pass="Pass063!">登录</button></td></tr>
+                        <tr><td>64</td><td>user064</td><td><code class="password-cell">Pass064!</code></td><td><button class="btn-login" data-user="user064" data-pass="Pass064!">登录</button></td></tr>
+                        <tr><td>65</td><td>user065</td><td><code class="password-cell">Pass065!</code></td><td><button class="btn-login" data-user="user065" data-pass="Pass065!">登录</button></td></tr>
+                        <tr><td>66</td><td>user066</td><td><code class="password-cell">Pass066!</code></td><td><button class="btn-login" data-user="user066" data-pass="Pass066!">登录</button></td></tr>
+                        <tr><td>67</td><td>user067</td><td><code class="password-cell">Pass067!</code></td><td><button class="btn-login" data-user="user067" data-pass="Pass067!">登录</button></td></tr>
+                        <tr><td>68</td><td>user068</td><td><code class="password-cell">Pass068!</code></td><td><button class="btn-login" data-user="user068" data-pass="Pass068!">登录</button></td></tr>
+                        <tr><td>69</td><td>user069</td><td><code class="password-cell">Pass069!</code></td><td><button class="btn-login" data-user="user069" data-pass="Pass069!">登录</button></td></tr>
+                        <tr><td>70</td><td>user070</td><td><code class="password-cell">Pass070!</code></td><td><button class="btn-login" data-user="user070" data-pass="Pass070!">登录</button></td></tr>
+                        <tr><td>71</td><td>user071</td><td><code class="password-cell">Pass071!</code></td><td><button class="btn-login" data-user="user071" data-pass="Pass071!">登录</button></td></tr>
+                        <tr><td>72</td><td>user072</td><td><code class="password-cell">Pass072!</code></td><td><button class="btn-login" data-user="user072" data-pass="Pass072!">登录</button></td></tr>
+                        <tr><td>73</td><td>user073</td><td><code class="password-cell">Pass073!</code></td><td><button class="btn-login" data-user="user073" data-pass="Pass073!">登录</button></td></tr>
+                        <tr><td>74</td><td>user074</td><td><code class="password-cell">Pass074!</code></td><td><button class="btn-login" data-user="user074" data-pass="Pass074!">登录</button></td></tr>
+                        <tr><td>75</td><td>user075</td><td><code class="password-cell">Pass075!</code></td><td><button class="btn-login" data-user="user075" data-pass="Pass075!">登录</button></td></tr>
+                        <tr><td>76</td><td>user076</td><td><code class="password-cell">Pass076!</code></td><td><button class="btn-login" data-user="user076" data-pass="Pass076!">登录</button></td></tr>
+                        <tr><td>77</td><td>user077</td><td><code class="password-cell">Pass077!</code></td><td><button class="btn-login" data-user="user077" data-pass="Pass077!">登录</button></td></tr>
+                        <tr><td>78</td><td>user078</td><td><code class="password-cell">Pass078!</code></td><td><button class="btn-login" data-user="user078" data-pass="Pass078!">登录</button></td></tr>
+                        <tr><td>79</td><td>user079</td><td><code class="password-cell">Pass079!</code></td><td><button class="btn-login" data-user="user079" data-pass="Pass079!">登录</button></td></tr>
+                        <tr><td>80</td><td>user080</td><td><code class="password-cell">Pass080!</code></td><td><button class="btn-login" data-user="user080" data-pass="Pass080!">登录</button></td></tr>
+                        <tr><td>81</td><td>user081</td><td><code class="password-cell">Pass081!</code></td><td><button class="btn-login" data-user="user081" data-pass="Pass081!">登录</button></td></tr>
+                        <tr><td>82</td><td>user082</td><td><code class="password-cell">Pass082!</code></td><td><button class="btn-login" data-user="user082" data-pass="Pass082!">登录</button></td></tr>
+                        <tr><td>83</td><td>user083</td><td><code class="password-cell">Pass083!</code></td><td><button class="btn-login" data-user="user083" data-pass="Pass083!">登录</button></td></tr>
+                        <tr><td>84</td><td>user084</td><td><code class="password-cell">Pass084!</code></td><td><button class="btn-login" data-user="user084" data-pass="Pass084!">登录</button></td></tr>
+                        <tr><td>85</td><td>user085</td><td><code class="password-cell">Pass085!</code></td><td><button class="btn-login" data-user="user085" data-pass="Pass085!">登录</button></td></tr>
+                        <tr><td>86</td><td>user086</td><td><code class="password-cell">Pass086!</code></td><td><button class="btn-login" data-user="user086" data-pass="Pass086!">登录</button></td></tr>
+                        <tr><td>87</td><td>user087</td><td><code class="password-cell">Pass087!</code></td><td><button class="btn-login" data-user="user087" data-pass="Pass087!">登录</button></td></tr>
+                        <tr><td>88</td><td>user088</td><td><code class="password-cell">Pass088!</code></td><td><button class="btn-login" data-user="user088" data-pass="Pass088!">登录</button></td></tr>
+                        <tr><td>89</td><td>user089</td><td><code class="password-cell">Pass089!</code></td><td><button class="btn-login" data-user="user089" data-pass="Pass089!">登录</button></td></tr>
+                        <tr><td>90</td><td>user090</td><td><code class="password-cell">Pass090!</code></td><td><button class="btn-login" data-user="user090" data-pass="Pass090!">登录</button></td></tr>
+                        <tr><td>91</td><td>user091</td><td><code class="password-cell">Pass091!</code></td><td><button class="btn-login" data-user="user091" data-pass="Pass091!">登录</button></td></tr>
+                        <tr><td>92</td><td>user092</td><td><code class="password-cell">Pass092!</code></td><td><button class="btn-login" data-user="user092" data-pass="Pass092!">登录</button></td></tr>
+                        <tr><td>93</td><td>user093</td><td><code class="password-cell">Pass093!</code></td><td><button class="btn-login" data-user="user093" data-pass="Pass093!">登录</button></td></tr>
+                        <tr><td>94</td><td>user094</td><td><code class="password-cell">Pass094!</code></td><td><button class="btn-login" data-user="user094" data-pass="Pass094!">登录</button></td></tr>
+                        <tr><td>95</td><td>user095</td><td><code class="password-cell">Pass095!</code></td><td><button class="btn-login" data-user="user095" data-pass="Pass095!">登录</button></td></tr>
+                        <tr><td>96</td><td>user096</td><td><code class="password-cell">Pass096!</code></td><td><button class="btn-login" data-user="user096" data-pass="Pass096!">登录</button></td></tr>
+                        <tr><td>97</td><td>user097</td><td><code class="password-cell">Pass097!</code></td><td><button class="btn-login" data-user="user097" data-pass="Pass097!">登录</button></td></tr>
+                        <tr><td>98</td><td>user098</td><td><code class="password-cell">Pass098!</code></td><td><button class="btn-login" data-user="user098" data-pass="Pass098!">登录</button></td></tr>
+                        <tr><td>99</td><td>user099</td><td><code class="password-cell">Pass099!</code></td><td><button class="btn-login" data-user="user099" data-pass="Pass099!">登录</button></td></tr>
+                        <tr><td>100</td><td>user100</td><td><code class="password-cell">Pass100!</code></td><td><button class="btn-login" data-user="user100" data-pass="Pass100!">登录</button></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
+            <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
+            <p>测试用户：<a href="virtual-users.html">页面链接</a></p>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script>
+        // Quick login functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.btn-login').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const username = this.dataset.user;
+                    const password = this.dataset.pass;
+
+                    this.disabled = true;
+                    this.textContent = '登录中...';
+
+                    try {
+                        const response = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            localStorage.setItem('p_likeme_token', data.data.token);
+                            localStorage.setItem('p_likeme_user', JSON.stringify(data.data.user));
+                            window.location.href = 'index.html';
+                        } else {
+                            alert('登录失败: ' + data.error);
+                            this.disabled = false;
+                            this.textContent = '登录';
+                        }
+                    } catch (error) {
+                        alert('登录失败，请重试');
+                        this.disabled = false;
+                        this.textContent = '登录';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

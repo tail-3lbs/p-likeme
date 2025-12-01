@@ -22,6 +22,44 @@ If you are a representative of PatientsLikeMe or believe this project infringes 
 
 **Contact**: Please open an issue on this repository or reach out through GitHub.
 
+## How to Run
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+
+### Installation & Setup
+
+1. Clone the repository and navigate to the project folder:
+   ```bash
+   cd p-likeme
+   ```
+
+2. Install dependencies:
+   ```bash
+   cd server
+   npm install
+   ```
+
+3. Start the server:
+   ```bash
+   node server.js
+   ```
+
+4. Open your browser and visit:
+   ```
+   http://localhost:3000
+   ```
+
+### Restart the Server
+
+If you need to restart the server (e.g., after code changes):
+
+```bash
+# Kill existing server and start fresh
+lsof -ti:3000 | xargs kill -9; node server.js
+```
+
 ## What This Project Contains
 
 - My own HTML/CSS/JS code written while learning
