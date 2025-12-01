@@ -401,7 +401,7 @@ function renderSingleReply(reply, parentReplyId, replyMap) {
     let mentionHtml = '';
     if (parentReplyId && replyMap[parentReplyId]) {
         const parentAuthor = replyMap[parentReplyId].author;
-        mentionHtml = `<span class="reply-mention">@${escapeHtml(parentAuthor)}</span> `;
+        mentionHtml = `<span class="reply-mention">回复 @${escapeHtml(parentAuthor)}:</span> `;
     }
 
     return `
