@@ -718,8 +718,11 @@ ul {
 
 .thread-card-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
 }
 
 .thread-communities {
@@ -739,6 +742,22 @@ ul {
 .thread-actions {
     display: flex;
     gap: 0.5rem;
+}
+
+.btn-edit {
+    background: none;
+    border: 1px solid #2AB3B1;
+    color: #2AB3B1;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-edit:hover {
+    background: #2AB3B1;
+    color: #fff;
 }
 
 .btn-delete {
@@ -827,6 +846,138 @@ ul {
 
 .no-communities-hint a:hover {
     text-decoration: underline;
+}
+
+/* Thread Detail Page */
+.thread-page {
+    padding: 2rem;
+    background: #f8f9fa;
+    min-height: 400px;
+}
+
+.thread-detail {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.thread-detail-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.thread-detail-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.75rem;
+}
+
+.thread-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.thread-author strong {
+    color: #2AB3B1;
+}
+
+.thread-detail-body {
+    margin-bottom: 1.5rem;
+}
+
+.thread-detail-body p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #333;
+    white-space: pre-wrap;
+}
+
+.thread-detail-footer {
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.thread-actions-bar {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.back-link {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.back-link a {
+    color: #2AB3B1;
+    font-size: 0.95rem;
+}
+
+.back-link a:hover {
+    text-decoration: underline;
+}
+
+.error-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.error-box h2 {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.error-box p {
+    color: #666;
+    margin-bottom: 1.5rem;
+}
+
+/* Clickable thread card */
+.thread-card-clickable {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.thread-card-clickable:hover {
+    opacity: 0.9;
+}
+
+.thread-card-clickable h3 {
+    color: #1a1a1a;
+    transition: color 0.2s;
+}
+
+.thread-card-clickable:hover h3 {
+    color: #2AB3B1;
+}
+
+.thread-card-clickable .thread-communities {
+    margin-top: 0.75rem;
+}
+
+.thread-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.thread-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
 }
 
 /* Responsive */

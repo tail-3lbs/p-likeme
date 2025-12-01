@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的分享 - 像我一样</title>
+    <title>分享详情 - 像我一样</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -25,74 +25,51 @@
     </header>
 
     <main>
-        <!-- 页面标题 -->
-        <section class="page-header">
+        <!-- 加载中 -->
+        <section class="thread-page" id="thread-loading">
             <div class="container">
-                <h1>我的分享</h1>
-                <p>记录你的健康历程，分享给社区</p>
+                <div class="loading">加载中...</div>
             </div>
         </section>
 
-        <!-- 未登录提示 -->
-        <section class="login-required" id="login-required">
+        <!-- 分享内容 -->
+        <section class="thread-page" id="thread-content" style="display: none;">
             <div class="container">
-                <div class="login-prompt">
-                    <h2>请先登录</h2>
-                    <p>登录后即可查看和创建分享</p>
-                    <button class="btn btn-primary" id="prompt-login-btn">立即登录</button>
+                <div class="thread-detail">
+                    <div class="thread-detail-header">
+                        <h1 id="thread-title"></h1>
+                        <div class="thread-meta">
+                            <span class="thread-author">作者：<strong id="thread-author"></strong></span>
+                            <span class="thread-date" id="thread-date"></span>
+                        </div>
+                    </div>
+                    <div class="thread-detail-body">
+                        <p id="thread-body"></p>
+                    </div>
+                    <div class="thread-detail-footer">
+                        <div class="thread-communities" id="thread-communities">
+                            <!-- Communities will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="thread-actions-bar" id="thread-actions-bar" style="display: none;">
+                        <button class="btn btn-outline" id="edit-thread-btn">编辑</button>
+                        <button class="btn btn-delete" id="delete-thread-btn">删除</button>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- 已登录内容 -->
-        <section class="shares-content" id="shares-content" style="display: none;">
+        <!-- 错误提示 -->
+        <section class="thread-page" id="thread-error" style="display: none;">
             <div class="container">
-                <!-- 创建新分享按钮 -->
-                <div class="shares-actions">
-                    <button class="btn btn-primary" id="new-share-btn">+ 新建分享</button>
-                </div>
-
-                <!-- 分享列表 -->
-                <div class="threads-list" id="threads-list">
-                    <div class="loading">加载中...</div>
-                </div>
-
-                <!-- 无分享提示 -->
-                <div class="no-threads" id="no-threads" style="display: none;">
-                    <p>你还没有创建任何分享</p>
-                    <p>点击上方"新建分享"按钮开始记录吧</p>
+                <div class="error-box">
+                    <h2>无法加载分享</h2>
+                    <p id="error-message">分享不存在或您没有权限访问</p>
+                    <a href="index.html" class="btn btn-primary">返回首页</a>
                 </div>
             </div>
         </section>
     </main>
-
-    <!-- 新建分享弹窗 -->
-    <div class="modal-overlay" id="thread-modal">
-        <div class="modal modal-large">
-            <button class="modal-close" id="thread-modal-close">&times;</button>
-            <div class="modal-content">
-                <h2>新建分享</h2>
-                <form id="thread-form">
-                    <div class="form-group">
-                        <label for="thread-title">标题</label>
-                        <input type="text" id="thread-title" name="title" required placeholder="给你的分享起个标题">
-                    </div>
-                    <div class="form-group">
-                        <label for="thread-content">内容</label>
-                        <textarea id="thread-content" name="content" required placeholder="分享你的经历、感受或建议..." rows="6"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>关联已加入的社区（可选）</label>
-                        <div class="community-checkboxes" id="community-checkboxes">
-                            <!-- Communities will be loaded here -->
-                        </div>
-                    </div>
-                    <div class="form-error" id="thread-error"></div>
-                    <button type="submit" class="btn btn-primary btn-block">发布分享</button>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- 编辑分享弹窗 -->
     <div class="modal-overlay" id="edit-modal">
@@ -221,6 +198,6 @@
 
     <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/my-shares.js"></script>
+    <script src="js/thread.js"></script>
 </body>
 </html>

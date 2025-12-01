@@ -150,7 +150,7 @@ function updateNav() {
  */
 function logout() {
     clearAuthData();
-    updateNav();
+    window.location.href = 'index.html';
 }
 
 /**

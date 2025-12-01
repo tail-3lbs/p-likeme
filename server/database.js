@@ -106,7 +106,7 @@ function seedCommunities() {
 }
 
 function getAllCommunities() {
-    return communitiesDb.prepare('SELECT * FROM communities ORDER BY RANDOM()').all();
+    return communitiesDb.prepare('SELECT * FROM communities ORDER BY id').all();
 }
 
 function searchCommunities(query) {
@@ -329,6 +329,31 @@ function deleteThread(id, user_id) {
     return deleteWithLinks(id, user_id);
 }
 
+// Update a thread
+function updateThread({ id, user_id, title, content, community_ids = [] }) {
+    const updateThread = threadsDb.prepare(`
+        UPDATE threads SET title = @title, content = @content
+        WHERE id = @id AND user_id = @user_id
+    `);
+
+    const deleteLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
+    const insertLink = threadsDb.prepare('INSERT INTO thread_communities (thread_id, community_id) VALUES (?, ?)');
+
+    const updateWithCommunities = threadsDb.transaction(({ id, user_id, title, content, community_ids }) => {
+        const result = updateThread.run({ id, user_id, title, content });
+        if (result.changes === 0) return false;
+
+        // Update community links
+        deleteLinks.run(id);
+        for (const communityId of community_ids) {
+            insertLink.run(id, communityId);
+        }
+        return true;
+    });
+
+    return updateWithCommunities({ id, user_id, title, content, community_ids });
+}
+
 // ============ Initialize ============
 
 initCommunitiesDb();
@@ -361,5 +386,6 @@ module.exports = {
     createThread,
     getThreadsByUserId,
     getThreadById,
-    deleteThread
+    deleteThread,
+    updateThread
 };

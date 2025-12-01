@@ -18,6 +18,16 @@ const threadForm = document.getElementById('thread-form');
 const threadError = document.getElementById('thread-error');
 const communityCheckboxes = document.getElementById('community-checkboxes');
 
+// Edit Modal Elements
+const editModal = document.getElementById('edit-modal');
+const editModalClose = document.getElementById('edit-modal-close');
+const editForm = document.getElementById('edit-form');
+const editError = document.getElementById('edit-error');
+const editCommunityCheckboxes = document.getElementById('edit-community-checkboxes');
+
+// Store user communities for edit modal
+let userCommunities = [];
+
 // API Base
 const THREADS_API = '/api/threads';
 const COMMUNITIES_API = '/api/communities';
@@ -88,16 +98,19 @@ function renderThreads(threads) {
 
     threadsList.innerHTML = threads.map(thread => `
         <div class="thread-card" data-id="${thread.id}">
-            <div class="thread-card-header">
-                <h3>${escapeHtml(thread.title)}</h3>
-                <span class="thread-card-date">${formatDate(thread.created_at)}</span>
-            </div>
-            <p>${escapeHtml(thread.content)}</p>
-            <div class="thread-card-footer">
+            <a href="thread.html?id=${thread.id}" class="thread-card-clickable">
+                <div class="thread-card-header">
+                    <h3>${escapeHtml(thread.title)}</h3>
+                    <span class="thread-card-date">${formatDate(thread.created_at)}</span>
+                </div>
+                <p>${escapeHtml(thread.content)}</p>
                 <div class="thread-communities">
                     ${thread.communities.map(c => `<span class="community-tag">${escapeHtml(c.name)}</span>`).join('')}
                 </div>
+            </a>
+            <div class="thread-card-footer">
                 <div class="thread-actions">
+                    <button class="btn-edit" onclick="openEditModal(${thread.id})">编辑</button>
                     <button class="btn-delete" onclick="deleteThread(${thread.id})">删除</button>
                 </div>
             </div>
@@ -116,6 +129,7 @@ async function loadCommunities() {
         const data = await response.json();
 
         if (data.success && data.data.length > 0) {
+            userCommunities = data.data;
             communityCheckboxes.innerHTML = data.data.map(c => `
                 <div class="community-checkbox">
                     <input type="checkbox" id="community-${c.id}" name="communities" value="${c.id}">
@@ -123,6 +137,7 @@ async function loadCommunities() {
                 </div>
             `).join('');
         } else {
+            userCommunities = [];
             communityCheckboxes.innerHTML = `
                 <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
             `;
@@ -215,6 +230,99 @@ async function deleteThread(id) {
 }
 
 /**
+ * Open edit modal and load thread data
+ */
+async function openEditModal(threadId) {
+    try {
+        // Fetch thread data
+        const response = await fetch(`${THREADS_API}/${threadId}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+            alert(data.error || '加载分享数据失败');
+            return;
+        }
+
+        const thread = data.data;
+
+        // Populate form fields
+        document.getElementById('edit-thread-id').value = thread.id;
+        document.getElementById('edit-title').value = thread.title;
+        document.getElementById('edit-content').value = thread.content;
+
+        // Render community checkboxes
+        if (userCommunities.length > 0) {
+            const linkedIds = thread.communities.map(c => c.id);
+            editCommunityCheckboxes.innerHTML = userCommunities.map(c => `
+                <div class="community-checkbox">
+                    <input type="checkbox" id="edit-community-${c.id}" name="edit-communities" value="${c.id}" ${linkedIds.includes(c.id) ? 'checked' : ''}>
+                    <label for="edit-community-${c.id}">${escapeHtml(c.name)}</label>
+                </div>
+            `).join('');
+        } else {
+            editCommunityCheckboxes.innerHTML = `
+                <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
+            `;
+        }
+
+        editError.textContent = '';
+        editModal.classList.add('active');
+    } catch (error) {
+        console.error('Error loading thread:', error);
+        alert('网络错误，请稍后再试');
+    }
+}
+
+/**
+ * Close edit modal
+ */
+function closeEditModal() {
+    editModal.classList.remove('active');
+}
+
+/**
+ * Update a thread
+ */
+async function updateThread(e) {
+    e.preventDefault();
+
+    const threadId = document.getElementById('edit-thread-id').value;
+    const title = document.getElementById('edit-title').value;
+    const content = document.getElementById('edit-content').value;
+
+    // Get selected communities
+    const selectedCommunities = Array.from(
+        document.querySelectorAll('input[name="edit-communities"]:checked')
+    ).map(cb => parseInt(cb.value));
+
+    try {
+        const response = await fetch(`${THREADS_API}/${threadId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                title,
+                content,
+                community_ids: selectedCommunities
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            closeEditModal();
+            loadThreads();
+        } else {
+            editError.textContent = data.error || '更新失败';
+        }
+    } catch (error) {
+        console.error('Error updating thread:', error);
+        editError.textContent = '网络错误，请稍后再试';
+    }
+}
+
+/**
  * Format date string
  */
 function formatDate(dateStr) {
@@ -263,10 +371,32 @@ if (promptLoginBtn) {
     });
 }
 
+// Edit modal event listeners
+if (editModalClose) {
+    editModalClose.addEventListener('click', closeEditModal);
+}
+
+if (editModal) {
+    editModal.addEventListener('click', (e) => {
+        if (e.target === editModal) {
+            closeEditModal();
+        }
+    });
+}
+
+if (editForm) {
+    editForm.addEventListener('submit', updateThread);
+}
+
 // Close modal on Escape key
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && threadModal.classList.contains('active')) {
-        closeThreadModal();
+    if (e.key === 'Escape') {
+        if (threadModal.classList.contains('active')) {
+            closeThreadModal();
+        }
+        if (editModal.classList.contains('active')) {
+            closeEditModal();
+        }
     }
 });
 

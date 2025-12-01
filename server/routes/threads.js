@@ -5,7 +5,7 @@
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { createThread, getThreadsByUserId, getThreadById, deleteThread, getAllCommunities } = require('../database');
+const { createThread, getThreadsByUserId, getThreadById, deleteThread, updateThread, getAllCommunities, findUserById } = require('../database');
 
 const router = express.Router();
 
@@ -116,6 +116,50 @@ router.get('/:id', authMiddleware, (req, res) => {
 });
 
 /**
+ * GET /api/threads/:id/public
+ * Get a single thread by ID (public - no auth required)
+ * Includes author username
+ */
+router.get('/:id/public', (req, res) => {
+    try {
+        const thread = getThreadById(parseInt(req.params.id));
+
+        if (!thread) {
+            return res.status(404).json({
+                success: false,
+                error: '分享不存在'
+            });
+        }
+
+        // Get author info
+        const author = findUserById(thread.user_id);
+
+        // Get community names
+        const communities = getAllCommunities();
+        const communityMap = {};
+        communities.forEach(c => { communityMap[c.id] = c.name; });
+
+        res.json({
+            success: true,
+            data: {
+                ...thread,
+                author: author ? author.username : '匿名用户',
+                communities: thread.community_ids.map(id => ({
+                    id,
+                    name: communityMap[id] || '未知社区'
+                }))
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching thread:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取分享详情失败'
+        });
+    }
+});
+
+/**
  * POST /api/threads
  * Create a new thread
  */
@@ -158,6 +202,61 @@ router.post('/', authMiddleware, (req, res) => {
         res.status(500).json({
             success: false,
             error: '创建分享失败'
+        });
+    }
+});
+
+/**
+ * PUT /api/threads/:id
+ * Update a thread
+ */
+router.put('/:id', authMiddleware, (req, res) => {
+    try {
+        const { title, content, community_ids = [] } = req.body;
+
+        // Validate input
+        if (!title || !title.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: '标题不能为空'
+            });
+        }
+
+        if (!content || !content.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: '内容不能为空'
+            });
+        }
+
+        // Update thread
+        const updated = updateThread({
+            id: parseInt(req.params.id),
+            user_id: req.user.id,
+            title: title.trim(),
+            content: content.trim(),
+            community_ids: community_ids.map(id => parseInt(id))
+        });
+
+        if (!updated) {
+            return res.status(404).json({
+                success: false,
+                error: '分享不存在或无权修改'
+            });
+        }
+
+        const thread = getThreadById(parseInt(req.params.id));
+
+        res.json({
+            success: true,
+            message: '分享更新成功',
+            data: thread
+        });
+    } catch (error) {
+        console.error('Error updating thread:', error);
+        res.status(500).json({
+            success: false,
+            error: '更新分享失败'
         });
     }
 });
