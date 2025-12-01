@@ -377,6 +377,19 @@ ul {
     margin-bottom: 0.5rem;
 }
 
+.community-card-clickable {
+    cursor: pointer;
+}
+
+.community-card-clickable .community-info,
+.community-card-clickable .community-info * {
+    user-select: none;
+}
+
+.community-card-clickable:hover h3 {
+    color: #2AB3B1;
+}
+
 .community-info p {
     font-size: 0.9rem;
     color: #666;
@@ -904,6 +917,10 @@ ul {
     border-top: 1px solid #eee;
 }
 
+.thread-detail-footer .thread-communities {
+    user-select: none;
+}
+
 .thread-actions-bar {
     display: flex;
     gap: 1rem;
@@ -952,6 +969,7 @@ ul {
     text-decoration: none;
     color: inherit;
     display: block;
+    user-select: none;
 }
 
 .thread-card-clickable:hover {
@@ -971,6 +989,10 @@ ul {
     margin-top: 0.75rem;
 }
 
+.thread-card .thread-communities {
+    user-select: none;
+}
+
 .thread-card {
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -978,6 +1000,208 @@ ul {
 .thread-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+/* Community Detail Page */
+.community-detail-page {
+    padding: 2rem;
+    background: #f8f9fa;
+    min-height: 400px;
+}
+
+.community-detail-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 800px;
+    margin: 0 auto 2rem;
+}
+
+.community-detail-header {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.community-detail-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 0.5rem;
+}
+
+.community-detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.community-detail-meta .member-count {
+    color: #2AB3B1;
+    font-weight: 500;
+}
+
+.community-detail-body {
+    margin-bottom: 1.5rem;
+}
+
+.community-detail-body p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #333;
+}
+
+.community-detail-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.community-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.keyword-tag {
+    background: #f0f9f9;
+    color: #2AB3B1;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.community-threads-section {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.community-threads-section h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1.5rem;
+}
+
+.community-threads-section .thread-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.community-threads-section .thread-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.community-threads-section .thread-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.community-threads-section .thread-title a {
+    color: #1a1a1a;
+    text-decoration: none;
+}
+
+.community-threads-section .thread-title a:hover {
+    color: #2AB3B1;
+}
+
+.community-threads-section .thread-date {
+    color: #888;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.community-threads-section .thread-card-body {
+    margin-bottom: 0.75rem;
+}
+
+.community-threads-section .thread-card-body p {
+    color: #555;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.community-threads-section .thread-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.community-threads-section .thread-author {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.community-threads-section .thread-communities {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.community-tag {
+    background: #f0f9f9;
+    color: #2AB3B1;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    text-decoration: none;
+}
+
+.community-tag:hover {
+    background: #2AB3B1;
+    color: #fff;
+}
+
+.thread-card-clickable {
+    cursor: pointer;
+}
+
+.thread-card-clickable .thread-card-header,
+.thread-card-clickable .thread-card-body,
+.thread-card-clickable .thread-author {
+    user-select: none;
+}
+
+.thread-card-clickable:hover .thread-title {
+    color: #2AB3B1;
+}
+
+.load-more-container {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.load-more-btn {
+    padding: 0.75rem 2rem;
+}
+
+.no-threads {
+    background: #fff;
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.no-threads p {
+    color: #666;
+    margin: 0.5rem 0;
 }
 
 /* Responsive */

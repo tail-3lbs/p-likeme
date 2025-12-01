@@ -329,6 +329,43 @@ function deleteThread(id, user_id) {
     return deleteWithLinks(id, user_id);
 }
 
+// Get threads by community ID with pagination
+function getThreadsByCommunityId(community_id, limit = 10, offset = 0) {
+    // Get thread IDs linked to this community
+    const threadIds = threadsDb.prepare(`
+        SELECT thread_id FROM thread_communities WHERE community_id = ?
+    `).all(community_id).map(row => row.thread_id);
+
+    if (threadIds.length === 0) {
+        return { threads: [], total: 0 };
+    }
+
+    const placeholders = threadIds.map(() => '?').join(',');
+
+    // Get total count
+    const total = threadIds.length;
+
+    // Get paginated threads
+    const threads = threadsDb.prepare(`
+        SELECT * FROM threads
+        WHERE id IN (${placeholders})
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+    `).all(...threadIds, limit, offset);
+
+    // Get community IDs for each thread
+    const getCommunityIds = threadsDb.prepare(`
+        SELECT community_id FROM thread_communities WHERE thread_id = ?
+    `);
+
+    const threadsWithCommunities = threads.map(thread => ({
+        ...thread,
+        community_ids: getCommunityIds.all(thread.id).map(row => row.community_id)
+    }));
+
+    return { threads: threadsWithCommunities, total };
+}
+
 // Update a thread
 function updateThread({ id, user_id, title, content, community_ids = [] }) {
     const updateThread = threadsDb.prepare(`
@@ -386,6 +423,7 @@ module.exports = {
     createThread,
     getThreadsByUserId,
     getThreadById,
+    getThreadsByCommunityId,
     deleteThread,
     updateThread
 };

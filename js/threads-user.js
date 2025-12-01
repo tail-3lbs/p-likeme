@@ -98,16 +98,16 @@ function renderThreads(threads) {
 
     threadsList.innerHTML = threads.map(thread => `
         <div class="thread-card" data-id="${thread.id}">
-            <a href="thread.html?id=${thread.id}" class="thread-card-clickable">
+            <a href="thread-detail.html?id=${thread.id}" class="thread-card-clickable">
                 <div class="thread-card-header">
                     <h3>${escapeHtml(thread.title)}</h3>
                     <span class="thread-card-date">${formatDate(thread.created_at)}</span>
                 </div>
                 <p>${escapeHtml(thread.content)}</p>
-                <div class="thread-communities">
-                    ${thread.communities.map(c => `<span class="community-tag">${escapeHtml(c.name)}</span>`).join('')}
-                </div>
             </a>
+            <div class="thread-communities">
+                ${thread.communities.map(c => `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`).join('')}
+            </div>
             <div class="thread-card-footer">
                 <div class="thread-actions">
                     <button class="btn-edit" onclick="openEditModal(${thread.id})">编辑</button>
@@ -403,6 +403,15 @@ document.addEventListener('keydown', (e) => {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     checkLoginState();
+
+    // Community tag clicks - redirect to community detail page
+    threadsList.addEventListener('click', (e) => {
+        const tag = e.target.closest('.community-tag[data-community-id]');
+        if (tag) {
+            e.preventDefault();
+            window.location.href = `community-detail.html?id=${tag.dataset.communityId}`;
+        }
+    });
 });
 
 // Re-check login state when localStorage changes (for login/logout)

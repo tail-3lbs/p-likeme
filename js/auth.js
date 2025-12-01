@@ -115,12 +115,12 @@ function updateNav() {
         });
 
         // Add "我的分享" link if not already present
-        if (navLinks && !document.getElementById('my-shares-link')) {
-            const mySharesLi = document.createElement('li');
-            mySharesLi.id = 'my-shares-link';
-            const isActive = window.location.pathname.includes('my-shares') ? ' class="active"' : '';
-            mySharesLi.innerHTML = `<a href="my-shares.html"${isActive}>我的分享</a>`;
-            navLinks.appendChild(mySharesLi);
+        if (navLinks && !document.getElementById('threads-user-link')) {
+            const threadsUserLi = document.createElement('li');
+            threadsUserLi.id = 'threads-user-link';
+            const isActive = (window.location.pathname.includes('threads-user') || window.location.pathname.includes('thread-detail')) ? ' class="active"' : '';
+            threadsUserLi.innerHTML = `<a href="threads-user.html"${isActive}>我的分享</a>`;
+            navLinks.appendChild(threadsUserLi);
         }
     } else {
         navActions.innerHTML = `
@@ -138,9 +138,9 @@ function updateNav() {
         });
 
         // Remove "我的分享" link if present
-        const mySharesLink = document.getElementById('my-shares-link');
-        if (mySharesLink) {
-            mySharesLink.remove();
+        const threadsUserLink = document.getElementById('threads-user-link');
+        if (threadsUserLink) {
+            threadsUserLink.remove();
         }
     }
 }

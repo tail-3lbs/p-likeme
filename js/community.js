@@ -5,7 +5,7 @@
 
 (function() {
     const API_BASE = '/api';
-    const PAGE_SIZE = 6;
+    const PAGE_SIZE = 15;
     const TOKEN_KEY = 'p_likeme_token';
 
     const searchInput = document.getElementById('community-search');
@@ -142,7 +142,7 @@
         const buttonText = isJoined ? '已加入' : '加入';
 
         return `
-            <div class="community-card" data-id="${community.id}">
+            <div class="community-card community-card-clickable" data-id="${community.id}" data-href="community-detail.html?id=${community.id}">
                 <div class="community-info">
                     <h3>${community.name}</h3>
                     <p>${community.description}</p>
@@ -249,13 +249,21 @@
         loadMoreBtn.addEventListener('click', loadMore);
     }
 
-    // Event delegation for join buttons
+    // Event delegation for join buttons and card clicks
     if (communitiesContainer) {
         communitiesContainer.addEventListener('click', (e) => {
+            // Handle join button click
             const button = e.target.closest('button[data-community-id]');
             if (button) {
                 const communityId = parseInt(button.dataset.communityId);
                 handleJoinClick(communityId, button);
+                return;
+            }
+
+            // Handle card click (navigate to detail page)
+            const card = e.target.closest('.community-card-clickable');
+            if (card && card.dataset.href) {
+                window.location.href = card.dataset.href;
             }
         });
     }

@@ -6,7 +6,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities } = require('./database');
+const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById } = require('./database');
 const authRoutes = require('./routes/auth');
 const { authMiddleware } = require('./routes/auth');
 const threadsRoutes = require('./routes/threads');
@@ -95,6 +95,61 @@ app.get('/api/communities/:id', (req, res) => {
         res.status(500).json({
             success: false,
             error: '获取社区信息失败'
+        });
+    }
+});
+
+/**
+ * GET /api/communities/:id/threads
+ * Get all threads linked to a community (public, with pagination)
+ * Query params: ?limit=10&offset=0
+ */
+app.get('/api/communities/:id/threads', (req, res) => {
+    try {
+        const communityId = parseInt(req.params.id);
+        const community = getCommunityById(communityId);
+
+        if (!community) {
+            return res.status(404).json({
+                success: false,
+                error: '社区不存在'
+            });
+        }
+
+        const limit = parseInt(req.query.limit) || 10;
+        const offset = parseInt(req.query.offset) || 0;
+
+        const { threads, total } = getThreadsByCommunityId(communityId, limit, offset);
+
+        // Add author info and community names for each thread
+        const communities = getAllCommunities();
+        const communityMap = {};
+        communities.forEach(c => { communityMap[c.id] = c.name; });
+
+        const threadsWithDetails = threads.map(thread => {
+            const author = findUserById(thread.user_id);
+            return {
+                ...thread,
+                author: author ? author.username : '匿名用户',
+                communities: thread.community_ids.map(id => ({
+                    id,
+                    name: communityMap[id] || '未知社区'
+                }))
+            };
+        });
+
+        res.json({
+            success: true,
+            data: threadsWithDetails,
+            count: threads.length,
+            total: total,
+            hasMore: offset + threads.length < total
+        });
+    } catch (error) {
+        console.error('Error fetching community threads:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取社区分享失败'
         });
     }
 });

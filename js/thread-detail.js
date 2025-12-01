@@ -95,7 +95,7 @@ function renderThread(thread) {
     const communitiesEl = document.getElementById('thread-communities');
     if (thread.communities && thread.communities.length > 0) {
         communitiesEl.innerHTML = thread.communities.map(c =>
-            `<span class="community-tag">${escapeHtml(c.name)}</span>`
+            `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`
         ).join('');
     } else {
         communitiesEl.innerHTML = '';
@@ -260,8 +260,8 @@ async function deleteThread() {
         const data = await response.json();
 
         if (data.success) {
-            // Redirect to my shares page
-            window.location.href = 'my-shares.html';
+            // Redirect to user's threads page
+            window.location.href = 'threads-user.html';
         } else {
             alert(data.error || '删除失败');
         }
@@ -301,4 +301,12 @@ document.addEventListener('keydown', (e) => {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadThread();
+
+    // Community tag clicks - redirect to community detail page
+    document.getElementById('thread-communities').addEventListener('click', (e) => {
+        const tag = e.target.closest('.community-tag[data-community-id]');
+        if (tag) {
+            window.location.href = `community-detail.html?id=${tag.dataset.communityId}`;
+        }
+    });
 });
