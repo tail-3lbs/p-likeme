@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社区 - 像我一样</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-logo">
+                <a href="index.html">像我一样</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="community.html" class="active">社区</a></li>
+            </ul>
+            <div class="nav-actions" id="nav-actions">
+                <a href="#" class="btn btn-outline" id="login-btn">登录</a>
+                <a href="#" class="btn btn-primary" id="signup-btn">注册</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 搜索区域 -->
+        <section class="community-header">
+            <div class="container">
+                <h1>探索社区</h1>
+                <p>找到与你有相同经历的人，一起分享、支持、成长</p>
+                <div class="search-box">
+                    <input type="text" id="community-search" placeholder="搜索社区...">
+                </div>
+            </div>
+        </section>
+
+        <!-- 社区列表 -->
+        <section class="community-list">
+            <div class="container">
+                <div class="communities" id="communities">
+                    <!-- 社区卡片将由 JavaScript 从 API 加载 -->
+                    <div class="loading" id="loading">加载中...</div>
+                </div>
+
+                <!-- 无结果提示 -->
+                <div class="no-results" id="no-results" style="display: none;">
+                    <p>没有找到相关社区，请尝试其他关键词。</p>
+                </div>
+
+                <!-- 加载更多按钮 -->
+                <div class="load-more-wrapper" id="load-more-wrapper" style="display: none;">
+                    <button class="btn btn-outline btn-load-more" id="load-more-btn">加载更多</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
+            <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
+        </div>
+    </footer>
+
+    <!-- 登录/注册弹窗 -->
+    <div class="modal-overlay" id="auth-modal">
+        <div class="modal">
+            <button class="modal-close" id="modal-close">&times;</button>
+
+            <!-- 登录表单 -->
+            <div class="modal-content" id="login-form">
+                <h2>登录</h2>
+                <form id="login-form-el">
+                    <div class="form-group">
+                        <label for="login-username">用户名</label>
+                        <input type="text" id="login-username" name="username" required placeholder="请输入用户名">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">密码</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="login-password" name="password" required placeholder="请输入密码">
+                            <button type="button" class="password-toggle" data-target="login-password">
+                                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-error" id="login-error"></div>
+                    <button type="submit" class="btn btn-primary btn-block">登录</button>
+                </form>
+                <p class="modal-switch">
+                    还没有账号？<a href="#" id="switch-to-signup">立即注册</a>
+                </p>
+            </div>
+
+            <!-- 注册表单 -->
+            <div class="modal-content hidden" id="signup-form">
+                <h2>注册</h2>
+                <form id="signup-form-el">
+                    <div class="form-group">
+                        <label for="signup-username">用户名</label>
+                        <input type="text" id="signup-username" name="username" required placeholder="2-20个字符">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">密码</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password" name="password" required placeholder="至少8位，含大小写字母、数字和特殊字符">
+                            <button type="button" class="password-toggle" data-target="signup-password">
+                                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password-confirm">确认密码</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password-confirm" name="password_confirm" required placeholder="再次输入密码">
+                            <button type="button" class="password-toggle" data-target="signup-password-confirm">
+                                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-error" id="signup-error"></div>
+                    <button type="submit" class="btn btn-primary btn-block">注册</button>
+                </form>
+                <p class="modal-switch">
+                    已有账号？<a href="#" id="switch-to-login">立即登录</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+    <script src="js/community.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
