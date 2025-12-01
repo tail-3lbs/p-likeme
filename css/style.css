@@ -52,7 +52,7 @@ ul {
 .nav-logo a {
     font-size: 1.5rem;
     font-weight: bold;
-    color: #0066cc;
+    color: #2AB3B1;
 }
 
 .nav-links {
@@ -68,7 +68,7 @@ ul {
 
 .nav-links a:hover,
 .nav-links a.active {
-    color: #0066cc;
+    color: #2AB3B1;
 }
 
 .nav-actions {
@@ -86,52 +86,191 @@ ul {
 }
 
 .btn-outline {
-    border: 1px solid #0066cc;
-    color: #0066cc;
+    border: 1px solid #2AB3B1;
+    color: #2AB3B1;
 }
 
 .btn-outline:hover {
-    background: #0066cc;
+    background: #2AB3B1;
     color: #fff;
 }
 
 .btn-primary {
-    background: #0066cc;
+    background: #2AB3B1;
     color: #fff;
-    border: 1px solid #0066cc;
+    border: 1px solid #2AB3B1;
 }
 
 .btn-primary:hover {
-    background: #0052a3;
+    background: #239997;
 }
 
-/* Hero Section */
+/* Hero Section - Split Layout */
 .hero {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-    padding: 6rem 2rem;
-    text-align: center;
+    background: #fff;
+    padding: 2rem 0;
+    min-height: 500px;
 }
 
-.hero h1 {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+.hero-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
-.hero p {
-    font-size: 1.25rem;
-    opacity: 0.9;
+/* Left side - Text content */
+.hero-content {
+    flex: 1;
+    max-width: 480px;
 }
 
-/* Sections */
-.section {
+.hero-content h1 {
+    font-size: 2.75rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+}
+
+.hero-subtitle {
+    font-size: 1.125rem;
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+}
+
+.btn-large {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    border-radius: 6px;
+}
+
+/* Right side - Carousel */
+.hero-carousel {
+    flex: 1;
+    max-width: 550px;
+    position: relative;
+}
+
+.carousel-container {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    overflow: hidden;
+}
+
+.carousel-slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+.carousel-slide.active {
+    display: flex;
+}
+
+.carousel-slide img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Carousel Navigation Dots */
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ccc;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.3s;
+}
+
+.dot:hover {
+    background: #2AB3B1;
+}
+
+.dot.active {
+    background: #2AB3B1;
+    transform: scale(1.2);
+}
+
+/* Getting Started Section */
+.getting-started {
     padding: 4rem 2rem;
+    background: #f8f9fa;
 }
 
-.section h2 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    color: #333;
+.getting-started h2 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.steps {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+}
+
+.step {
+    flex: 1;
+    max-width: 320px;
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    background: #2AB3B1;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+}
+
+.step h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 0.75rem;
+}
+
+.step p {
+    font-size: 1rem;
+    color: #555;
+    line-height: 1.6;
 }
 
 /* Footer */
@@ -147,6 +286,15 @@ ul {
     opacity: 0.8;
 }
 
+.footer a {
+    color: #2AB3B1;
+    text-decoration: underline;
+}
+
+.footer a:hover {
+    color: #fff;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .nav {
@@ -158,7 +306,29 @@ ul {
         gap: 1rem;
     }
 
-    .hero h1 {
+    .hero-container {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hero-content {
+        max-width: 100%;
+    }
+
+    .hero-content h1 {
         font-size: 2rem;
+    }
+
+    .hero-carousel {
+        max-width: 100%;
+    }
+
+    .steps {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .step {
+        max-width: 100%;
     }
 }

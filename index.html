@@ -1,53 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P-LikeMe - Learning Project</title>
+    <title>像我一样 - 学习项目</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Navigation -->
+    <!-- 导航栏 -->
     <header class="header">
         <nav class="nav">
             <div class="nav-logo">
-                <a href="index.html">P-LikeMe</a>
+                <a href="index.html">像我一样</a>
             </div>
             <ul class="nav-links">
-                <li><a href="#" class="active">Home</a></li>
-                <li><a href="#">Community</a></li>
-                <li><a href="#">My Health</a></li>
+                <li><a href="#" class="active">首页</a></li>
+                <li><a href="#">社区</a></li>
+                <li><a href="#">我的健康</a></li>
             </ul>
             <div class="nav-actions">
-                <a href="#" class="btn btn-outline">Sign in</a>
-                <a href="#" class="btn btn-primary">Join now</a>
+                <a href="#" class="btn btn-outline">登录</a>
+                <a href="#" class="btn btn-primary">注册</a>
             </div>
         </nav>
     </header>
 
-    <!-- Hero Section -->
+    <!-- 主视觉区 -->
     <main>
         <section class="hero">
-            <div class="hero-content">
-                <h1>Welcome to P-LikeMe</h1>
-                <p>This is a learning project - studying web development by recreating layouts.</p>
+            <div class="hero-container">
+                <!-- 左侧：文字内容 -->
+                <div class="hero-content">
+                    <h1>找到你的社区<br>找到你的力量</h1>
+                    <p class="hero-subtitle">加入超过85万会员，通过分享经验，释放健康洞察的力量。</p>
+                </div>
+
+                <!-- 右侧：图片轮播 -->
+                <div class="hero-carousel">
+                    <div class="carousel-container">
+                        <div class="carousel-slide active">
+                            <img src="images/hero-1.png" alt="图片1">
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="images/hero-2.png" alt="图片2">
+                        </div>
+                        <div class="carousel-slide">
+                            <img src="images/hero-3.png" alt="图片3">
+                        </div>
+                    </div>
+                    <!-- 导航圆点 -->
+                    <div class="carousel-dots">
+                        <span class="dot active" data-index="0"></span>
+                        <span class="dot" data-index="1"></span>
+                        <span class="dot" data-index="2"></span>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Placeholder sections to be built -->
-        <section class="section">
+        <!-- 遇见同路人 -->
+        <section class="getting-started">
             <div class="container">
-                <h2>Section Placeholder</h2>
-                <p>Content will be added as I learn more.</p>
+                <h2>遇见同路人</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <h3>分享你的故事</h3>
+                        <p>向社区介绍你自己。分享你的健康历程和你需要的支持，多少由你决定。</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <h3>找到你的社区</h3>
+                        <p>我们提供70个社区，涵盖2,800种疾病，让你建立有意义的联系，成为安全社区的一份子。</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <h3>加入讨论</h3>
+                        <p>获取个性化的答案，提供建议，并获得真正理解你的人的支持。</p>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
 
-    <!-- Footer -->
+    <!-- 页脚 -->
     <footer class="footer">
         <div class="container">
-            <p>This is a learning project for educational purposes only.</p>
-            <p>Not affiliated with PatientsLikeMe.</p>
+            <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
+            <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
         </div>
     </footer>
 
