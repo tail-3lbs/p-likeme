@@ -56,6 +56,37 @@
                         <button class="btn btn-delete" id="delete-thread-btn">删除</button>
                     </div>
                 </div>
+
+                <!-- Replies Section -->
+                <div class="replies-section">
+                    <h2 class="replies-title">回复 (<span id="replies-count">0</span>)</h2>
+
+                    <!-- Reply Form -->
+                    <div class="reply-form-container" id="reply-form-container">
+                        <form id="reply-form">
+                            <div class="form-group">
+                                <textarea id="reply-content" name="content" placeholder="写下你的回复..." rows="3"></textarea>
+                            </div>
+                            <div class="form-error" id="reply-error"></div>
+                            <button type="submit" class="btn btn-primary" id="reply-submit-btn">发表回复</button>
+                        </form>
+                    </div>
+
+                    <!-- Login hint for non-logged-in users -->
+                    <div class="reply-login-hint" id="reply-login-hint" style="display: none;">
+                        <p>请<a href="#" id="reply-login-link">登录</a>后参与讨论</p>
+                    </div>
+
+                    <!-- Replies List -->
+                    <div class="replies-list" id="replies-list">
+                        <!-- Replies will be loaded here -->
+                    </div>
+
+                    <!-- No replies message -->
+                    <div class="no-replies" id="no-replies" style="display: none;">
+                        <p>还没有回复，快来发表第一条回复吧！</p>
+                    </div>
+                </div>
             </div>
         </section>
 
