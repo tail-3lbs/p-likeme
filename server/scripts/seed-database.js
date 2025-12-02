@@ -22,38 +22,23 @@ const repliesDb = new Database(repliesDbPath);
 
 // ============ SEED DATA ============
 
-// 30 communities
+// 15 female-focused health communities
 const communities = [
-    { name: '糖尿病', description: '分享血糖管理经验，交流饮食和运动心得，互相鼓励共同面对糖尿病。', keywords: '糖尿病 血糖 胰岛素 糖尿' },
-    { name: '高血压', description: '讨论血压控制方法，分享健康生活方式，一起守护心血管健康。', keywords: '高血压 血压 心血管 心脏' },
-    { name: '抑郁症', description: '在这里你不孤单。分享心路历程，获得理解与支持，一起走向阳光。', keywords: '抑郁症 抑郁 心理 情绪 焦虑 心理健康' },
-    { name: '乳腺癌', description: '抗癌路上，我们同行。分享治疗经验，传递希望与力量。', keywords: '乳腺癌 乳腺 癌症 肿瘤 化疗' },
-    { name: '关节炎', description: '交流关节养护知识，分享缓解疼痛的方法，提高生活质量。', keywords: '关节炎 关节 风湿 类风湿 骨骼' },
-    { name: '失眠症', description: '分享改善睡眠的方法，交流助眠技巧，一起找回安稳的夜晚。', keywords: '失眠症 失眠 睡眠 睡不着 入睡困难' },
-    { name: '焦虑症', description: '分享应对焦虑的方法，交流放松技巧，互相支持共同面对焦虑。', keywords: '焦虑症 焦虑 紧张 恐慌 心理' },
-    { name: '帕金森病', description: '交流帕金森病的治疗经验，分享日常护理技巧，互相鼓励。', keywords: '帕金森 帕金森病 震颤 神经' },
-    { name: '多发性硬化', description: '分享MS治疗经验，交流康复方法，一起面对挑战。', keywords: '多发性硬化 MS 神经系统 自身免疫' },
-    { name: '类风湿关节炎', description: '交流类风湿治疗经验，分享缓解疼痛的方法，互相支持。', keywords: '类风湿 类风湿关节炎 关节 免疫' },
-    { name: '纤维肌痛', description: '分享纤维肌痛的应对策略，交流缓解疼痛的经验。', keywords: '纤维肌痛 慢性疼痛 肌肉痛 疲劳' },
-    { name: '克罗恩病', description: '交流克罗恩病的治疗经验，分享饮食建议，互相鼓励。', keywords: '克罗恩病 肠炎 消化道 炎症性肠病' },
-    { name: '肺癌', description: '分享肺癌治疗经验，传递希望与力量，一起抗癌。', keywords: '肺癌 肺 癌症 肿瘤 化疗 放疗' },
-    { name: '阿尔茨海默病', description: '为阿尔茨海默病患者及家属提供支持，分享护理经验。', keywords: '阿尔茨海默 老年痴呆 记忆 认知障碍' },
-    { name: '甲状腺疾病', description: '交流甲状腺问题的治疗经验，分享健康管理方法。', keywords: '甲状腺 甲亢 甲减 甲状腺结节' },
-    { name: '慢性疲劳综合征', description: '分享应对慢性疲劳的方法，交流恢复精力的技巧。', keywords: '慢性疲劳 疲劳综合征 CFS 疲惫' },
-    { name: '偏头痛', description: '交流偏头痛的治疗方法，分享预防和缓解技巧。', keywords: '偏头痛 头痛 头疼 神经' },
-    { name: '哮喘', description: '分享哮喘管理经验，交流用药和生活方式建议。', keywords: '哮喘 呼吸 气喘 过敏 肺' },
-    { name: '银屑病', description: '交流银屑病的治疗经验，分享皮肤护理方法。', keywords: '银屑病 牛皮癣 皮肤 皮肤病' },
-    { name: '癫痫', description: '分享癫痫控制经验，交流用药和生活建议，互相支持。', keywords: '癫痫 抽搐 神经 发作' },
-    { name: '心脏病', description: '交流心脏病的预防和治疗经验，分享健康生活方式。', keywords: '心脏病 心脏 冠心病 心血管 心肌梗死' },
-    { name: '肝病', description: '分享肝病治疗经验，交流保肝护肝的方法。', keywords: '肝病 肝炎 肝硬化 脂肪肝 乙肝' },
-    { name: '肾病', description: '交流肾病治疗经验，分享饮食和生活管理建议。', keywords: '肾病 肾脏 肾炎 透析 尿毒症' },
-    { name: '强直性脊柱炎', description: '分享强直性脊柱炎的治疗经验，交流康复方法。', keywords: '强直性脊柱炎 脊柱 背痛 关节' },
-    { name: '双相情感障碍', description: '分享双相情感障碍的管理经验，互相理解与支持。', keywords: '双相 双相情感障碍 躁郁症 情绪 心理' },
-    { name: '自闭症', description: '为自闭症患者及家属提供支持，分享成长经验。', keywords: '自闭症 自闭 ASD 发育障碍' },
-    { name: 'ADHD多动症', description: '交流ADHD的管理方法，分享应对策略和技巧。', keywords: 'ADHD 多动症 注意力缺陷 专注' },
-    { name: '痛风', description: '分享痛风的预防和治疗经验，交流饮食建议。', keywords: '痛风 尿酸 关节痛 痛风石' },
-    { name: '骨质疏松', description: '交流骨质疏松的预防和治疗，分享补钙经验。', keywords: '骨质疏松 骨骼 骨折 钙 骨密度' },
-    { name: '慢性肾病', description: '分享慢性肾病的管理经验，交流饮食和治疗建议。', keywords: '慢性肾病 肾功能 透析 肾脏' }
+    { name: '乳腺癌', description: '抗癌路上，我们同行。分享乳腺癌治疗经验，传递希望与力量。', keywords: '乳腺癌 乳腺 癌症 肿瘤 化疗 乳房' },
+    { name: '宫颈癌', description: '分享宫颈癌防治经验，交流治疗心得，互相支持共同面对。', keywords: '宫颈癌 宫颈 HPV 癌症 肿瘤 筛查' },
+    { name: '卵巢癌', description: '分享卵巢癌治疗经验，传递希望与力量，抗癌路上我们同行。', keywords: '卵巢癌 卵巢 癌症 肿瘤 化疗 CA125' },
+    { name: '子宫内膜癌', description: '交流子宫内膜癌的治疗经验，分享康复心得，互相支持。', keywords: '子宫内膜癌 子宫癌 癌症 肿瘤 子宫' },
+    { name: '心血管疾病', description: '关注女性心血管健康，分享预防和治疗经验，守护心脏健康。', keywords: '心血管 心脏病 冠心病 高血压 心肌梗死' },
+    { name: '脑卒中', description: '分享脑卒中预防和康复经验，交流治疗心得，互相鼓励。', keywords: '脑卒中 中风 脑梗 脑出血 康复 偏瘫' },
+    { name: '糖尿病', description: '分享血糖管理经验，交流饮食和运动心得，互相鼓励共同面对糖尿病。', keywords: '糖尿病 血糖 胰岛素 糖尿 妊娠糖尿病' },
+    { name: '阿尔茨海默症', description: '为阿尔茨海默症患者及家属提供支持，分享护理经验和应对方法。', keywords: '阿尔茨海默症 老年痴呆 记忆 认知障碍 痴呆' },
+    { name: '子宫内膜异位症', description: '分享子宫内膜异位症的治疗经验，交流缓解疼痛的方法，互相鼓励。', keywords: '子宫内膜异位症 内异症 痛经 月经 巧克力囊肿' },
+    { name: '子宫肌瘤', description: '交流子宫肌瘤的治疗方案，分享康复经验，互相支持。', keywords: '子宫肌瘤 肌瘤 子宫 月经 出血' },
+    { name: '经前综合征', description: '分享缓解经前综合征的方法，交流调理经验，互相理解与支持。', keywords: '经前综合征 PMS 经前期 月经 情绪波动 痛经' },
+    { name: '不孕症', description: '分享备孕和治疗经验，交流心路历程，互相鼓励共同面对不孕困扰。', keywords: '不孕症 不孕 备孕 试管婴儿 IVF 生育' },
+    { name: '性传播感染', description: '分享性传播感染的防治知识，交流治疗经验，消除偏见互相支持。', keywords: '性传播感染 STI STD 性病 HPV 衣原体' },
+    { name: '抑郁症', description: '在这里你不孤单。分享心路历程，获得理解与支持，一起走向阳光。', keywords: '抑郁症 抑郁 心理 情绪 心理健康 产后抑郁' },
+    { name: '焦虑症', description: '分享应对焦虑的方法，交流放松技巧，互相支持共同面对焦虑。', keywords: '焦虑症 焦虑 紧张 恐慌 心理 压力' }
 ];
 
 // Sample thread content
@@ -163,7 +148,7 @@ function clearAllData() {
 }
 
 function seedCommunities() {
-    console.log('Step 2: Seeding 30 communities...');
+    console.log('Step 2: Seeding 15 communities...');
 
     const insert = communitiesDb.prepare(`
         INSERT INTO communities (name, description, keywords, member_count)
@@ -177,7 +162,7 @@ function seedCommunities() {
     });
 
     insertMany(communities);
-    console.log('   30 communities created.');
+    console.log('   15 communities created.');
 }
 
 function seedUsers() {
