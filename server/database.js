@@ -138,6 +138,28 @@ function initUsersDb() {
         )
     `);
 
+    // Add profile columns if they don't exist
+    const columns = usersDb.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+
+    if (!columns.includes('gender')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN gender TEXT`);
+    }
+    if (!columns.includes('age')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN age INTEGER`);
+    }
+    if (!columns.includes('profession')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN profession TEXT`);
+    }
+    if (!columns.includes('marriage_status')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN marriage_status TEXT`);
+    }
+    if (!columns.includes('location_from')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN location_from TEXT`);
+    }
+    if (!columns.includes('location_living')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN location_living TEXT`);
+    }
+
     // Junction table for user-community membership
     usersDb.exec(`
         CREATE TABLE IF NOT EXISTS user_communities (
@@ -145,6 +167,28 @@ function initUsersDb() {
             community_id INTEGER NOT NULL,
             joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (user_id, community_id)
+        )
+    `);
+
+    // Table for user disease tags (conditions they care about)
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS user_disease_tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            tag TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, tag)
+        )
+    `);
+
+    // Table for user hospital tags
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS user_hospitals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            hospital TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, hospital)
         )
     `);
 
@@ -233,6 +277,258 @@ function isUserInCommunity(user_id, community_id) {
         SELECT COUNT(*) as count FROM user_communities WHERE user_id = ? AND community_id = ?
     `).get(user_id, community_id);
     return result.count > 0;
+}
+
+// ============ User Profile Functions ============
+
+// Get user profile by ID (public view - excludes password)
+function getUserProfile(user_id) {
+    const user = usersDb.prepare(`
+        SELECT id, username, gender, age, profession, marriage_status,
+               location_from, location_living, created_at
+        FROM users WHERE id = ?
+    `).get(user_id);
+
+    if (!user) return null;
+
+    // Get disease tags
+    const diseaseTags = usersDb.prepare(`
+        SELECT tag FROM user_disease_tags WHERE user_id = ?
+    `).all(user_id).map(row => row.tag);
+
+    // Get hospitals
+    const hospitals = usersDb.prepare(`
+        SELECT hospital FROM user_hospitals WHERE user_id = ?
+    `).all(user_id).map(row => row.hospital);
+
+    // Get joined communities
+    const communityIds = getUserCommunityIds(user_id);
+    let communities = [];
+    if (communityIds.length > 0) {
+        const placeholders = communityIds.map(() => '?').join(',');
+        communities = communitiesDb.prepare(`
+            SELECT id, name FROM communities WHERE id IN (${placeholders})
+        `).all(...communityIds);
+    }
+
+    return {
+        ...user,
+        disease_tags: diseaseTags,
+        hospitals: hospitals,
+        communities: communities
+    };
+}
+
+// Update user profile
+function updateUserProfile(user_id, { gender, age, profession, marriage_status, location_from, location_living, disease_tags, hospitals }) {
+    const updateUser = usersDb.prepare(`
+        UPDATE users
+        SET gender = @gender, age = @age, profession = @profession,
+            marriage_status = @marriage_status, location_from = @location_from,
+            location_living = @location_living
+        WHERE id = @user_id
+    `);
+
+    const deleteDiseaseTags = usersDb.prepare(`DELETE FROM user_disease_tags WHERE user_id = ?`);
+    const insertDiseaseTag = usersDb.prepare(`INSERT OR IGNORE INTO user_disease_tags (user_id, tag) VALUES (?, ?)`);
+
+    const deleteHospitals = usersDb.prepare(`DELETE FROM user_hospitals WHERE user_id = ?`);
+    const insertHospital = usersDb.prepare(`INSERT OR IGNORE INTO user_hospitals (user_id, hospital) VALUES (?, ?)`);
+
+    const updateAll = usersDb.transaction(() => {
+        // Update basic profile fields
+        updateUser.run({
+            user_id,
+            gender: gender || null,
+            age: age || null,
+            profession: profession || null,
+            marriage_status: marriage_status || null,
+            location_from: location_from || null,
+            location_living: location_living || null
+        });
+
+        // Update disease tags
+        deleteDiseaseTags.run(user_id);
+        if (disease_tags && Array.isArray(disease_tags)) {
+            for (const tag of disease_tags) {
+                if (tag && tag.trim()) {
+                    insertDiseaseTag.run(user_id, tag.trim());
+                }
+            }
+        }
+
+        // Update hospitals
+        deleteHospitals.run(user_id);
+        if (hospitals && Array.isArray(hospitals)) {
+            for (const hospital of hospitals) {
+                if (hospital && hospital.trim()) {
+                    insertHospital.run(user_id, hospital.trim());
+                }
+            }
+        }
+    });
+
+    updateAll();
+    return getUserProfile(user_id);
+}
+
+// Get user by username (for profile page access)
+function findUserByUsernamePublic(username) {
+    return usersDb.prepare(`
+        SELECT id, username, created_at FROM users WHERE username = ?
+    `).get(username);
+}
+
+// Search users with filters
+function searchUsers({ community_ids, disease_tag, gender, age_min, age_max, location, hospital, limit = 50, offset = 0 }) {
+    // Start with all users who have some profile info
+    let userIds = new Set();
+    let hasFilter = false;
+
+    // Filter by community membership
+    if (community_ids && community_ids.length > 0) {
+        hasFilter = true;
+        const placeholders = community_ids.map(() => '?').join(',');
+        const rows = usersDb.prepare(`
+            SELECT DISTINCT user_id FROM user_communities WHERE community_id IN (${placeholders})
+        `).all(...community_ids);
+
+        const communityUserIds = new Set(rows.map(r => r.user_id));
+        if (userIds.size === 0) {
+            userIds = communityUserIds;
+        } else {
+            userIds = new Set([...userIds].filter(id => communityUserIds.has(id)));
+        }
+    }
+
+    // Filter by disease tag (fuzzy match)
+    if (disease_tag && disease_tag.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${disease_tag.trim()}%`;
+        const rows = usersDb.prepare(`
+            SELECT DISTINCT user_id FROM user_disease_tags WHERE tag LIKE ?
+        `).all(searchTerm);
+
+        const diseaseUserIds = new Set(rows.map(r => r.user_id));
+        if (userIds.size === 0 && !community_ids?.length) {
+            userIds = diseaseUserIds;
+        } else if (userIds.size > 0) {
+            userIds = new Set([...userIds].filter(id => diseaseUserIds.has(id)));
+        } else {
+            userIds = diseaseUserIds;
+        }
+    }
+
+    // Filter by hospital (fuzzy match)
+    if (hospital && hospital.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${hospital.trim()}%`;
+        const rows = usersDb.prepare(`
+            SELECT DISTINCT user_id FROM user_hospitals WHERE hospital LIKE ?
+        `).all(searchTerm);
+
+        const hospitalUserIds = new Set(rows.map(r => r.user_id));
+        if (userIds.size === 0 && !community_ids?.length && !disease_tag?.trim()) {
+            userIds = hospitalUserIds;
+        } else if (userIds.size > 0) {
+            userIds = new Set([...userIds].filter(id => hospitalUserIds.has(id)));
+        } else {
+            userIds = hospitalUserIds;
+        }
+    }
+
+    // Build SQL conditions for user table filters
+    let conditions = [];
+    let params = [];
+
+    if (gender && gender.trim()) {
+        hasFilter = true;
+        conditions.push('gender = ?');
+        params.push(gender.trim());
+    }
+
+    if (age_min !== undefined && age_min !== null && age_min !== '') {
+        hasFilter = true;
+        conditions.push('age >= ?');
+        params.push(parseInt(age_min));
+    }
+
+    if (age_max !== undefined && age_max !== null && age_max !== '') {
+        hasFilter = true;
+        conditions.push('age <= ?');
+        params.push(parseInt(age_max));
+    }
+
+    if (location && location.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${location.trim()}%`;
+        conditions.push('(location_from LIKE ? OR location_living LIKE ?)');
+        params.push(searchTerm, searchTerm);
+    }
+
+    // If no filters, return empty (don't return all users)
+    if (!hasFilter) {
+        return { users: [], total: 0 };
+    }
+
+    // Build final query
+    let sql = `SELECT id, username, gender, age, profession, marriage_status,
+               location_from, location_living, created_at FROM users WHERE 1=1`;
+
+    // Add user ID filter if we filtered by communities/tags/hospitals
+    if (userIds.size > 0) {
+        const idPlaceholders = [...userIds].map(() => '?').join(',');
+        sql += ` AND id IN (${idPlaceholders})`;
+        params = [...userIds, ...params];
+    } else if (community_ids?.length || disease_tag?.trim() || hospital?.trim()) {
+        // If we had these filters but no matches, return empty
+        return { users: [], total: 0 };
+    }
+
+    // Add other conditions
+    if (conditions.length > 0) {
+        sql += ' AND ' + conditions.join(' AND ');
+    }
+
+    // Get total count
+    const countSql = sql.replace(/SELECT .* FROM/, 'SELECT COUNT(*) as count FROM');
+    const totalResult = usersDb.prepare(countSql).get(...params);
+    const total = totalResult ? totalResult.count : 0;
+
+    // Add pagination
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const users = usersDb.prepare(sql).all(...params);
+
+    // Enrich with communities, disease tags, and hospitals
+    const enrichedUsers = users.map(user => {
+        const communityIds = getUserCommunityIds(user.id);
+        let communities = [];
+        if (communityIds.length > 0) {
+            const placeholders = communityIds.map(() => '?').join(',');
+            communities = communitiesDb.prepare(`
+                SELECT id, name FROM communities WHERE id IN (${placeholders})
+            `).all(...communityIds);
+        }
+
+        const diseaseTags = usersDb.prepare(`
+            SELECT tag FROM user_disease_tags WHERE user_id = ?
+        `).all(user.id).map(r => r.tag);
+
+        const hospitals = usersDb.prepare(`
+            SELECT hospital FROM user_hospitals WHERE user_id = ?
+        `).all(user.id).map(r => r.hospital);
+
+        return {
+            ...user,
+            communities,
+            disease_tags: diseaseTags,
+            hospitals
+        };
+    });
+
+    return { users: enrichedUsers, total };
 }
 
 // ============ Threads Database ============
@@ -499,6 +795,11 @@ module.exports = {
     getUserCommunityIds,
     getUserCommunities,
     isUserInCommunity,
+    // User profile functions
+    getUserProfile,
+    updateUserProfile,
+    findUserByUsernamePublic,
+    searchUsers,
     // Thread functions
     createThread,
     getThreadsByUserId,

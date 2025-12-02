@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料 - 像我一样</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-logo">
+                <a href="index.html">像我一样</a>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">首页</a></li>
+                <li><a href="community.html">社区</a></li>
+                <li><a href="discover.html">发现</a></li>
+            </ul>
+            <div class="nav-actions" id="nav-actions">
+                <a href="#" class="btn btn-outline" id="login-btn">登录</a>
+                <a href="#" class="btn btn-primary" id="signup-btn">注册</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 页面标题 -->
+        <section class="page-header">
+            <div class="container">
+                <h1 id="profile-title">个人资料</h1>
+                <p id="profile-subtitle">查看用户信息</p>
+            </div>
+        </section>
+
+        <!-- 加载中 -->
+        <section class="profile-loading" id="profile-loading">
+            <div class="container">
+                <div class="loading">加载中...</div>
+            </div>
+        </section>
+
+        <!-- 用户不存在 -->
+        <section class="profile-not-found" id="profile-not-found" style="display: none;">
+            <div class="container">
+                <div class="not-found-message">
+                    <h2>用户不存在</h2>
+                    <p>您访问的用户页面不存在</p>
+                    <a href="index.html" class="btn btn-primary">返回首页</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 个人资料内容 -->
+        <section class="profile-content" id="profile-content" style="display: none;">
+            <div class="container">
+                <div class="profile-card">
+                    <!-- 查看模式 -->
+                    <div id="view-mode">
+                        <div class="profile-header">
+                            <div class="profile-avatar">
+                                <span id="avatar-letter">U</span>
+                            </div>
+                            <div class="profile-name">
+                                <h2 id="display-username">用户名</h2>
+                                <span class="join-date" id="display-join-date">加入时间</span>
+                            </div>
+                            <button class="btn btn-outline" id="edit-profile-btn" style="display: none;">编辑资料</button>
+                        </div>
+
+                        <div class="profile-sections">
+                            <!-- 已加入的社区 -->
+                            <div class="profile-section">
+                                <h3>已加入的社区</h3>
+                                <div class="profile-tags" id="display-communities">
+                                    <span class="empty-hint">暂未加入任何社区</span>
+                                </div>
+                            </div>
+
+                            <!-- 关注的疾病标签 -->
+                            <div class="profile-section">
+                                <h3>关注的健康话题</h3>
+                                <div class="profile-tags" id="display-disease-tags">
+                                    <span class="empty-hint">暂未添加</span>
+                                </div>
+                            </div>
+
+                            <!-- 基本信息 -->
+                            <div class="profile-section">
+                                <h3>基本信息</h3>
+                                <div class="profile-info-grid">
+                                    <div class="info-item">
+                                        <label>性别</label>
+                                        <span id="display-gender">未设置</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>年龄</label>
+                                        <span id="display-age">未设置</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>职业</label>
+                                        <span id="display-profession">未设置</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>婚姻状况</label>
+                                        <span id="display-marriage">未设置</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>家乡</label>
+                                        <span id="display-location-from">未设置</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>现居地</label>
+                                        <span id="display-location-living">未设置</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 常去的医院 -->
+                            <div class="profile-section">
+                                <h3>常去的医院</h3>
+                                <div class="profile-tags" id="display-hospitals">
+                                    <span class="empty-hint">暂未添加</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 编辑模式 -->
+                    <div id="edit-mode" style="display: none;">
+                        <div class="profile-header">
+                            <div class="profile-avatar">
+                                <span id="edit-avatar-letter">U</span>
+                            </div>
+                            <div class="profile-name">
+                                <h2 id="edit-username">用户名</h2>
+                                <span class="edit-hint">编辑你的个人资料</span>
+                            </div>
+                        </div>
+
+                        <form id="profile-form">
+                            <!-- 关注的疾病标签 -->
+                            <div class="form-section">
+                                <h3>关注的健康话题</h3>
+                                <p class="form-hint">添加你关注的健康话题，用逗号或回车分隔</p>
+                                <div class="tags-input-wrapper">
+                                    <div class="tags-display" id="disease-tags-display"></div>
+                                    <input type="text" id="disease-tags-input" placeholder="输入后按回车添加，如：乳腺癌、糖尿病">
+                                </div>
+                            </div>
+
+                            <!-- 基本信息 -->
+                            <div class="form-section">
+                                <h3>基本信息</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="edit-gender">性别</label>
+                                        <select id="edit-gender">
+                                            <option value="">请选择</option>
+                                            <option value="女">女</option>
+                                            <option value="男">男</option>
+                                            <option value="其他">其他</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-age">年龄</label>
+                                        <input type="number" id="edit-age" min="0" max="150" placeholder="请输入年龄">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-profession">职业</label>
+                                        <input type="text" id="edit-profession" placeholder="请输入职业">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-marriage">婚姻状况</label>
+                                        <select id="edit-marriage">
+                                            <option value="">请选择</option>
+                                            <option value="未婚">未婚</option>
+                                            <option value="已婚">已婚</option>
+                                            <option value="离异">离异</option>
+                                            <option value="丧偶">丧偶</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-location-from">家乡</label>
+                                        <input type="text" id="edit-location-from" placeholder="如：北京市">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-location-living">现居地</label>
+                                        <input type="text" id="edit-location-living" placeholder="如：上海市">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 常去的医院 -->
+                            <div class="form-section">
+                                <h3>常去的医院</h3>
+                                <p class="form-hint">添加你常去的医院，用逗号或回车分隔</p>
+                                <div class="tags-input-wrapper">
+                                    <div class="tags-display" id="hospitals-tags-display"></div>
+                                    <input type="text" id="hospitals-input" placeholder="输入后按回车添加，如：北京协和医院">
+                                </div>
+                            </div>
+
+                            <div class="form-error" id="profile-error"></div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-outline" id="cancel-edit-btn">取消</button>
+                                <button type="submit" class="btn btn-primary">保存资料</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 登录/注册弹窗 -->
+    <div class="modal-overlay" id="auth-modal">
+        <div class="modal">
+            <button class="modal-close" id="modal-close">&times;</button>
+
+            <!-- 登录表单 -->
+            <div class="modal-content" id="login-form">
+                <h2>登录</h2>
+                <form id="login-form-el">
+                    <div class="form-group">
+                        <label for="login-username">用户名</label>
+                        <input type="text" id="login-username" name="username" required placeholder="请输入用户名">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">密码</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="login-password" name="password" required placeholder="请输入密码">
+                            <button type="button" class="password-toggle" data-target="login-password">
+                                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-error" id="login-error"></div>
+                    <button type="submit" class="btn btn-primary btn-block">登录</button>
+                </form>
+                <p class="modal-switch">
+                    还没有账号？<a href="#" id="switch-to-signup">立即注册</a>
+                </p>
+            </div>
+
+            <!-- 注册表单 -->
+            <div class="modal-content hidden" id="signup-form">
+                <h2>注册</h2>
+                <form id="signup-form-el">
+                    <div class="form-group">
+                        <label for="signup-username">用户名</label>
+                        <input type="text" id="signup-username" name="username" required placeholder="2-20个字符">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">密码</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password" name="password" required placeholder="至少8位，含大小写字母、数字和特殊字符">
+                            <button type="button" class="password-toggle" data-target="signup-password">
+                                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password-confirm">确认密码</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="signup-password-confirm" name="password_confirm" required placeholder="再次输入密码">
+                            <button type="button" class="password-toggle" data-target="signup-password-confirm">
+                                <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-icon eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-error" id="signup-error"></div>
+                    <button type="submit" class="btn btn-primary btn-block">注册</button>
+                </form>
+                <p class="modal-switch">
+                    已有账号？<a href="#" id="switch-to-login">立即登录</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
+            <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html>

@@ -104,7 +104,7 @@ function updateNav() {
     if (user) {
         navActions.innerHTML = `
             <div class="user-menu">
-                <span class="user-greeting">你好，<strong>${user.username}</strong></span>
+                <span class="user-greeting">你好，<a href="profile.html?user=${encodeURIComponent(user.username)}" class="username-link"><strong>${user.username}</strong></a></span>
                 <a href="#" class="btn btn-outline" id="logout-btn">退出</a>
             </div>
         `;

@@ -98,7 +98,9 @@ function renderThread(thread) {
 
     // Populate content
     document.getElementById('thread-title').textContent = thread.title;
-    document.getElementById('thread-author').textContent = thread.author || '匿名用户';
+    const authorEl = document.getElementById('thread-author');
+    const authorName = thread.author || '匿名用户';
+    authorEl.innerHTML = `<a href="profile.html?user=${encodeURIComponent(authorName)}" class="username-link">${escapeHtml(authorName)}</a>`;
     document.getElementById('thread-date').textContent = formatDate(thread.created_at);
     document.getElementById('thread-body').textContent = thread.content;
 
@@ -401,14 +403,14 @@ function renderSingleReply(reply, parentReplyId, replyMap) {
     let mentionHtml = '';
     if (parentReplyId && replyMap[parentReplyId]) {
         const parentAuthor = replyMap[parentReplyId].author;
-        mentionHtml = `<span class="reply-mention">回复 @${escapeHtml(parentAuthor)}:</span> `;
+        mentionHtml = `<span class="reply-mention">回复 <a href="profile.html?user=${encodeURIComponent(parentAuthor)}" class="username-link">@${escapeHtml(parentAuthor)}</a>:</span> `;
     }
 
     return `
         <div class="reply-item ${parentReplyId ? 'reply-stacked' : ''}" data-reply-id="${reply.id}">
             <div class="reply-header">
                 <span class="reply-author ${isThreadAuthor ? 'is-thread-author' : ''}">
-                    ${escapeHtml(reply.author)}
+                    <a href="profile.html?user=${encodeURIComponent(reply.author)}" class="username-link">${escapeHtml(reply.author)}</a>
                     ${isThreadAuthor ? '<span class="author-badge">作者</span>' : ''}
                 </span>
                 <span class="reply-date">${formatDate(reply.created_at)}</span>

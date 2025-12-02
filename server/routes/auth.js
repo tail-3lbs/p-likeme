@@ -8,7 +8,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { createUser, findUserByUsername, findUserById, usernameExists } = require('../database');
+const { createUser, findUserByUsername, findUserById, usernameExists, getUserProfile, updateUserProfile, findUserByUsernamePublic, searchUsers } = require('../database');
 
 const router = express.Router();
 
@@ -245,6 +245,136 @@ router.get('/me', authMiddleware, (req, res) => {
         res.status(500).json({
             success: false,
             error: '获取用户信息失败'
+        });
+    }
+});
+
+/**
+ * GET /api/auth/profile/:username
+ * Get user profile by username (public view)
+ */
+router.get('/profile/:username', (req, res) => {
+    try {
+        const { username } = req.params;
+
+        // Find user by username
+        const user = findUserByUsernamePublic(username);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: '用户不存在'
+            });
+        }
+
+        // Get full profile
+        const profile = getUserProfile(user.id);
+
+        res.json({
+            success: true,
+            data: profile
+        });
+
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取用户资料失败'
+        });
+    }
+});
+
+/**
+ * PUT /api/auth/profile
+ * Update own profile (requires authentication)
+ */
+router.put('/profile', authMiddleware, (req, res) => {
+    try {
+        const { gender, age, profession, marriage_status, location_from, location_living, disease_tags, hospitals } = req.body;
+
+        // Validate age if provided
+        if (age !== undefined && age !== null && age !== '') {
+            const ageNum = parseInt(age);
+            if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
+                return res.status(400).json({
+                    success: false,
+                    error: '请输入有效的年龄'
+                });
+            }
+        }
+
+        // Update profile
+        const updatedProfile = updateUserProfile(req.user.id, {
+            gender,
+            age: age ? parseInt(age) : null,
+            profession,
+            marriage_status,
+            location_from,
+            location_living,
+            disease_tags,
+            hospitals
+        });
+
+        res.json({
+            success: true,
+            message: '资料更新成功',
+            data: updatedProfile
+        });
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({
+            success: false,
+            error: '更新资料失败'
+        });
+    }
+});
+
+/**
+ * GET /api/auth/users/search
+ * Search users with filters (public, no auth required)
+ */
+router.get('/users/search', (req, res) => {
+    try {
+        const {
+            communities,  // comma-separated community IDs
+            disease_tag,
+            gender,
+            age_min,
+            age_max,
+            location,
+            hospital,
+            limit = 50,
+            offset = 0
+        } = req.query;
+
+        // Parse community IDs
+        let community_ids = [];
+        if (communities) {
+            community_ids = communities.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        }
+
+        const result = searchUsers({
+            community_ids,
+            disease_tag,
+            gender,
+            age_min,
+            age_max,
+            location,
+            hospital,
+            limit: parseInt(limit) || 50,
+            offset: parseInt(offset) || 0
+        });
+
+        res.json({
+            success: true,
+            data: result
+        });
+
+    } catch (error) {
+        console.error('Search users error:', error);
+        res.status(500).json({
+            success: false,
+            error: '搜索失败'
         });
     }
 });

@@ -121,6 +121,44 @@ const sampleReplyToReplies = [
     '感谢你的分享！'
 ];
 
+// Profile data for users
+const genders = ['女', '女', '女', '女', '男', '其他']; // Weighted towards female
+
+const professions = [
+    '教师', '医生', '护士', '工程师', '设计师', '会计', '销售',
+    '公务员', '自由职业', '企业管理', '学生', '退休', '家庭主妇',
+    '律师', '记者', '程序员', '人力资源', '金融', '市场营销'
+];
+
+const marriageStatuses = ['未婚', '已婚', '已婚', '已婚', '离异', '丧偶']; // Weighted towards married
+
+const cities = [
+    '北京', '上海', '广州', '深圳', '杭州', '南京', '武汉', '成都',
+    '西安', '重庆', '天津', '苏州', '长沙', '郑州', '青岛', '大连',
+    '厦门', '福州', '济南', '合肥', '昆明', '贵阳', '南昌', '太原'
+];
+
+const hospitals = [
+    '北京协和医院', '北京大学人民医院', '中国医学科学院肿瘤医院',
+    '上海交通大学医学院附属瑞金医院', '复旦大学附属中山医院', '复旦大学附属肿瘤医院',
+    '浙江大学医学院附属第一医院', '浙江省肿瘤医院',
+    '中山大学附属第一医院', '广东省人民医院', '广州医科大学附属第一医院',
+    '四川大学华西医院', '华中科技大学同济医学院附属同济医院',
+    '西安交通大学第一附属医院', '天津医科大学总医院',
+    '南京鼓楼医院', '江苏省人民医院', '山东省立医院',
+    '中南大学湘雅医院', '郑州大学第一附属医院'
+];
+
+const diseaseTags = [
+    '乳腺癌', '宫颈癌', '卵巢癌', '子宫内膜癌',
+    '糖尿病', '高血压', '心脏病', '脑卒中',
+    '子宫内膜异位症', '子宫肌瘤', '多囊卵巢', '经前综合征',
+    '不孕症', '试管婴儿', '备孕',
+    '抑郁症', '焦虑症', '失眠', '产后抑郁',
+    '甲状腺结节', '骨质疏松', '更年期综合征',
+    'HPV感染', '乳腺增生', '乳腺结节'
+];
+
 // ============ MAIN FUNCTIONS ============
 
 function clearAllData() {
@@ -137,8 +175,12 @@ function clearAllData() {
 
     // Clear users database
     usersDb.exec('DELETE FROM user_communities');
+    usersDb.exec('DELETE FROM user_disease_tags');
+    usersDb.exec('DELETE FROM user_hospitals');
     usersDb.exec('DELETE FROM users');
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='users'");
+    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_disease_tags'");
+    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_hospitals'");
 
     // Clear communities database
     communitiesDb.exec('DELETE FROM communities');
@@ -166,12 +208,29 @@ function seedCommunities() {
 }
 
 function seedUsers() {
-    console.log('Step 3: Seeding 100 test users...');
+    console.log('Step 3: Seeding 100 test users with profile data...');
 
     const insertUser = usersDb.prepare(`
-        INSERT INTO users (username, password_hash)
-        VALUES (?, ?)
+        INSERT INTO users (username, password_hash, gender, age, profession, marriage_status, location_from, location_living)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
+
+    const insertDiseaseTag = usersDb.prepare(`
+        INSERT INTO user_disease_tags (user_id, tag) VALUES (?, ?)
+    `);
+
+    const insertHospital = usersDb.prepare(`
+        INSERT INTO user_hospitals (user_id, hospital) VALUES (?, ?)
+    `);
+
+    // Helper to pick random item from array
+    const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // Helper to pick random N items from array
+    const pickRandomN = (arr, n) => {
+        const shuffled = [...arr].sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, n);
+    };
 
     const generateUsers = usersDb.transaction(() => {
         for (let i = 1; i <= 100; i++) {
@@ -179,12 +238,46 @@ function seedUsers() {
             const username = `user${paddedNum}`;
             const password = `Pass${paddedNum}!`;
             const password_hash = bcrypt.hashSync(password, 10);
-            insertUser.run(username, password_hash);
+
+            // Generate profile data (80% chance to have each field)
+            const gender = Math.random() < 0.8 ? pickRandom(genders) : null;
+            const age = Math.random() < 0.8 ? Math.floor(Math.random() * 50) + 20 : null; // 20-69
+            const profession = Math.random() < 0.7 ? pickRandom(professions) : null;
+            const marriage_status = Math.random() < 0.7 ? pickRandom(marriageStatuses) : null;
+            const location_from = Math.random() < 0.6 ? pickRandom(cities) : null;
+            const location_living = Math.random() < 0.8 ? pickRandom(cities) : null;
+
+            const result = insertUser.run(username, password_hash, gender, age, profession, marriage_status, location_from, location_living);
+            const userId = Number(result.lastInsertRowid);
+
+            // Add 0-4 disease tags (70% chance to have at least one)
+            if (Math.random() < 0.7) {
+                const numTags = Math.floor(Math.random() * 4) + 1;
+                const userTags = pickRandomN(diseaseTags, numTags);
+                for (const tag of userTags) {
+                    insertDiseaseTag.run(userId, tag);
+                }
+            }
+
+            // Add 0-2 hospitals (50% chance to have at least one)
+            if (Math.random() < 0.5) {
+                const numHospitals = Math.floor(Math.random() * 2) + 1;
+                const userHospitals = pickRandomN(hospitals, numHospitals);
+                for (const hospital of userHospitals) {
+                    insertHospital.run(userId, hospital);
+                }
+            }
         }
     });
 
     generateUsers();
-    console.log('   100 users created.');
+
+    const diseaseTagCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_disease_tags').get();
+    const hospitalCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_hospitals').get();
+
+    console.log('   100 users created with profile data.');
+    console.log(`   ${diseaseTagCount.count} disease tags assigned.`);
+    console.log(`   ${hospitalCount.count} hospital records created.`);
     console.log('   Username format: user001 to user100');
     console.log('   Password format: Pass001! to Pass100!');
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>社区详情 - 像我一样</title>
+    <title>发现 - 像我一样</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -15,8 +15,8 @@
             </div>
             <ul class="nav-links">
                 <li><a href="index.html">首页</a></li>
-                <li><a href="community.html" class="active">社区</a></li>
-                <li><a href="discover.html">发现</a></li>
+                <li><a href="community.html">社区</a></li>
+                <li><a href="discover.html" class="active">发现</a></li>
             </ul>
             <div class="nav-actions" id="nav-actions">
                 <a href="#" class="btn btn-outline" id="login-btn">登录</a>
@@ -26,59 +26,124 @@
     </header>
 
     <main>
-        <!-- 加载中 -->
-        <section class="community-detail-page" id="community-loading">
+        <!-- 页面标题 -->
+        <section class="page-header">
             <div class="container">
-                <div class="loading">加载中...</div>
+                <h1>发现</h1>
+                <p>找到和你相似的病友，互相支持共同面对</p>
             </div>
         </section>
 
-        <!-- 社区内容 -->
-        <section class="community-detail-page" id="community-content" style="display: none;">
+        <!-- 搜索筛选区域 -->
+        <section class="discover-content">
             <div class="container">
-                <!-- 社区信息卡片 -->
-                <div class="community-detail-card">
-                    <div class="community-detail-header">
-                        <h1 id="community-name"></h1>
-                        <div class="community-detail-meta">
-                            <span class="member-count" id="community-members"></span>
+                <div class="discover-layout">
+                    <!-- 筛选面板 -->
+                    <div class="filter-panel">
+                        <h3>筛选条件</h3>
+                        <form id="search-form">
+                            <!-- 社区 -->
+                            <div class="filter-group">
+                                <label>社区</label>
+                                <div class="community-select" id="community-select">
+                                    <div class="select-trigger" id="community-trigger">
+                                        <span>选择社区...</span>
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div class="select-dropdown" id="community-dropdown">
+                                        <!-- Communities loaded dynamically -->
+                                    </div>
+                                </div>
+                                <div class="selected-communities" id="selected-communities"></div>
+                            </div>
+
+                            <!-- 健康话题 -->
+                            <div class="filter-group">
+                                <label for="filter-disease">健康话题</label>
+                                <input type="text" id="filter-disease" placeholder="如：乳腺癌、糖尿病">
+                            </div>
+
+                            <!-- 性别 -->
+                            <div class="filter-group">
+                                <label for="filter-gender">性别</label>
+                                <select id="filter-gender">
+                                    <option value="">不限</option>
+                                    <option value="女">女</option>
+                                    <option value="男">男</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
+
+                            <!-- 年龄范围 -->
+                            <div class="filter-group">
+                                <label>年龄范围</label>
+                                <div class="age-range">
+                                    <input type="number" id="filter-age-min" placeholder="最小" min="0" max="150">
+                                    <span>-</span>
+                                    <input type="number" id="filter-age-max" placeholder="最大" min="0" max="150">
+                                </div>
+                            </div>
+
+                            <!-- 地区 -->
+                            <div class="filter-group">
+                                <label for="filter-location">地区</label>
+                                <input type="text" id="filter-location" placeholder="如：北京、上海">
+                            </div>
+
+                            <!-- 常去医院 -->
+                            <div class="filter-group">
+                                <label for="filter-hospital">常去医院</label>
+                                <input type="text" id="filter-hospital" placeholder="如：协和医院">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                搜索
+                            </button>
+
+                            <button type="button" class="btn btn-outline btn-block" id="clear-filters-btn" style="margin-top: 0.5rem;">
+                                清除筛选
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 结果区域 -->
+                    <div class="results-panel">
+                        <div class="results-header">
+                            <h3 id="results-title">请选择筛选条件开始搜索</h3>
+                        </div>
+
+                        <div class="results-list" id="results-list">
+                            <div class="search-hint" id="search-hint">
+                                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="#ccc" stroke-width="1.5">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <p>选择左侧的筛选条件，点击搜索找到相似的病友</p>
+                            </div>
+
+                            <div class="loading" id="results-loading" style="display: none;">搜索中...</div>
+
+                            <div class="no-results" id="no-results" style="display: none;">
+                                <p>没有找到匹配的病友</p>
+                                <p>试试调整筛选条件</p>
+                            </div>
+
+                            <div class="user-cards" id="user-cards">
+                                <!-- User cards loaded dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- 分页 -->
+                        <div class="results-pagination" id="results-pagination" style="display: none;">
+                            <button class="btn btn-outline" id="load-more-btn">加载更多</button>
                         </div>
                     </div>
-                    <div class="community-detail-body">
-                        <p id="community-description"></p>
-                    </div>
-                    <div class="community-detail-footer">
-                        <div class="community-keywords" id="community-keywords">
-                            <!-- Keywords will be loaded here -->
-                        </div>
-                        <button class="btn btn-primary" id="join-btn">加入社区</button>
-                    </div>
-                </div>
-
-                <!-- 分享列表 -->
-                <div class="community-threads-section">
-                    <h2>社区分享</h2>
-                    <div class="threads-list" id="threads-list">
-                        <!-- Threads will be loaded here -->
-                    </div>
-                    <div class="no-threads" id="no-threads" style="display: none;">
-                        <p>该社区暂无分享</p>
-                        <p>成为第一个分享经历的人吧</p>
-                    </div>
-                    <div class="load-more-container" id="load-more-container" style="display: none;">
-                        <button class="btn btn-outline load-more-btn" id="load-more-btn">加载更多</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 错误提示 -->
-        <section class="community-detail-page" id="community-error" style="display: none;">
-            <div class="container">
-                <div class="error-box">
-                    <h2>无法加载社区</h2>
-                    <p id="error-message">社区不存在或发生错误</p>
-                    <a href="community.html" class="btn btn-primary">返回社区列表</a>
                 </div>
             </div>
         </section>
@@ -181,6 +246,6 @@
 
     <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
-    <script src="js/community-detail.js"></script>
+    <script src="js/discover.js"></script>
 </body>
 </html>
