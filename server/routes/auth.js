@@ -289,7 +289,13 @@ router.get('/profile/:username', (req, res) => {
  */
 router.put('/profile', authMiddleware, (req, res) => {
     try {
-        const { gender, age, profession, marriage_status, location_from, location_living, disease_tags, hospitals } = req.body;
+        const {
+            gender, age, profession, marriage_status,
+            location_from, location_living, location_living_district, location_living_street,
+            hukou, education, family_size,
+            income_individual, income_family, consumption_level, housing_status, economic_dependency,
+            disease_tags, hospitals
+        } = req.body;
 
         // Validate age if provided
         if (age !== undefined && age !== null && age !== '') {
@@ -310,6 +316,16 @@ router.put('/profile', authMiddleware, (req, res) => {
             marriage_status,
             location_from,
             location_living,
+            location_living_district,
+            location_living_street,
+            hukou,
+            education,
+            family_size: family_size ? parseInt(family_size) : null,
+            income_individual,
+            income_family,
+            consumption_level,
+            housing_status,
+            economic_dependency,
             disease_tags,
             hospitals
         });
@@ -342,7 +358,17 @@ router.get('/users/search', (req, res) => {
             age_min,
             age_max,
             location,
+            location_district,
+            location_street,
             hospital,
+            hukou,
+            education,
+            income_individual,
+            income_family,
+            consumption_level,
+            housing_status,
+            economic_dependency,
+            exclude_user,  // username to exclude (for auto-find)
             limit = 50,
             offset = 0
         } = req.query;
@@ -360,10 +386,22 @@ router.get('/users/search', (req, res) => {
             age_min,
             age_max,
             location,
+            location_district,
+            location_street,
             hospital,
+            hukou,
+            education,
+            income_individual,
+            income_family,
+            consumption_level,
+            housing_status,
+            economic_dependency,
+            exclude_user,
             limit: parseInt(limit) || 50,
             offset: parseInt(offset) || 0
         });
+
+        console.log('[DEBUG] searchUsers result:', { total: result.total, usersCount: result.users?.length });
 
         res.json({
             success: true,

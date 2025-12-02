@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>发现 - 像我一样</title>
+    <title>发现群友 - 像我一样</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -16,7 +16,8 @@
             <ul class="nav-links">
                 <li><a href="index.html">首页</a></li>
                 <li><a href="community.html">社区</a></li>
-                <li><a href="discover.html" class="active">发现</a></li>
+                <li><a href="discover.html" class="active">群友</a></li>
+                <li><a href="threads-user.html">分享</a></li>
             </ul>
             <div class="nav-actions" id="nav-actions">
                 <a href="#" class="btn btn-outline" id="login-btn">登录</a>
@@ -29,8 +30,8 @@
         <!-- 页面标题 -->
         <section class="page-header">
             <div class="container">
-                <h1>发现</h1>
-                <p>找到和你相似的病友，互相支持共同面对</p>
+                <h1>发现群友</h1>
+                <p>找到和你相似的病友，互相支持，共同面对</p>
             </div>
         </section>
 
@@ -40,62 +41,208 @@
                 <div class="discover-layout">
                     <!-- 筛选面板 -->
                     <div class="filter-panel">
+                        <!-- 一键寻找区域 -->
+                        <div class="auto-find-section">
+                            <h3>一键寻找</h3>
+                            <p class="auto-find-desc">根据你的个人资料，自动匹配相似的病友</p>
+                            <button type="button" class="btn btn-auto-find" id="auto-find-btn" disabled>
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                                找到像我一样的人
+                            </button>
+                            <p class="auto-find-login-hint" id="auto-find-login-hint">
+                                <a href="#" id="auto-find-login-link">登录</a>后即可使用
+                            </p>
+                        </div>
+
+                        <div class="filter-divider">
+                            <span>或</span>
+                        </div>
+
+                        <!-- 手动筛选区域 -->
                         <h3>筛选条件</h3>
                         <form id="search-form">
-                            <!-- 社区 -->
-                            <div class="filter-group">
-                                <label>社区</label>
-                                <div class="community-select" id="community-select">
-                                    <div class="select-trigger" id="community-trigger">
-                                        <span>选择社区...</span>
-                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="6 9 12 15 18 9"></polyline>
-                                        </svg>
+                            <!-- 健康信息 -->
+                            <div class="filter-section">
+                                <h4 class="filter-section-title">健康信息</h4>
+
+                                <!-- 社区 -->
+                                <div class="filter-group">
+                                    <label>社区</label>
+                                    <div class="community-select" id="community-select">
+                                        <div class="select-trigger" id="community-trigger">
+                                            <span>选择社区...</span>
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </div>
+                                        <div class="select-dropdown" id="community-dropdown">
+                                            <!-- Communities loaded dynamically -->
+                                        </div>
                                     </div>
-                                    <div class="select-dropdown" id="community-dropdown">
-                                        <!-- Communities loaded dynamically -->
-                                    </div>
+                                    <div class="selected-communities" id="selected-communities"></div>
                                 </div>
-                                <div class="selected-communities" id="selected-communities"></div>
-                            </div>
 
-                            <!-- 健康话题 -->
-                            <div class="filter-group">
-                                <label for="filter-disease">健康话题</label>
-                                <input type="text" id="filter-disease" placeholder="如：乳腺癌、糖尿病">
-                            </div>
+                                <!-- 健康话题 -->
+                                <div class="filter-group">
+                                    <label for="filter-disease">健康话题</label>
+                                    <input type="text" id="filter-disease" placeholder="如：乳腺癌、糖尿病">
+                                </div>
 
-                            <!-- 性别 -->
-                            <div class="filter-group">
-                                <label for="filter-gender">性别</label>
-                                <select id="filter-gender">
-                                    <option value="">不限</option>
-                                    <option value="女">女</option>
-                                    <option value="男">男</option>
-                                    <option value="其他">其他</option>
-                                </select>
-                            </div>
-
-                            <!-- 年龄范围 -->
-                            <div class="filter-group">
-                                <label>年龄范围</label>
-                                <div class="age-range">
-                                    <input type="number" id="filter-age-min" placeholder="最小" min="0" max="150">
-                                    <span>-</span>
-                                    <input type="number" id="filter-age-max" placeholder="最大" min="0" max="150">
+                                <!-- 常去医院 -->
+                                <div class="filter-group">
+                                    <label for="filter-hospital">常去医院</label>
+                                    <input type="text" id="filter-hospital" placeholder="如：协和医院">
                                 </div>
                             </div>
 
-                            <!-- 地区 -->
-                            <div class="filter-group">
-                                <label for="filter-location">地区</label>
-                                <input type="text" id="filter-location" placeholder="如：北京、上海">
+                            <!-- 个人信息 -->
+                            <div class="filter-section">
+                                <h4 class="filter-section-title">个人信息</h4>
+
+                                <!-- 性别 -->
+                                <div class="filter-group">
+                                    <label for="filter-gender">性别</label>
+                                    <select id="filter-gender">
+                                        <option value="">不限</option>
+                                        <option value="女">女</option>
+                                        <option value="男">男</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+
+                                <!-- 年龄范围 -->
+                                <div class="filter-group">
+                                    <label>年龄范围</label>
+                                    <div class="age-range">
+                                        <input type="number" id="filter-age-min" placeholder="最小" min="0" max="150">
+                                        <span>-</span>
+                                        <input type="number" id="filter-age-max" placeholder="最大" min="0" max="150">
+                                    </div>
+                                </div>
+
+                                <!-- 户籍 -->
+                                <div class="filter-group">
+                                    <label for="filter-hukou">户籍</label>
+                                    <select id="filter-hukou">
+                                        <option value="">不限</option>
+                                        <option value="城镇">城镇</option>
+                                        <option value="农村">农村</option>
+                                    </select>
+                                </div>
+
+                                <!-- 教育程度 -->
+                                <div class="filter-group">
+                                    <label for="filter-education">教育程度</label>
+                                    <select id="filter-education">
+                                        <option value="">不限</option>
+                                        <option value="小学及以下">小学及以下</option>
+                                        <option value="初中">初中</option>
+                                        <option value="高中/中专">高中/中专</option>
+                                        <option value="大专">大专</option>
+                                        <option value="本科">本科</option>
+                                        <option value="硕士">硕士</option>
+                                        <option value="博士及以上">博士及以上</option>
+                                    </select>
+                                </div>
                             </div>
 
-                            <!-- 常去医院 -->
-                            <div class="filter-group">
-                                <label for="filter-hospital">常去医院</label>
-                                <input type="text" id="filter-hospital" placeholder="如：协和医院">
+                            <!-- 地区信息 -->
+                            <div class="filter-section">
+                                <h4 class="filter-section-title">地区信息</h4>
+
+                                <!-- 城市 -->
+                                <div class="filter-group">
+                                    <label for="filter-location">城市</label>
+                                    <input type="text" id="filter-location" placeholder="如：北京、上海">
+                                </div>
+
+                                <!-- 区/县 -->
+                                <div class="filter-group">
+                                    <label for="filter-district">区/县</label>
+                                    <input type="text" id="filter-district" placeholder="如：海淀区、浦东新区">
+                                </div>
+
+                                <!-- 街道/社区 -->
+                                <div class="filter-group">
+                                    <label for="filter-street">街道/社区</label>
+                                    <input type="text" id="filter-street" placeholder="如：中关村街道">
+                                </div>
+                            </div>
+
+                            <!-- 家庭与经济 -->
+                            <div class="filter-section">
+                                <h4 class="filter-section-title">家庭与经济</h4>
+
+                                <!-- 个人年收入 -->
+                                <div class="filter-group">
+                                    <label for="filter-income-individual">个人年收入</label>
+                                    <select id="filter-income-individual">
+                                        <option value="">不限</option>
+                                        <option value="5万以下">5万以下</option>
+                                        <option value="5-10万">5-10万</option>
+                                        <option value="10-20万">10-20万</option>
+                                        <option value="20-50万">20-50万</option>
+                                        <option value="50-100万">50-100万</option>
+                                        <option value="100万以上">100万以上</option>
+                                    </select>
+                                </div>
+
+                                <!-- 家庭年收入 -->
+                                <div class="filter-group">
+                                    <label for="filter-income-family">家庭年收入</label>
+                                    <select id="filter-income-family">
+                                        <option value="">不限</option>
+                                        <option value="10万以下">10万以下</option>
+                                        <option value="10-20万">10-20万</option>
+                                        <option value="20-50万">20-50万</option>
+                                        <option value="50-100万">50-100万</option>
+                                        <option value="100-200万">100-200万</option>
+                                        <option value="200万以上">200万以上</option>
+                                    </select>
+                                </div>
+
+                                <!-- 消费水平 -->
+                                <div class="filter-group">
+                                    <label for="filter-consumption-level">消费水平</label>
+                                    <select id="filter-consumption-level">
+                                        <option value="">不限</option>
+                                        <option value="节俭型">节俭型</option>
+                                        <option value="普通型">普通型</option>
+                                        <option value="中等型">中等型</option>
+                                        <option value="较高型">较高型</option>
+                                        <option value="高消费型">高消费型</option>
+                                    </select>
+                                </div>
+
+                                <!-- 住房状况 -->
+                                <div class="filter-group">
+                                    <label for="filter-housing-status">住房状况</label>
+                                    <select id="filter-housing-status">
+                                        <option value="">不限</option>
+                                        <option value="自有住房(无贷款)">自有住房(无贷款)</option>
+                                        <option value="自有住房(有贷款)">自有住房(有贷款)</option>
+                                        <option value="租房">租房</option>
+                                        <option value="与父母同住">与父母同住</option>
+                                        <option value="单位宿舍">单位宿舍</option>
+                                        <option value="其他">其他</option>
+                                    </select>
+                                </div>
+
+                                <!-- 经济依赖程度 -->
+                                <div class="filter-group">
+                                    <label for="filter-economic-dependency">经济依赖程度</label>
+                                    <select id="filter-economic-dependency">
+                                        <option value="">不限</option>
+                                        <option value="完全独立">完全独立</option>
+                                        <option value="基本独立">基本独立</option>
+                                        <option value="主要依赖家人">主要依赖家人</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-block">

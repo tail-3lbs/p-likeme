@@ -16,7 +16,8 @@
             <ul class="nav-links">
                 <li><a href="index.html">首页</a></li>
                 <li><a href="community.html">社区</a></li>
-                <li><a href="discover.html">发现</a></li>
+                <li><a href="discover.html">群友</a></li>
+                <li><a href="threads-user.html">分享</a></li>
             </ul>
             <div class="nav-actions" id="nav-actions">
                 <a href="#" class="btn btn-outline" id="login-btn">登录</a>
@@ -66,62 +67,126 @@
                                 <h2 id="display-username">用户名</h2>
                                 <span class="join-date" id="display-join-date">加入时间</span>
                             </div>
-                            <button class="btn btn-outline" id="edit-profile-btn" style="display: none;">编辑资料</button>
+                            <div class="profile-actions">
+                                <button class="btn btn-outline" id="edit-profile-btn" style="display: none;">编辑资料</button>
+                                <a href="#" class="btn btn-primary" id="view-threads-btn" style="display: none;">查看TA的分享</a>
+                            </div>
                         </div>
 
                         <div class="profile-sections">
-                            <!-- 已加入的社区 -->
-                            <div class="profile-section">
-                                <h3>已加入的社区</h3>
-                                <div class="profile-tags" id="display-communities">
-                                    <span class="empty-hint">暂未加入任何社区</span>
-                                </div>
-                            </div>
-
-                            <!-- 关注的疾病标签 -->
-                            <div class="profile-section">
-                                <h3>关注的健康话题</h3>
-                                <div class="profile-tags" id="display-disease-tags">
-                                    <span class="empty-hint">暂未添加</span>
-                                </div>
-                            </div>
-
-                            <!-- 基本信息 -->
-                            <div class="profile-section">
-                                <h3>基本信息</h3>
-                                <div class="profile-info-grid">
-                                    <div class="info-item">
-                                        <label>性别</label>
-                                        <span id="display-gender">未设置</span>
+                            <!-- 健康信息 -->
+                            <div class="profile-section-group">
+                                <h3 class="section-group-title">健康信息</h3>
+                                <div class="section-group-content">
+                                    <div class="profile-subsection">
+                                        <label>已加入的社区</label>
+                                        <div class="profile-tags" id="display-communities">
+                                            <span class="empty-hint">暂未加入任何社区</span>
+                                        </div>
                                     </div>
-                                    <div class="info-item">
-                                        <label>年龄</label>
-                                        <span id="display-age">未设置</span>
+                                    <div class="profile-subsection">
+                                        <label>关注的健康话题</label>
+                                        <div class="profile-tags" id="display-disease-tags">
+                                            <span class="empty-hint">暂未添加</span>
+                                        </div>
                                     </div>
-                                    <div class="info-item">
-                                        <label>职业</label>
-                                        <span id="display-profession">未设置</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>婚姻状况</label>
-                                        <span id="display-marriage">未设置</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>家乡</label>
-                                        <span id="display-location-from">未设置</span>
-                                    </div>
-                                    <div class="info-item">
-                                        <label>现居地</label>
-                                        <span id="display-location-living">未设置</span>
+                                    <div class="profile-subsection">
+                                        <label>常去的医院</label>
+                                        <div class="profile-tags" id="display-hospitals">
+                                            <span class="empty-hint">暂未添加</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 常去的医院 -->
-                            <div class="profile-section">
-                                <h3>常去的医院</h3>
-                                <div class="profile-tags" id="display-hospitals">
-                                    <span class="empty-hint">暂未添加</span>
+                            <!-- 个人信息 -->
+                            <div class="profile-section-group">
+                                <h3 class="section-group-title">个人信息</h3>
+                                <div class="section-group-content">
+                                    <div class="profile-info-grid">
+                                        <div class="info-item">
+                                            <label>性别</label>
+                                            <span id="display-gender">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>年龄</label>
+                                            <span id="display-age">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>职业</label>
+                                            <span id="display-profession">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>婚姻状况</label>
+                                            <span id="display-marriage">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>户籍</label>
+                                            <span id="display-hukou">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>教育程度</label>
+                                            <span id="display-education">未设置</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 地区信息 -->
+                            <div class="profile-section-group">
+                                <h3 class="section-group-title">地区信息</h3>
+                                <div class="section-group-content">
+                                    <div class="profile-info-grid">
+                                        <div class="info-item">
+                                            <label>家乡</label>
+                                            <span id="display-location-from">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>现居城市</label>
+                                            <span id="display-location-living">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>区/县</label>
+                                            <span id="display-location-district">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>街道/社区</label>
+                                            <span id="display-location-street">未设置</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 家庭与经济 -->
+                            <div class="profile-section-group">
+                                <h3 class="section-group-title">家庭与经济</h3>
+                                <div class="section-group-content">
+                                    <div class="profile-info-grid">
+                                        <div class="info-item">
+                                            <label>家庭人数</label>
+                                            <span id="display-family-size">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>个人年收入</label>
+                                            <span id="display-income-individual">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>家庭年收入</label>
+                                            <span id="display-income-family">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>消费水平</label>
+                                            <span id="display-consumption-level">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>住房状况</label>
+                                            <span id="display-housing-status">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>经济依赖程度</label>
+                                            <span id="display-economic-dependency">未设置</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -140,19 +205,30 @@
                         </div>
 
                         <form id="profile-form">
-                            <!-- 关注的疾病标签 -->
-                            <div class="form-section">
-                                <h3>关注的健康话题</h3>
-                                <p class="form-hint">添加你关注的健康话题，用逗号或回车分隔</p>
-                                <div class="tags-input-wrapper">
-                                    <div class="tags-display" id="disease-tags-display"></div>
-                                    <input type="text" id="disease-tags-input" placeholder="输入后按回车添加，如：乳腺癌、糖尿病">
+                            <!-- 健康信息 -->
+                            <div class="form-section-group">
+                                <h3 class="section-group-title">健康信息</h3>
+                                <div class="form-section">
+                                    <label class="form-section-label">关注的健康话题</label>
+                                    <p class="form-hint">添加你关注的健康话题，用逗号或回车分隔</p>
+                                    <div class="tags-input-wrapper">
+                                        <div class="tags-display" id="disease-tags-display"></div>
+                                        <input type="text" id="disease-tags-input" placeholder="输入后按回车添加，如：乳腺癌、糖尿病">
+                                    </div>
+                                </div>
+                                <div class="form-section">
+                                    <label class="form-section-label">常去的医院</label>
+                                    <p class="form-hint">添加你常去的医院，用逗号或回车分隔</p>
+                                    <div class="tags-input-wrapper">
+                                        <div class="tags-display" id="hospitals-tags-display"></div>
+                                        <input type="text" id="hospitals-input" placeholder="输入后按回车添加，如：北京协和医院">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- 基本信息 -->
-                            <div class="form-section">
-                                <h3>基本信息</h3>
+                            <!-- 个人信息 -->
+                            <div class="form-section-group">
+                                <h3 class="section-group-title">个人信息</h3>
                                 <div class="form-grid">
                                     <div class="form-group">
                                         <label for="edit-gender">性别</label>
@@ -182,23 +258,116 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="edit-location-from">家乡</label>
-                                        <input type="text" id="edit-location-from" placeholder="如：北京市">
+                                        <label for="edit-hukou">户籍</label>
+                                        <select id="edit-hukou">
+                                            <option value="">请选择</option>
+                                            <option value="城镇">城镇</option>
+                                            <option value="农村">农村</option>
+                                        </select>
                                     </div>
                                     <div class="form-group">
-                                        <label for="edit-location-living">现居地</label>
-                                        <input type="text" id="edit-location-living" placeholder="如：上海市">
+                                        <label for="edit-education">教育程度</label>
+                                        <select id="edit-education">
+                                            <option value="">请选择</option>
+                                            <option value="小学及以下">小学及以下</option>
+                                            <option value="初中">初中</option>
+                                            <option value="高中/中专">高中/中专</option>
+                                            <option value="大专">大专</option>
+                                            <option value="本科">本科</option>
+                                            <option value="硕士">硕士</option>
+                                            <option value="博士及以上">博士及以上</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 常去的医院 -->
-                            <div class="form-section">
-                                <h3>常去的医院</h3>
-                                <p class="form-hint">添加你常去的医院，用逗号或回车分隔</p>
-                                <div class="tags-input-wrapper">
-                                    <div class="tags-display" id="hospitals-tags-display"></div>
-                                    <input type="text" id="hospitals-input" placeholder="输入后按回车添加，如：北京协和医院">
+                            <!-- 地区信息 -->
+                            <div class="form-section-group">
+                                <h3 class="section-group-title">地区信息</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="edit-location-from">家乡</label>
+                                        <input type="text" id="edit-location-from" placeholder="如：湖南省长沙市">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-location-living">现居城市</label>
+                                        <input type="text" id="edit-location-living" placeholder="如：上海市">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-location-district">区/县</label>
+                                        <input type="text" id="edit-location-district" placeholder="如：浦东新区">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-location-street">街道/社区</label>
+                                        <input type="text" id="edit-location-street" placeholder="如：陆家嘴街道">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 家庭与经济 -->
+                            <div class="form-section-group">
+                                <h3 class="section-group-title">家庭与经济</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="edit-family-size">家庭人数</label>
+                                        <input type="number" id="edit-family-size" min="1" max="20" placeholder="请输入家庭人数">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-income-individual">个人年收入</label>
+                                        <select id="edit-income-individual">
+                                            <option value="">请选择</option>
+                                            <option value="5万以下">5万以下</option>
+                                            <option value="5-10万">5-10万</option>
+                                            <option value="10-20万">10-20万</option>
+                                            <option value="20-50万">20-50万</option>
+                                            <option value="50-100万">50-100万</option>
+                                            <option value="100万以上">100万以上</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-income-family">家庭年收入</label>
+                                        <select id="edit-income-family">
+                                            <option value="">请选择</option>
+                                            <option value="10万以下">10万以下</option>
+                                            <option value="10-20万">10-20万</option>
+                                            <option value="20-50万">20-50万</option>
+                                            <option value="50-100万">50-100万</option>
+                                            <option value="100-200万">100-200万</option>
+                                            <option value="200万以上">200万以上</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-consumption-level">消费水平</label>
+                                        <select id="edit-consumption-level">
+                                            <option value="">请选择</option>
+                                            <option value="节俭型">节俭型</option>
+                                            <option value="普通型">普通型</option>
+                                            <option value="中等型">中等型</option>
+                                            <option value="较高型">较高型</option>
+                                            <option value="高消费型">高消费型</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-housing-status">住房状况</label>
+                                        <select id="edit-housing-status">
+                                            <option value="">请选择</option>
+                                            <option value="自有住房(无贷款)">自有住房(无贷款)</option>
+                                            <option value="自有住房(有贷款)">自有住房(有贷款)</option>
+                                            <option value="租房">租房</option>
+                                            <option value="与父母同住">与父母同住</option>
+                                            <option value="单位宿舍">单位宿舍</option>
+                                            <option value="其他">其他</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-economic-dependency">经济依赖程度</label>
+                                        <select id="edit-economic-dependency">
+                                            <option value="">请选择</option>
+                                            <option value="完全独立">完全独立</option>
+                                            <option value="基本独立">基本独立</option>
+                                            <option value="主要依赖家人">主要依赖家人</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 

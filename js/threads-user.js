@@ -1,7 +1,16 @@
 /**
- * My Shares Page JavaScript
- * Handles thread CRUD operations
+ * Shares Page JavaScript
+ * Handles viewing and managing threads/shares
+ * Supports viewing own threads or other users' threads (read-only)
  */
+
+// Get username from URL (if viewing other user's threads)
+const urlParams = new URLSearchParams(window.location.search);
+const viewUsername = urlParams.get('user');
+
+// State
+let isOwnPage = false;
+let viewingUser = null;
 
 // DOM Elements
 const loginRequired = document.getElementById('login-required');
@@ -10,6 +19,7 @@ const threadsList = document.getElementById('threads-list');
 const noThreads = document.getElementById('no-threads');
 const newShareBtn = document.getElementById('new-share-btn');
 const promptLoginBtn = document.getElementById('prompt-login-btn');
+const pageTitle = document.getElementById('page-title');
 
 // Thread Modal Elements
 const threadModal = document.getElementById('thread-modal');
@@ -37,15 +47,47 @@ const COMMUNITIES_API = '/api/communities';
  */
 function checkLoginState() {
     const token = localStorage.getItem('p_likeme_token');
+    const currentUser = JSON.parse(localStorage.getItem('p_likeme_user') || 'null');
 
-    if (token) {
-        loginRequired.style.display = 'none';
-        sharesContent.style.display = 'block';
-        loadThreads();
-        loadCommunities();
-    } else {
+    if (!token) {
+        // Not logged in - show login prompt
         loginRequired.style.display = 'block';
         sharesContent.style.display = 'none';
+        return;
+    }
+
+    // Determine if viewing own page or another user's page
+    if (viewUsername) {
+        // Viewing a specific user's threads
+        isOwnPage = currentUser && currentUser.username === viewUsername;
+        viewingUser = viewUsername;
+    } else {
+        // No user specified - show current user's threads
+        isOwnPage = true;
+        viewingUser = currentUser ? currentUser.username : null;
+    }
+
+    // Update page title
+    if (isOwnPage) {
+        pageTitle.textContent = '我的分享';
+        document.title = '我的分享 - 像我一样';
+    } else {
+        pageTitle.textContent = `${viewingUser} 的分享`;
+        document.title = `${viewingUser} 的分享 - 像我一样`;
+    }
+
+    // Show/hide new share button based on ownership
+    if (newShareBtn) {
+        newShareBtn.style.display = isOwnPage ? 'block' : 'none';
+    }
+
+    loginRequired.style.display = 'none';
+    sharesContent.style.display = 'block';
+    loadThreads();
+
+    // Only load communities for own page (for create/edit forms)
+    if (isOwnPage) {
+        loadCommunities();
     }
 }
 
@@ -61,13 +103,21 @@ function getAuthHeaders() {
 }
 
 /**
- * Load user's threads
+ * Load threads (own or another user's)
  */
 async function loadThreads() {
     try {
         threadsList.innerHTML = '<div class="loading">加载中...</div>';
 
-        const response = await fetch(THREADS_API, {
+        // Use different API endpoint based on whether viewing own or other's threads
+        let apiUrl;
+        if (isOwnPage) {
+            apiUrl = THREADS_API;
+        } else {
+            apiUrl = `${THREADS_API}/user/${encodeURIComponent(viewingUser)}`;
+        }
+
+        const response = await fetch(apiUrl, {
             headers: getAuthHeaders()
         });
 
@@ -76,7 +126,7 @@ async function loadThreads() {
         if (data.success) {
             renderThreads(data.data);
         } else {
-            threadsList.innerHTML = '<div class="error-message">加载失败</div>';
+            threadsList.innerHTML = `<div class="error-message">${data.error || '加载失败'}</div>`;
         }
     } catch (error) {
         console.error('Error loading threads:', error);
@@ -91,6 +141,17 @@ function renderThreads(threads) {
     if (threads.length === 0) {
         threadsList.innerHTML = '';
         noThreads.style.display = 'block';
+        // Update no-threads message based on ownership
+        if (isOwnPage) {
+            noThreads.innerHTML = `
+                <p>你还没有发布任何分享</p>
+                <p>点击上方"新建分享"按钮开始记录吧</p>
+            `;
+        } else {
+            noThreads.innerHTML = `
+                <p>${escapeHtml(viewingUser)} 还没有发布任何分享</p>
+            `;
+        }
         return;
     }
 
@@ -108,12 +169,14 @@ function renderThreads(threads) {
             <div class="thread-communities">
                 ${thread.communities.map(c => `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`).join('')}
             </div>
+            ${isOwnPage ? `
             <div class="thread-card-footer">
                 <div class="thread-actions">
                     <button class="btn-edit" onclick="openEditModal(${thread.id})">编辑</button>
                     <button class="btn-delete" onclick="deleteThread(${thread.id})">删除</button>
                 </div>
             </div>
+            ` : ''}
         </div>
     `).join('');
 }

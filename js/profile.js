@@ -20,6 +20,7 @@ const profileContent = document.getElementById('profile-content');
 const viewMode = document.getElementById('view-mode');
 const editMode = document.getElementById('edit-mode');
 const editProfileBtn = document.getElementById('edit-profile-btn');
+const viewThreadsBtn = document.getElementById('view-threads-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const profileForm = document.getElementById('profile-form');
 const profileError = document.getElementById('profile-error');
@@ -62,9 +63,14 @@ async function loadProfile() {
         renderViewMode();
         showContent();
 
-        // Show edit button if own profile
+        // Show appropriate button based on profile ownership
         if (isOwnProfile) {
             editProfileBtn.style.display = 'block';
+            viewThreadsBtn.style.display = 'none';
+        } else {
+            editProfileBtn.style.display = 'none';
+            viewThreadsBtn.style.display = 'block';
+            viewThreadsBtn.href = `threads-user.html?user=${encodeURIComponent(profileUsername)}`;
         }
 
     } catch (error) {
@@ -139,13 +145,27 @@ function renderViewMode() {
         diseaseTagsEl.innerHTML = '<span class="empty-hint">暂未添加</span>';
     }
 
-    // Basic info
+    // Personal info
     document.getElementById('display-gender').textContent = profileData.gender || '未设置';
     document.getElementById('display-age').textContent = profileData.age ? `${profileData.age}岁` : '未设置';
     document.getElementById('display-profession').textContent = profileData.profession || '未设置';
     document.getElementById('display-marriage').textContent = profileData.marriage_status || '未设置';
+
+    // Location info
     document.getElementById('display-location-from').textContent = profileData.location_from || '未设置';
     document.getElementById('display-location-living').textContent = profileData.location_living || '未设置';
+    document.getElementById('display-location-district').textContent = profileData.location_living_district || '未设置';
+    document.getElementById('display-location-street').textContent = profileData.location_living_street || '未设置';
+    document.getElementById('display-hukou').textContent = profileData.hukou || '未设置';
+
+    // Family & economic info
+    document.getElementById('display-education').textContent = profileData.education || '未设置';
+    document.getElementById('display-family-size').textContent = profileData.family_size ? `${profileData.family_size}人` : '未设置';
+    document.getElementById('display-income-individual').textContent = profileData.income_individual || '未设置';
+    document.getElementById('display-income-family').textContent = profileData.income_family || '未设置';
+    document.getElementById('display-consumption-level').textContent = profileData.consumption_level || '未设置';
+    document.getElementById('display-housing-status').textContent = profileData.housing_status || '未设置';
+    document.getElementById('display-economic-dependency').textContent = profileData.economic_dependency || '未设置';
 
     // Hospitals
     const hospitalsEl = document.getElementById('display-hospitals');
@@ -164,13 +184,27 @@ function renderViewMode() {
 function enterEditMode() {
     if (!isOwnProfile || !profileData) return;
 
-    // Populate form fields
+    // Populate form fields - Personal info
     document.getElementById('edit-gender').value = profileData.gender || '';
     document.getElementById('edit-age').value = profileData.age || '';
     document.getElementById('edit-profession').value = profileData.profession || '';
     document.getElementById('edit-marriage').value = profileData.marriage_status || '';
+
+    // Location info
     document.getElementById('edit-location-from').value = profileData.location_from || '';
     document.getElementById('edit-location-living').value = profileData.location_living || '';
+    document.getElementById('edit-location-district').value = profileData.location_living_district || '';
+    document.getElementById('edit-location-street').value = profileData.location_living_street || '';
+    document.getElementById('edit-hukou').value = profileData.hukou || '';
+
+    // Family & economic info
+    document.getElementById('edit-education').value = profileData.education || '';
+    document.getElementById('edit-family-size').value = profileData.family_size || '';
+    document.getElementById('edit-income-individual').value = profileData.income_individual || '';
+    document.getElementById('edit-income-family').value = profileData.income_family || '';
+    document.getElementById('edit-consumption-level').value = profileData.consumption_level || '';
+    document.getElementById('edit-housing-status').value = profileData.housing_status || '';
+    document.getElementById('edit-economic-dependency').value = profileData.economic_dependency || '';
 
     // Initialize tags
     diseaseTags = profileData.disease_tags ? [...profileData.disease_tags] : [];
@@ -256,12 +290,26 @@ async function handleProfileSubmit(e) {
     }
 
     const formData = {
+        // Personal info
         gender: document.getElementById('edit-gender').value,
         age: document.getElementById('edit-age').value,
         profession: document.getElementById('edit-profession').value,
         marriage_status: document.getElementById('edit-marriage').value,
+        // Location info
         location_from: document.getElementById('edit-location-from').value,
         location_living: document.getElementById('edit-location-living').value,
+        location_living_district: document.getElementById('edit-location-district').value,
+        location_living_street: document.getElementById('edit-location-street').value,
+        hukou: document.getElementById('edit-hukou').value,
+        // Family & economic info
+        education: document.getElementById('edit-education').value,
+        family_size: document.getElementById('edit-family-size').value,
+        income_individual: document.getElementById('edit-income-individual').value,
+        income_family: document.getElementById('edit-income-family').value,
+        consumption_level: document.getElementById('edit-consumption-level').value,
+        housing_status: document.getElementById('edit-housing-status').value,
+        economic_dependency: document.getElementById('edit-economic-dependency').value,
+        // Health info
         disease_tags: diseaseTags,
         hospitals: hospitalTags
     };

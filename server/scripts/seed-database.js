@@ -159,7 +159,169 @@ const diseaseTags = [
     'HPV感染', '乳腺增生', '乳腺结节'
 ];
 
+// New profile fields
+const hukouTypes = ['城镇', '城镇', '城镇', '农村', '农村']; // Weighted towards urban
+
+const educationLevels = [
+    '小学及以下', '初中', '初中', '高中/中专', '高中/中专',
+    '大专', '大专', '本科', '本科', '本科', '硕士', '博士及以上'
+]; // Weighted towards higher education
+
+const incomeIndividualLevels = [
+    '5万以下', '5万以下', '5-10万', '5-10万', '5-10万',
+    '10-20万', '10-20万', '20-50万', '50-100万', '100万以上'
+];
+
+const incomeFamilyLevels = [
+    '10万以下', '10万以下', '10-20万', '10-20万', '20-50万',
+    '20-50万', '50-100万', '100-200万', '200万以上'
+];
+
+const consumptionLevels = ['节俭型', '普通型', '普通型', '中等型', '中等型', '较高型', '高消费型'];
+
+const housingStatuses = [
+    '自有住房(无贷款)', '自有住房(有贷款)', '自有住房(有贷款)',
+    '租房', '租房', '与父母同住', '单位宿舍', '其他'
+];
+
+const economicDependencyLevels = [
+    '完全独立', '完全独立', '基本独立', '基本独立', '主要依赖家人'
+];
+
+// Districts by city (for location_living_district)
+const districtsByCity = {
+    '北京市': ['朝阳区', '海淀区', '东城区', '西城区', '丰台区', '通州区', '大兴区', '顺义区'],
+    '上海市': ['浦东新区', '黄浦区', '静安区', '徐汇区', '长宁区', '普陀区', '虹口区', '杨浦区', '闵行区', '宝山区'],
+    '广州市': ['天河区', '越秀区', '海珠区', '荔湾区', '白云区', '番禺区', '黄埔区'],
+    '深圳市': ['福田区', '南山区', '罗湖区', '宝安区', '龙岗区', '龙华区'],
+    '杭州市': ['上城区', '下城区', '西湖区', '拱墅区', '滨江区', '余杭区', '萧山区'],
+    '成都市': ['锦江区', '青羊区', '金牛区', '武侯区', '成华区', '高新区'],
+    '南京市': ['玄武区', '秦淮区', '鼓楼区', '建邺区', '栖霞区', '江宁区'],
+    '武汉市': ['武昌区', '洪山区', '江汉区', '硚口区', '汉阳区', '青山区'],
+    '西安市': ['新城区', '碑林区', '莲湖区', '雁塔区', '未央区', '灞桥区'],
+    '天津市': ['和平区', '河西区', '南开区', '河东区', '河北区', '滨海新区'],
+    '重庆市': ['渝中区', '江北区', '南岸区', '渝北区', '沙坪坝区', '九龙坡区']
+};
+
+// Sample streets/communities
+const sampleStreets = [
+    '建国路街道', '朝外街道', '三里屯街道', '望京街道', '劲松街道',
+    '陆家嘴街道', '南京东路街道', '静安寺街道', '徐家汇街道', '虹桥街道',
+    '珠江新城街道', '沙面街道', '五山街道', '石牌街道', '天河南街道',
+    '华强北街道', '南头街道', '福田街道', '华侨城社区', '蛇口街道',
+    '西溪街道', '文新街道', '翠苑街道', '古荡街道', '留下街道',
+    '春熙路街道', '双桥子街道', '柳江街道', '火车南站街道', '机投桥街道'
+];
+
 // ============ MAIN FUNCTIONS ============
+
+function initDb() {
+    console.log('Step 0: Initializing database tables...');
+
+    // Communities table
+    communitiesDb.exec(`
+        CREATE TABLE IF NOT EXISTS communities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            keywords TEXT NOT NULL,
+            member_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Users table
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            gender TEXT,
+            age INTEGER,
+            profession TEXT,
+            marriage_status TEXT,
+            location_from TEXT,
+            location_living TEXT,
+            location_living_district TEXT,
+            location_living_street TEXT,
+            income_individual TEXT,
+            income_family TEXT,
+            family_size INTEGER,
+            hukou TEXT,
+            education TEXT,
+            consumption_level TEXT,
+            housing_status TEXT,
+            economic_dependency TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // User-community membership
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS user_communities (
+            user_id INTEGER NOT NULL,
+            community_id INTEGER NOT NULL,
+            joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, community_id)
+        )
+    `);
+
+    // User disease tags
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS user_disease_tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            tag TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // User hospitals
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS user_hospitals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            hospital TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Threads table
+    threadsDb.exec(`
+        CREATE TABLE IF NOT EXISTS threads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            reply_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Thread-community links
+    threadsDb.exec(`
+        CREATE TABLE IF NOT EXISTS thread_communities (
+            thread_id INTEGER NOT NULL,
+            community_id INTEGER NOT NULL,
+            PRIMARY KEY (thread_id, community_id)
+        )
+    `);
+
+    // Replies table
+    repliesDb.exec(`
+        CREATE TABLE IF NOT EXISTS replies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            parent_reply_id INTEGER,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    console.log('   All tables initialized.');
+}
 
 function clearAllData() {
     console.log('Step 1: Clearing all data...');
@@ -211,8 +373,11 @@ function seedUsers() {
     console.log('Step 3: Seeding 100 test users with profile data...');
 
     const insertUser = usersDb.prepare(`
-        INSERT INTO users (username, password_hash, gender, age, profession, marriage_status, location_from, location_living)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (username, password_hash, gender, age, profession, marriage_status,
+            location_from, location_living, location_living_district, location_living_street,
+            income_individual, income_family, family_size, hukou, education,
+            consumption_level, housing_status, economic_dependency)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertDiseaseTag = usersDb.prepare(`
@@ -239,7 +404,7 @@ function seedUsers() {
             const password = `Pass${paddedNum}!`;
             const password_hash = bcrypt.hashSync(password, 10);
 
-            // Generate profile data (80% chance to have each field)
+            // Generate profile data (varying chances to have each field)
             const gender = Math.random() < 0.8 ? pickRandom(genders) : null;
             const age = Math.random() < 0.8 ? Math.floor(Math.random() * 50) + 20 : null; // 20-69
             const profession = Math.random() < 0.7 ? pickRandom(professions) : null;
@@ -247,7 +412,30 @@ function seedUsers() {
             const location_from = Math.random() < 0.6 ? pickRandom(cities) : null;
             const location_living = Math.random() < 0.8 ? pickRandom(cities) : null;
 
-            const result = insertUser.run(username, password_hash, gender, age, profession, marriage_status, location_from, location_living);
+            // Generate district and street based on location_living
+            let location_living_district = null;
+            let location_living_street = null;
+            if (location_living && districtsByCity[location_living]) {
+                location_living_district = Math.random() < 0.7 ? pickRandom(districtsByCity[location_living]) : null;
+                location_living_street = Math.random() < 0.5 ? pickRandom(sampleStreets) : null;
+            }
+
+            // New profile fields
+            const income_individual = Math.random() < 0.6 ? pickRandom(incomeIndividualLevels) : null;
+            const income_family = Math.random() < 0.5 ? pickRandom(incomeFamilyLevels) : null;
+            const family_size = Math.random() < 0.7 ? Math.floor(Math.random() * 5) + 1 : null; // 1-5
+            const hukou = Math.random() < 0.7 ? pickRandom(hukouTypes) : null;
+            const education = Math.random() < 0.75 ? pickRandom(educationLevels) : null;
+            const consumption_level = Math.random() < 0.5 ? pickRandom(consumptionLevels) : null;
+            const housing_status = Math.random() < 0.6 ? pickRandom(housingStatuses) : null;
+            const economic_dependency = Math.random() < 0.55 ? pickRandom(economicDependencyLevels) : null;
+
+            const result = insertUser.run(
+                username, password_hash, gender, age, profession, marriage_status,
+                location_from, location_living, location_living_district, location_living_street,
+                income_individual, income_family, family_size, hukou, education,
+                consumption_level, housing_status, economic_dependency
+            );
             const userId = Number(result.lastInsertRowid);
 
             // Add 0-4 disease tags (70% chance to have at least one)
@@ -519,6 +707,7 @@ function main() {
     console.log('   P-LikeMe Database Seed Script');
     console.log('====================================\n');
 
+    initDb();
     clearAllData();
     seedCommunities();
     seedUsers();

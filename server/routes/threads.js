@@ -5,7 +5,7 @@
 
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { createThread, getThreadsByUserId, getThreadById, deleteThread, updateThread, getAllCommunities, findUserById } = require('../database');
+const { createThread, getThreadsByUserId, getThreadById, deleteThread, updateThread, getAllCommunities, findUserById, findUserByUsernamePublic } = require('../database');
 
 const router = express.Router();
 
@@ -61,6 +61,56 @@ router.get('/', authMiddleware, (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching threads:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取分享列表失败'
+        });
+    }
+});
+
+/**
+ * GET /api/threads/user/:username
+ * Get all threads for a specific user (requires login)
+ */
+router.get('/user/:username', authMiddleware, (req, res) => {
+    try {
+        const { username } = req.params;
+
+        // Find user by username
+        const user = findUserByUsernamePublic(username);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: '用户不存在'
+            });
+        }
+
+        const threads = getThreadsByUserId(user.id);
+
+        // Get community names for each thread
+        const communities = getAllCommunities();
+        const communityMap = {};
+        communities.forEach(c => { communityMap[c.id] = c.name; });
+
+        const threadsWithNames = threads.map(thread => ({
+            ...thread,
+            communities: thread.community_ids.map(id => ({
+                id,
+                name: communityMap[id] || '未知社区'
+            }))
+        }));
+
+        res.json({
+            success: true,
+            data: threadsWithNames,
+            count: threads.length,
+            user: {
+                id: user.id,
+                username: user.username
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching user threads:', error);
         res.status(500).json({
             success: false,
             error: '获取分享列表失败'

@@ -114,14 +114,6 @@ function updateNav() {
             logout();
         });
 
-        // Add "我的分享" link if not already present
-        if (navLinks && !document.getElementById('threads-user-link')) {
-            const threadsUserLi = document.createElement('li');
-            threadsUserLi.id = 'threads-user-link';
-            const isActive = (window.location.pathname.includes('threads-user') || window.location.pathname.includes('thread-detail')) ? ' class="active"' : '';
-            threadsUserLi.innerHTML = `<a href="threads-user.html"${isActive}>我的分享</a>`;
-            navLinks.appendChild(threadsUserLi);
-        }
     } else {
         navActions.innerHTML = `
             <a href="#" class="btn btn-outline" id="login-btn">登录</a>
@@ -136,12 +128,6 @@ function updateNav() {
             e.preventDefault();
             openModal(false);
         });
-
-        // Remove "我的分享" link if present
-        const threadsUserLink = document.getElementById('threads-user-link');
-        if (threadsUserLink) {
-            threadsUserLink.remove();
-        }
     }
 }
 

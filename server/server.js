@@ -35,35 +35,27 @@ app.use('/api/threads', repliesRoutes);
 
 /**
  * GET /api/communities
- * Get communities with pagination or search
- * Query params: ?q=搜索词&limit=6&offset=0
+ * Get all communities or search
+ * Query params: ?q=搜索词
  */
 app.get('/api/communities', (req, res) => {
     try {
-        const { q, limit, offset } = req.query;
-        const pageLimit = parseInt(limit) || 6;
-        const pageOffset = parseInt(offset) || 0;
+        const { q } = req.query;
 
         let communities;
-        let total;
 
         if (q && q.trim()) {
-            // Search - return all matches (no pagination for search)
+            // Search - return all matches
             communities = searchCommunities(q.trim());
-            total = communities.length;
         } else {
-            // Get all with pagination
-            const allCommunities = getAllCommunities();
-            total = allCommunities.length;
-            communities = allCommunities.slice(pageOffset, pageOffset + pageLimit);
+            // Get all communities
+            communities = getAllCommunities();
         }
 
         res.json({
             success: true,
             data: communities,
-            count: communities.length,
-            total: total,
-            hasMore: pageOffset + communities.length < total
+            count: communities.length
         });
     } catch (error) {
         console.error('Error fetching communities:', error);

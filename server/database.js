@@ -159,6 +159,36 @@ function initUsersDb() {
     if (!columns.includes('location_living')) {
         usersDb.exec(`ALTER TABLE users ADD COLUMN location_living TEXT`);
     }
+    if (!columns.includes('income_individual')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN income_individual TEXT`);
+    }
+    if (!columns.includes('income_family')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN income_family TEXT`);
+    }
+    if (!columns.includes('family_size')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN family_size INTEGER`);
+    }
+    if (!columns.includes('hukou')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN hukou TEXT`);
+    }
+    if (!columns.includes('education')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN education TEXT`);
+    }
+    if (!columns.includes('consumption_level')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN consumption_level TEXT`);
+    }
+    if (!columns.includes('housing_status')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN housing_status TEXT`);
+    }
+    if (!columns.includes('economic_dependency')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN economic_dependency TEXT`);
+    }
+    if (!columns.includes('location_living_district')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN location_living_district TEXT`);
+    }
+    if (!columns.includes('location_living_street')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN location_living_street TEXT`);
+    }
 
     // Junction table for user-community membership
     usersDb.exec(`
@@ -285,7 +315,9 @@ function isUserInCommunity(user_id, community_id) {
 function getUserProfile(user_id) {
     const user = usersDb.prepare(`
         SELECT id, username, gender, age, profession, marriage_status,
-               location_from, location_living, created_at
+               location_from, location_living, location_living_district, location_living_street,
+               income_individual, income_family, family_size, hukou, education,
+               consumption_level, housing_status, economic_dependency, created_at
         FROM users WHERE id = ?
     `).get(user_id);
 
@@ -320,12 +352,22 @@ function getUserProfile(user_id) {
 }
 
 // Update user profile
-function updateUserProfile(user_id, { gender, age, profession, marriage_status, location_from, location_living, disease_tags, hospitals }) {
+function updateUserProfile(user_id, {
+    gender, age, profession, marriage_status, location_from, location_living,
+    location_living_district, location_living_street,
+    income_individual, income_family, family_size, hukou, education,
+    consumption_level, housing_status, economic_dependency,
+    disease_tags, hospitals
+}) {
     const updateUser = usersDb.prepare(`
         UPDATE users
         SET gender = @gender, age = @age, profession = @profession,
             marriage_status = @marriage_status, location_from = @location_from,
-            location_living = @location_living
+            location_living = @location_living, location_living_district = @location_living_district,
+            location_living_street = @location_living_street, income_individual = @income_individual,
+            income_family = @income_family, family_size = @family_size, hukou = @hukou,
+            education = @education, consumption_level = @consumption_level,
+            housing_status = @housing_status, economic_dependency = @economic_dependency
         WHERE id = @user_id
     `);
 
@@ -344,7 +386,17 @@ function updateUserProfile(user_id, { gender, age, profession, marriage_status, 
             profession: profession || null,
             marriage_status: marriage_status || null,
             location_from: location_from || null,
-            location_living: location_living || null
+            location_living: location_living || null,
+            location_living_district: location_living_district || null,
+            location_living_street: location_living_street || null,
+            income_individual: income_individual || null,
+            income_family: income_family || null,
+            family_size: family_size || null,
+            hukou: hukou || null,
+            education: education || null,
+            consumption_level: consumption_level || null,
+            housing_status: housing_status || null,
+            economic_dependency: economic_dependency || null
         });
 
         // Update disease tags
@@ -380,7 +432,12 @@ function findUserByUsernamePublic(username) {
 }
 
 // Search users with filters
-function searchUsers({ community_ids, disease_tag, gender, age_min, age_max, location, hospital, limit = 50, offset = 0 }) {
+function searchUsers({
+    community_ids, disease_tag, gender, age_min, age_max, location, location_district, location_street, hospital,
+    hukou, education, income_individual, income_family, consumption_level,
+    housing_status, economic_dependency,
+    exclude_user, limit = 50, offset = 0
+}) {
     // Start with all users who have some profile info
     let userIds = new Set();
     let hasFilter = false;
@@ -466,6 +523,68 @@ function searchUsers({ community_ids, disease_tag, gender, age_min, age_max, loc
         params.push(searchTerm, searchTerm);
     }
 
+    if (location_district && location_district.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${location_district.trim()}%`;
+        conditions.push('location_living_district LIKE ?');
+        params.push(searchTerm);
+    }
+
+    if (location_street && location_street.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${location_street.trim()}%`;
+        conditions.push('location_living_street LIKE ?');
+        params.push(searchTerm);
+    }
+
+    if (hukou && hukou.trim()) {
+        hasFilter = true;
+        conditions.push('hukou = ?');
+        params.push(hukou.trim());
+    }
+
+    if (education && education.trim()) {
+        hasFilter = true;
+        conditions.push('education = ?');
+        params.push(education.trim());
+    }
+
+    if (income_individual && income_individual.trim()) {
+        hasFilter = true;
+        conditions.push('income_individual = ?');
+        params.push(income_individual.trim());
+    }
+
+    if (income_family && income_family.trim()) {
+        hasFilter = true;
+        conditions.push('income_family = ?');
+        params.push(income_family.trim());
+    }
+
+    if (consumption_level && consumption_level.trim()) {
+        hasFilter = true;
+        conditions.push('consumption_level = ?');
+        params.push(consumption_level.trim());
+    }
+
+    if (housing_status && housing_status.trim()) {
+        hasFilter = true;
+        conditions.push('housing_status = ?');
+        params.push(housing_status.trim());
+    }
+
+    if (economic_dependency && economic_dependency.trim()) {
+        hasFilter = true;
+        conditions.push('economic_dependency = ?');
+        params.push(economic_dependency.trim());
+    }
+
+    // Exclude specific user (for auto-find, to not include self)
+    if (exclude_user && exclude_user.trim()) {
+        conditions.push('username != ?');
+        params.push(exclude_user.trim());
+    }
+
     // If no filters, return empty (don't return all users)
     if (!hasFilter) {
         return { users: [], total: 0 };
@@ -473,7 +592,9 @@ function searchUsers({ community_ids, disease_tag, gender, age_min, age_max, loc
 
     // Build final query
     let sql = `SELECT id, username, gender, age, profession, marriage_status,
-               location_from, location_living, created_at FROM users WHERE 1=1`;
+               location_from, location_living, location_living_district, location_living_street,
+               hukou, education, income_individual, income_family, family_size,
+               consumption_level, housing_status, economic_dependency, created_at FROM users WHERE 1=1`;
 
     // Add user ID filter if we filtered by communities/tags/hospitals
     if (userIds.size > 0) {
@@ -490,8 +611,8 @@ function searchUsers({ community_ids, disease_tag, gender, age_min, age_max, loc
         sql += ' AND ' + conditions.join(' AND ');
     }
 
-    // Get total count
-    const countSql = sql.replace(/SELECT .* FROM/, 'SELECT COUNT(*) as count FROM');
+    // Get total count (use [\s\S]* to match across newlines)
+    const countSql = sql.replace(/SELECT [\s\S]* FROM/, 'SELECT COUNT(*) as count FROM');
     const totalResult = usersDb.prepare(countSql).get(...params);
     const total = totalResult ? totalResult.count : 0;
 

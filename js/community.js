@@ -1,22 +1,17 @@
 /**
- * Community Page - API Integration with Pagination
- * Fetches communities from backend API with "load more" support
+ * Community Page - API Integration
+ * Fetches all communities from backend API
  */
 
 (function() {
     const API_BASE = '/api';
-    const PAGE_SIZE = 15;
     const TOKEN_KEY = 'p_likeme_token';
 
     const searchInput = document.getElementById('community-search');
     const communitiesContainer = document.getElementById('communities');
     const noResults = document.getElementById('no-results');
     const loading = document.getElementById('loading');
-    const loadMoreWrapper = document.getElementById('load-more-wrapper');
-    const loadMoreBtn = document.getElementById('load-more-btn');
 
-    let currentOffset = 0;
-    let isSearching = false;
     let joinedCommunityIds = new Set();
 
     // Get auth token
@@ -153,88 +148,54 @@
         `;
     }
 
-    // Render communities (replace or append)
-    function renderCommunities(communities, append = false) {
+    // Render communities
+    function renderCommunities(communities) {
         if (loading) loading.style.display = 'none';
 
-        if (communities.length === 0 && !append) {
+        if (communities.length === 0) {
             communitiesContainer.innerHTML = '';
             noResults.style.display = 'block';
-            loadMoreWrapper.style.display = 'none';
         } else {
             noResults.style.display = 'none';
-            const html = communities.map(renderCommunityCard).join('');
-
-            if (append) {
-                communitiesContainer.insertAdjacentHTML('beforeend', html);
-            } else {
-                communitiesContainer.innerHTML = html;
-            }
-        }
-    }
-
-    // Update load more button visibility
-    function updateLoadMoreButton(hasMore) {
-        if (loadMoreWrapper) {
-            loadMoreWrapper.style.display = hasMore && !isSearching ? 'block' : 'none';
+            communitiesContainer.innerHTML = communities.map(renderCommunityCard).join('');
         }
     }
 
     // Fetch communities from API
-    async function fetchCommunities(query = '', append = false) {
+    async function fetchCommunities(query = '') {
         try {
-            if (!append) {
-                if (loading) loading.style.display = 'block';
-                currentOffset = 0;
-            }
+            if (loading) loading.style.display = 'block';
             noResults.style.display = 'none';
 
-            let url;
+            let url = `${API_BASE}/communities`;
             if (query) {
-                // Search mode - no pagination
-                url = `${API_BASE}/communities?q=${encodeURIComponent(query)}`;
-                isSearching = true;
-            } else {
-                // Pagination mode
-                url = `${API_BASE}/communities?limit=${PAGE_SIZE}&offset=${currentOffset}`;
-                isSearching = false;
+                url += `?q=${encodeURIComponent(query)}`;
             }
 
             const response = await fetch(url);
             const result = await response.json();
 
             if (result.success) {
-                renderCommunities(result.data, append);
-                updateLoadMoreButton(result.hasMore);
-
-                // Update offset for next load
-                currentOffset += result.data.length;
+                renderCommunities(result.data);
             } else {
                 console.error('API error:', result.error);
-                renderCommunities([], append);
+                renderCommunities([]);
             }
         } catch (error) {
             console.error('Failed to fetch communities:', error);
             if (loading) loading.style.display = 'none';
-            if (!append) {
-                communitiesContainer.innerHTML = `
-                    <div class="error-message">
-                        <p>加载失败，请确保服务器正在运行。</p>
-                        <p style="font-size: 0.9rem; color: #999;">运行命令: cd server && npm start</p>
-                    </div>
-                `;
-            }
+            communitiesContainer.innerHTML = `
+                <div class="error-message">
+                    <p>加载失败，请确保服务器正在运行。</p>
+                    <p style="font-size: 0.9rem; color: #999;">运行命令: cd server && npm start</p>
+                </div>
+            `;
         }
-    }
-
-    // Load more handler
-    function loadMore() {
-        fetchCommunities('', true);
     }
 
     // Search handler with debounce
     const handleSearch = debounce((query) => {
-        fetchCommunities(query, false);
+        fetchCommunities(query);
     }, 300);
 
     // Event listeners
@@ -243,10 +204,6 @@
             const query = e.target.value.trim();
             handleSearch(query);
         });
-    }
-
-    if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', loadMore);
     }
 
     // Event delegation for join buttons and card clicks
