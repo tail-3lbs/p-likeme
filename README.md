@@ -60,6 +60,11 @@ If you need to restart the server (e.g., after code changes):
 lsof -ti:3000 | xargs kill -9; node server.js
 ```
 
+If using PM2:
+```bash
+pm2 restart p-likeme
+```
+
 ## What This Project Contains
 
 - My own HTML/CSS/JS code written while learning
