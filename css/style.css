@@ -750,6 +750,13 @@ ul {
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
     font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.community-tag:hover {
+    background: #2AB3B1;
+    color: #fff;
 }
 
 .thread-actions {
@@ -859,6 +866,59 @@ ul {
 
 .no-communities-hint a:hover {
     text-decoration: underline;
+}
+
+/* Community checkbox with dimension options */
+.community-checkbox-group {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.dimension-options {
+    margin-left: 1.5rem;
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 3px solid #2AB3B1;
+}
+
+.dimension-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.dimension-group:last-child {
+    margin-bottom: 0;
+}
+
+.dimension-label {
+    font-size: 0.85rem;
+    color: #666;
+    min-width: 100px;
+}
+
+.dimension-select {
+    flex: 1;
+    max-width: 200px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.dimension-select:focus {
+    outline: none;
+    border-color: #2AB3B1;
+}
+
+.form-hint {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 0.5rem;
 }
 
 /* Thread Detail Page */
@@ -2095,6 +2155,68 @@ ul {
     opacity: 1;
 }
 
+/* Selected community with dimension filters */
+.selected-communities-wrapper {
+    margin-top: 0.5rem;
+}
+
+.selected-community-item {
+    margin-bottom: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+}
+
+.selected-community-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.selected-community-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: #2AB3B1;
+    font-size: 0.9rem;
+}
+
+.community-dimension-filters {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.community-dimension-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.community-dimension-filter label {
+    font-size: 0.8rem;
+    color: #666;
+    white-space: nowrap;
+}
+
+.community-dimension-filter select {
+    padding: 0.25rem 0.4rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: #fff;
+    min-width: 80px;
+}
+
+.community-dimension-filter select:focus {
+    outline: none;
+    border-color: #2AB3B1;
+}
+
 /* Results Panel */
 .results-panel {
     flex: 1;
@@ -2368,5 +2490,236 @@ ul {
 
     .user-card-arrow {
         display: none;
+    }
+}
+
+/* ============================================
+   Sub-Community / Hierarchical Community Styles
+   ============================================ */
+
+/* Level Badge */
+.level-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+
+.level-badge.level-1 {
+    background: #e8f5f5;
+    color: #2AB3B1;
+    border: 1px solid #2AB3B1;
+}
+
+.level-badge.level-2 {
+    background: #fff3e0;
+    color: #f57c00;
+    border: 1px solid #f57c00;
+}
+
+.level-badge.level-3 {
+    background: #fce4ec;
+    color: #e91e63;
+    border: 1px solid #e91e63;
+}
+
+/* Breadcrumb Navigation */
+.community-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.community-breadcrumb a {
+    color: #2AB3B1;
+    text-decoration: none;
+}
+
+.community-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.community-breadcrumb .separator {
+    color: #999;
+}
+
+.community-breadcrumb .current {
+    color: #333;
+    font-weight: 500;
+}
+
+/* Sub-Communities Section */
+.sub-communities-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+}
+
+.sub-communities-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+/* 1D List Display (for communities with single dimension) */
+.sub-community-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.sub-community-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.sub-community-item:hover {
+    background: #e8f5f5;
+    border-color: #2AB3B1;
+}
+
+.sub-community-item.joined {
+    background: #e8f5f5;
+    border: 1px solid rgba(42, 179, 177, 0.3);
+}
+
+.sub-community-item .name {
+    font-weight: 500;
+    color: #333;
+}
+
+.sub-community-item .count {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+/* 2D Matrix Display (for communities with two dimensions) */
+.sub-community-matrix {
+    overflow-x: auto;
+}
+
+.sub-community-matrix table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 400px;
+}
+
+.sub-community-matrix th,
+.sub-community-matrix td {
+    padding: 0.75rem;
+    text-align: center;
+    border: 1px solid #eee;
+}
+
+.sub-community-matrix th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.85rem;
+}
+
+.sub-community-matrix th.row-header {
+    text-align: left;
+    background: #f8f9fa;
+}
+
+.sub-community-matrix th.corner {
+    background: #fff;
+}
+
+.sub-community-matrix .matrix-cell {
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fff;
+}
+
+.sub-community-matrix .matrix-cell:hover {
+    background: #e8f5f5;
+}
+
+.sub-community-matrix .matrix-cell.empty {
+    background: #f8f9fa;
+    color: #ccc;
+    cursor: pointer;
+}
+
+.sub-community-matrix .matrix-cell.joined {
+    background: #e8f5f5;
+    border: 1px solid rgba(42, 179, 177, 0.3);
+}
+
+.sub-community-matrix .matrix-cell .count {
+    font-weight: 600;
+    color: #2AB3B1;
+}
+
+.sub-community-matrix .matrix-cell.empty .count {
+    color: #ccc;
+}
+
+.sub-community-matrix .header-cell {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sub-community-matrix .header-cell:hover {
+    background: #e8f5f5;
+    color: #2AB3B1;
+}
+
+/* Dimension Labels */
+.dimension-label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* Sub-community info in thread cards */
+.thread-sub-community {
+    font-size: 0.75rem;
+    color: #888;
+    margin-left: 0.25rem;
+}
+
+/* Sub-community hint in search results */
+.sub-community-hint {
+    display: block;
+    font-size: 0.85rem;
+    color: #2AB3B1;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sub-community-matrix {
+        font-size: 0.85rem;
+    }
+
+    .sub-community-matrix th,
+    .sub-community-matrix td {
+        padding: 0.5rem;
+    }
+
+    .sub-community-list {
+        flex-direction: column;
+    }
+
+    .sub-community-item {
+        width: 100%;
     }
 }

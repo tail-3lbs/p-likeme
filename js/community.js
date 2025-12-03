@@ -136,11 +136,17 @@
         const buttonClass = isJoined ? 'btn btn-joined' : 'btn btn-primary';
         const buttonText = isJoined ? '已加入' : '加入';
 
+        // Show sub-community hint if available (from search)
+        const hintHtml = community.subCommunityHint
+            ? `<span class="sub-community-hint">包含: ${community.subCommunityHint}</span>`
+            : '';
+
         return `
             <div class="community-card community-card-clickable" data-id="${community.id}" data-href="community-detail.html?id=${community.id}">
                 <div class="community-info">
                     <h3>${community.name}</h3>
                     <p>${community.description}</p>
+                    ${hintHtml}
                     <span class="member-count">${formatNumber(community.member_count)} 位成员</span>
                 </div>
                 <button class="${buttonClass}" data-community-id="${community.id}">${buttonText}</button>

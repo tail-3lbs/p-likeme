@@ -5,7 +5,8 @@
 
 // State
 let communities = [];
-let selectedCommunityIds = [];
+// Selected communities with optional stage/type: [{id, stage, type, name, dimensions}]
+let selectedCommunities = [];
 let currentOffset = 0;
 let currentTotal = 0;
 const LIMIT = 20;
@@ -14,7 +15,7 @@ const LIMIT = 20;
 const searchForm = document.getElementById('search-form');
 const communityTrigger = document.getElementById('community-trigger');
 const communityDropdown = document.getElementById('community-dropdown');
-const selectedCommunitiesEl = document.getElementById('selected-communities');
+const selectedCommunitiesWrapper = document.getElementById('selected-communities-wrapper');
 const resultsTitle = document.getElementById('results-title');
 const searchHint = document.getElementById('search-hint');
 const resultsLoading = document.getElementById('results-loading');
@@ -124,11 +125,19 @@ function handleCommunityChange(e) {
     const name = e.target.dataset.name;
 
     if (e.target.checked) {
-        if (!selectedCommunityIds.includes(id)) {
-            selectedCommunityIds.push(id);
+        // Find the full community object to get dimensions
+        const community = communities.find(c => parseInt(c.id) === id);
+        if (community && !selectedCommunities.find(sc => sc.id === id)) {
+            selectedCommunities.push({
+                id,
+                name: community.name,
+                stage: '',
+                type: '',
+                dimensions: community.dimensions ? JSON.parse(community.dimensions) : null
+            });
         }
     } else {
-        selectedCommunityIds = selectedCommunityIds.filter(cid => cid !== id);
+        selectedCommunities = selectedCommunities.filter(sc => sc.id !== id);
     }
 
     renderSelectedCommunities();
@@ -136,35 +145,68 @@ function handleCommunityChange(e) {
 }
 
 /**
- * Render selected community tags
+ * Render selected community tags with optional dimension filters
  */
 function renderSelectedCommunities() {
-    if (selectedCommunityIds.length === 0) {
-        selectedCommunitiesEl.innerHTML = '';
+    if (selectedCommunities.length === 0) {
+        selectedCommunitiesWrapper.innerHTML = '';
         return;
     }
 
-    selectedCommunitiesEl.innerHTML = selectedCommunityIds
-        .map(id => {
-            // Ensure we compare as integers
-            const numId = parseInt(id);
-            const community = communities.find(c => parseInt(c.id) === numId);
-            if (!community) return ''; // Skip if community not found
-            return `
-                <span class="selected-tag">
-                    ${community.name}
-                    <button type="button" class="tag-remove-btn" data-id="${numId}">&times;</button>
-                </span>
-            `;
-        })
-        .filter(html => html) // Remove empty strings
-        .join('');
+    selectedCommunitiesWrapper.innerHTML = selectedCommunities.map(sc => {
+        const hasDimensions = sc.dimensions && (sc.dimensions.stage || sc.dimensions.type);
+
+        let dimensionFiltersHtml = '';
+        if (hasDimensions) {
+            dimensionFiltersHtml = '<div class="community-dimension-filters">';
+
+            if (sc.dimensions.stage) {
+                dimensionFiltersHtml += `
+                    <div class="community-dimension-filter">
+                        <label>${escapeHtml(sc.dimensions.stage.label)}:</label>
+                        <select data-community-id="${sc.id}" data-dimension="stage">
+                            <option value="">不限</option>
+                            ${sc.dimensions.stage.values.map(v =>
+                                `<option value="${escapeHtml(v)}" ${sc.stage === v ? 'selected' : ''}>${escapeHtml(v)}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+
+            if (sc.dimensions.type) {
+                dimensionFiltersHtml += `
+                    <div class="community-dimension-filter">
+                        <label>${escapeHtml(sc.dimensions.type.label)}:</label>
+                        <select data-community-id="${sc.id}" data-dimension="type">
+                            <option value="">不限</option>
+                            ${sc.dimensions.type.values.map(v =>
+                                `<option value="${escapeHtml(v)}" ${sc.type === v ? 'selected' : ''}>${escapeHtml(v)}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+
+            dimensionFiltersHtml += '</div>';
+        }
+
+        return `
+            <div class="selected-community-item" data-community-id="${sc.id}">
+                <div class="selected-community-header">
+                    <span class="selected-community-name">${escapeHtml(sc.name)}</span>
+                    <button type="button" class="tag-remove-btn" data-id="${sc.id}">&times;</button>
+                </div>
+                ${dimensionFiltersHtml}
+            </div>
+        `;
+    }).join('');
 
     // Add remove listeners
-    selectedCommunitiesEl.querySelectorAll('.tag-remove-btn').forEach(btn => {
+    selectedCommunitiesWrapper.querySelectorAll('.tag-remove-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const id = parseInt(e.target.dataset.id);
-            selectedCommunityIds = selectedCommunityIds.filter(cid => cid !== id);
+            selectedCommunities = selectedCommunities.filter(sc => sc.id !== id);
 
             // Uncheck in dropdown
             const checkbox = communityDropdown.querySelector(`input[value="${id}"]`);
@@ -174,6 +216,29 @@ function renderSelectedCommunities() {
             updateTriggerText();
         });
     });
+
+    // Add dimension select listeners
+    selectedCommunitiesWrapper.querySelectorAll('.community-dimension-filter select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const communityId = parseInt(e.target.dataset.communityId);
+            const dimension = e.target.dataset.dimension;
+            const value = e.target.value;
+
+            const sc = selectedCommunities.find(c => c.id === communityId);
+            if (sc) {
+                sc[dimension] = value;
+            }
+        });
+    });
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**
@@ -181,10 +246,10 @@ function renderSelectedCommunities() {
  */
 function updateTriggerText() {
     const span = communityTrigger.querySelector('span');
-    if (selectedCommunityIds.length === 0) {
+    if (selectedCommunities.length === 0) {
         span.textContent = '选择社区...';
     } else {
-        span.textContent = `已选择 ${selectedCommunityIds.length} 个社区`;
+        span.textContent = `已选择 ${selectedCommunities.length} 个社区`;
     }
 }
 
@@ -300,7 +365,13 @@ async function handleAutoFind() {
         const params = new URLSearchParams();
 
         if (hasCommunities) {
-            params.set('communities', profile.communities.map(c => c.id).join(','));
+            // Send community filters with stage/type if available
+            const communityFilters = profile.communities.map(c => ({
+                id: c.id,
+                stage: c.stage || '',
+                type: c.type || ''
+            }));
+            params.set('community_filters', JSON.stringify(communityFilters));
         }
         if (hasDiseaseTags) {
             // Use first disease tag for search
@@ -387,12 +458,25 @@ async function handleAutoFind() {
 function updateFiltersFromProfile(profile) {
     // Update community selection
     if (profile.communities && profile.communities.length > 0) {
-        // Ensure IDs are stored as integers
-        selectedCommunityIds = profile.communities.map(c => parseInt(c.id));
+        // For auto-find, deduplicate by community ID and use Level I only
+        // This avoids showing multiple panels for the same community when user has joined multiple sub-communities
+        const uniqueCommunityIds = [...new Set(profile.communities.map(c => parseInt(c.id)))];
+
+        selectedCommunities = uniqueCommunityIds.map(id => {
+            const fullCommunity = communities.find(fc => parseInt(fc.id) === id);
+            const profileCommunity = profile.communities.find(c => parseInt(c.id) === id);
+            return {
+                id,
+                name: profileCommunity?.name || (fullCommunity ? fullCommunity.name : ''),
+                stage: '',  // Use Level I for auto-find
+                type: '',   // Use Level I for auto-find
+                dimensions: fullCommunity && fullCommunity.dimensions ? JSON.parse(fullCommunity.dimensions) : null
+            };
+        });
 
         // Check the checkboxes
         communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.checked = selectedCommunityIds.includes(parseInt(cb.value));
+            cb.checked = selectedCommunities.some(sc => sc.id === parseInt(cb.value));
         });
 
         renderSelectedCommunities();
@@ -479,7 +563,7 @@ async function performSearch(append = false) {
     const economicDependency = document.getElementById('filter-economic-dependency').value;
 
     // Check if any filter is set
-    const hasAnyFilter = selectedCommunityIds.length > 0 || diseaseTag || gender || ageMin || ageMax ||
+    const hasAnyFilter = selectedCommunities.length > 0 || diseaseTag || gender || ageMin || ageMax ||
         location || locationDistrict || locationStreet || hospital || hukou || education || incomeIndividual || incomeFamily ||
         consumptionLevel || housingStatus || economicDependency;
 
@@ -496,8 +580,14 @@ async function performSearch(append = false) {
 
     // Build query params
     const params = new URLSearchParams();
-    if (selectedCommunityIds.length > 0) {
-        params.set('communities', selectedCommunityIds.join(','));
+    if (selectedCommunities.length > 0) {
+        // Send community filters as JSON array with id, stage, type
+        const communityFilters = selectedCommunities.map(sc => ({
+            id: sc.id,
+            stage: sc.stage || '',
+            type: sc.type || ''
+        }));
+        params.set('community_filters', JSON.stringify(communityFilters));
     }
     if (diseaseTag) params.set('disease_tag', diseaseTag);
     if (gender) params.set('gender', gender);
@@ -686,7 +776,7 @@ async function loadMore() {
  */
 function clearFilters() {
     // Clear community selection
-    selectedCommunityIds = [];
+    selectedCommunities = [];
     communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
     renderSelectedCommunities();
     updateTriggerText();

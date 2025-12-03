@@ -193,12 +193,7 @@ async function loadCommunities() {
 
         if (data.success && data.data.length > 0) {
             userCommunities = data.data;
-            communityCheckboxes.innerHTML = data.data.map(c => `
-                <div class="community-checkbox">
-                    <input type="checkbox" id="community-${c.id}" name="communities" value="${c.id}">
-                    <label for="community-${c.id}">${escapeHtml(c.name)}</label>
-                </div>
-            `).join('');
+            renderCommunityCheckboxes(communityCheckboxes, data.data, 'communities');
         } else {
             userCommunities = [];
             communityCheckboxes.innerHTML = `
@@ -208,6 +203,107 @@ async function loadCommunities() {
     } catch (error) {
         console.error('Error loading communities:', error);
     }
+}
+
+/**
+ * Render community checkboxes with dimension options
+ */
+function renderCommunityCheckboxes(container, communities, prefix, selectedLinks = []) {
+    // Build a map of selected links for easy lookup
+    const selectedMap = {};
+    selectedLinks.forEach(link => {
+        const key = `${link.id}-${link.stage || ''}-${link.type || ''}`;
+        selectedMap[key] = true;
+    });
+
+    container.innerHTML = communities.map(c => {
+        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
+        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
+        const isChecked = selectedLinks.some(link => link.id === c.id);
+
+        let html = `
+            <div class="community-checkbox-group" data-community-id="${c.id}">
+                <div class="community-checkbox">
+                    <input type="checkbox" id="${prefix}-${c.id}" name="${prefix}" value="${c.id}" ${isChecked ? 'checked' : ''}>
+                    <label for="${prefix}-${c.id}">${escapeHtml(c.name)}</label>
+                </div>
+        `;
+
+        // Add dimension options if available
+        if (hasDimensions) {
+            html += `<div class="dimension-options" id="${prefix}-dimensions-${c.id}" style="display: ${isChecked ? 'block' : 'none'};">`;
+
+            // Stage options
+            if (dimensions.stage) {
+                html += `
+                    <div class="dimension-group">
+                        <label class="dimension-label">${escapeHtml(dimensions.stage.label)}（可选）</label>
+                        <select id="${prefix}-stage-${c.id}" class="dimension-select" data-community-id="${c.id}" data-dimension="stage">
+                            <option value="">不限</option>
+                            ${dimensions.stage.values.map(v => {
+                                const isSelected = selectedLinks.some(link => link.id === c.id && link.stage === v);
+                                return `<option value="${escapeHtml(v)}" ${isSelected ? 'selected' : ''}>${escapeHtml(v)}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+
+            // Type options
+            if (dimensions.type) {
+                html += `
+                    <div class="dimension-group">
+                        <label class="dimension-label">${escapeHtml(dimensions.type.label)}（可选）</label>
+                        <select id="${prefix}-type-${c.id}" class="dimension-select" data-community-id="${c.id}" data-dimension="type">
+                            <option value="">不限</option>
+                            ${dimensions.type.values.map(v => {
+                                const isSelected = selectedLinks.some(link => link.id === c.id && link.type === v);
+                                return `<option value="${escapeHtml(v)}" ${isSelected ? 'selected' : ''}>${escapeHtml(v)}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
+    }).join('');
+
+    // Add event listeners for checkbox changes
+    container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const communityId = e.target.value;
+            const dimensionsEl = document.getElementById(`${prefix}-dimensions-${communityId}`);
+            if (dimensionsEl) {
+                dimensionsEl.style.display = e.target.checked ? 'block' : 'none';
+            }
+        });
+    });
+}
+
+/**
+ * Get selected community links from a checkbox container
+ */
+function getSelectedCommunityLinks(container, prefix) {
+    const links = [];
+    const checkedBoxes = container.querySelectorAll(`input[name="${prefix}"]:checked`);
+
+    checkedBoxes.forEach(checkbox => {
+        const communityId = parseInt(checkbox.value);
+        const stageSelect = document.getElementById(`${prefix}-stage-${communityId}`);
+        const typeSelect = document.getElementById(`${prefix}-type-${communityId}`);
+
+        links.push({
+            id: communityId,
+            stage: stageSelect ? stageSelect.value : '',
+            type: typeSelect ? typeSelect.value : ''
+        });
+    });
+
+    return links;
 }
 
 /**
@@ -235,10 +331,8 @@ async function createThread(e) {
     const title = document.getElementById('thread-title').value;
     const content = document.getElementById('thread-content').value;
 
-    // Get selected communities
-    const selectedCommunities = Array.from(
-        document.querySelectorAll('input[name="communities"]:checked')
-    ).map(cb => parseInt(cb.value));
+    // Get selected communities with dimension info
+    const communityLinks = getSelectedCommunityLinks(communityCheckboxes, 'communities');
 
     try {
         const response = await fetch(THREADS_API, {
@@ -247,7 +341,7 @@ async function createThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_ids: selectedCommunities
+                community_links: communityLinks
             })
         });
 
@@ -297,8 +391,8 @@ async function deleteThread(id) {
  */
 async function openEditModal(threadId) {
     try {
-        // Fetch thread data
-        const response = await fetch(`${THREADS_API}/${threadId}`, {
+        // Fetch thread data (use public endpoint to get full community details)
+        const response = await fetch(`${THREADS_API}/${threadId}/public`, {
             headers: getAuthHeaders()
         });
         const data = await response.json();
@@ -315,15 +409,15 @@ async function openEditModal(threadId) {
         document.getElementById('edit-title').value = thread.title;
         document.getElementById('edit-content').value = thread.content;
 
-        // Render community checkboxes
+        // Render community checkboxes with dimension options
         if (userCommunities.length > 0) {
-            const linkedIds = thread.communities.map(c => c.id);
-            editCommunityCheckboxes.innerHTML = userCommunities.map(c => `
-                <div class="community-checkbox">
-                    <input type="checkbox" id="edit-community-${c.id}" name="edit-communities" value="${c.id}" ${linkedIds.includes(c.id) ? 'checked' : ''}>
-                    <label for="edit-community-${c.id}">${escapeHtml(c.name)}</label>
-                </div>
-            `).join('');
+            // Convert thread communities to links format
+            const selectedLinks = thread.communities.map(c => ({
+                id: c.id,
+                stage: c.stage || '',
+                type: c.type || ''
+            }));
+            renderCommunityCheckboxes(editCommunityCheckboxes, userCommunities, 'edit-communities', selectedLinks);
         } else {
             editCommunityCheckboxes.innerHTML = `
                 <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
@@ -355,10 +449,8 @@ async function updateThread(e) {
     const title = document.getElementById('edit-title').value;
     const content = document.getElementById('edit-content').value;
 
-    // Get selected communities
-    const selectedCommunities = Array.from(
-        document.querySelectorAll('input[name="edit-communities"]:checked')
-    ).map(cb => parseInt(cb.value));
+    // Get selected communities with dimension info
+    const communityLinks = getSelectedCommunityLinks(editCommunityCheckboxes, 'edit-communities');
 
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
@@ -367,7 +459,7 @@ async function updateThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_ids: selectedCommunities
+                community_links: communityLinks
             })
         });
 

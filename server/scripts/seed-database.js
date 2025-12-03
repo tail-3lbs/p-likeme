@@ -22,23 +22,75 @@ const repliesDb = new Database(repliesDbPath);
 
 // ============ SEED DATA ============
 
-// 15 female-focused health communities
+// 15 female-focused health communities with optional dimension metadata
+// Dimensions allow hierarchical sub-communities (Level II and Level III)
 const communities = [
-    { name: '乳腺癌', description: '抗癌路上，我们同行。分享乳腺癌治疗经验，传递希望与力量。', keywords: '乳腺癌 乳腺 癌症 肿瘤 化疗 乳房' },
-    { name: '宫颈癌', description: '分享宫颈癌防治经验，交流治疗心得，互相支持共同面对。', keywords: '宫颈癌 宫颈 HPV 癌症 肿瘤 筛查' },
-    { name: '卵巢癌', description: '分享卵巢癌治疗经验，传递希望与力量，抗癌路上我们同行。', keywords: '卵巢癌 卵巢 癌症 肿瘤 化疗 CA125' },
-    { name: '子宫内膜癌', description: '交流子宫内膜癌的治疗经验，分享康复心得，互相支持。', keywords: '子宫内膜癌 子宫癌 癌症 肿瘤 子宫' },
-    { name: '心血管疾病', description: '关注女性心血管健康，分享预防和治疗经验，守护心脏健康。', keywords: '心血管 心脏病 冠心病 高血压 心肌梗死' },
-    { name: '脑卒中', description: '分享脑卒中预防和康复经验，交流治疗心得，互相鼓励。', keywords: '脑卒中 中风 脑梗 脑出血 康复 偏瘫' },
-    { name: '糖尿病', description: '分享血糖管理经验，交流饮食和运动心得，互相鼓励共同面对糖尿病。', keywords: '糖尿病 血糖 胰岛素 糖尿 妊娠糖尿病' },
-    { name: '阿尔茨海默症', description: '为阿尔茨海默症患者及家属提供支持，分享护理经验和应对方法。', keywords: '阿尔茨海默症 老年痴呆 记忆 认知障碍 痴呆' },
-    { name: '子宫内膜异位症', description: '分享子宫内膜异位症的治疗经验，交流缓解疼痛的方法，互相鼓励。', keywords: '子宫内膜异位症 内异症 痛经 月经 巧克力囊肿' },
-    { name: '子宫肌瘤', description: '交流子宫肌瘤的治疗方案，分享康复经验，互相支持。', keywords: '子宫肌瘤 肌瘤 子宫 月经 出血' },
-    { name: '经前综合征', description: '分享缓解经前综合征的方法，交流调理经验，互相理解与支持。', keywords: '经前综合征 PMS 经前期 月经 情绪波动 痛经' },
-    { name: '不孕症', description: '分享备孕和治疗经验，交流心路历程，互相鼓励共同面对不孕困扰。', keywords: '不孕症 不孕 备孕 试管婴儿 IVF 生育' },
-    { name: '性传播感染', description: '分享性传播感染的防治知识，交流治疗经验，消除偏见互相支持。', keywords: '性传播感染 STI STD 性病 HPV 衣原体' },
-    { name: '抑郁症', description: '在这里你不孤单。分享心路历程，获得理解与支持，一起走向阳光。', keywords: '抑郁症 抑郁 心理 情绪 心理健康 产后抑郁' },
-    { name: '焦虑症', description: '分享应对焦虑的方法，交流放松技巧，互相支持共同面对焦虑。', keywords: '焦虑症 焦虑 紧张 恐慌 心理 压力' }
+    {
+        name: '乳腺癌',
+        description: '抗癌路上，我们同行。分享乳腺癌治疗经验，传递希望与力量。',
+        keywords: '乳腺癌 乳腺 癌症 肿瘤 化疗 乳房',
+        dimensions: JSON.stringify({
+            stage: { label: '分期', values: ['0期', 'I期', 'II期', 'III期', 'IV期'] },
+            type: { label: '分子分型', values: ['Luminal A型', 'Luminal B型', 'HER2阳性型', '三阴性'] }
+        })
+    },
+    {
+        name: '宫颈癌',
+        description: '分享宫颈癌防治经验，交流治疗心得，互相支持共同面对。',
+        keywords: '宫颈癌 宫颈 HPV 癌症 肿瘤 筛查',
+        dimensions: JSON.stringify({
+            stage: { label: '分期', values: ['I期', 'II期', 'III期', 'IV期'] },
+            type: { label: 'HPV分型', values: ['高危型', '低危型'] }
+        })
+    },
+    { name: '卵巢癌', description: '分享卵巢癌治疗经验，传递希望与力量，抗癌路上我们同行。', keywords: '卵巢癌 卵巢 癌症 肿瘤 化疗 CA125', dimensions: null },
+    { name: '子宫内膜癌', description: '交流子宫内膜癌的治疗经验，分享康复心得，互相支持。', keywords: '子宫内膜癌 子宫癌 癌症 肿瘤 子宫', dimensions: null },
+    { name: '心血管疾病', description: '关注女性心血管健康，分享预防和治疗经验，守护心脏健康。', keywords: '心血管 心脏病 冠心病 高血压 心肌梗死', dimensions: null },
+    { name: '脑卒中', description: '分享脑卒中预防和康复经验，交流治疗心得，互相鼓励。', keywords: '脑卒中 中风 脑梗 脑出血 康复 偏瘫', dimensions: null },
+    {
+        name: '糖尿病',
+        description: '分享血糖管理经验，交流饮食和运动心得，互相鼓励共同面对糖尿病。',
+        keywords: '糖尿病 血糖 胰岛素 糖尿 妊娠糖尿病',
+        dimensions: JSON.stringify({
+            type: { label: '分型', values: ['1型糖尿病', '2型糖尿病', '妊娠期糖尿病', '特殊类型糖尿病'] }
+        })
+    },
+    { name: '阿尔茨海默症', description: '为阿尔茨海默症患者及家属提供支持，分享护理经验和应对方法。', keywords: '阿尔茨海默症 老年痴呆 记忆 认知障碍 痴呆', dimensions: null },
+    {
+        name: '子宫内膜异位症',
+        description: '分享子宫内膜异位症的治疗经验，交流缓解疼痛的方法，互相鼓励。',
+        keywords: '子宫内膜异位症 内异症 痛经 月经 巧克力囊肿',
+        dimensions: JSON.stringify({
+            stage: { label: '分期', values: ['I期（轻微）', 'II期（轻度）', 'III期（中度）', 'IV期（重度）'] }
+        })
+    },
+    { name: '子宫肌瘤', description: '交流子宫肌瘤的治疗方案，分享康复经验，互相支持。', keywords: '子宫肌瘤 肌瘤 子宫 月经 出血', dimensions: null },
+    { name: '经前综合征', description: '分享缓解经前综合征的方法，交流调理经验，互相理解与支持。', keywords: '经前综合征 PMS 经前期 月经 情绪波动 痛经', dimensions: null },
+    {
+        name: '不孕症',
+        description: '分享备孕和治疗经验，交流心路历程，互相鼓励共同面对不孕困扰。',
+        keywords: '不孕症 不孕 备孕 试管婴儿 IVF 生育',
+        dimensions: JSON.stringify({
+            type: { label: '类型', values: ['原发性不孕', '继发性不孕'] }
+        })
+    },
+    { name: '性传播感染', description: '分享性传播感染的防治知识，交流治疗经验，消除偏见互相支持。', keywords: '性传播感染 STI STD 性病 HPV 衣原体', dimensions: null },
+    {
+        name: '抑郁症',
+        description: '在这里你不孤单。分享心路历程，获得理解与支持，一起走向阳光。',
+        keywords: '抑郁症 抑郁 心理 情绪 心理健康 产后抑郁',
+        dimensions: JSON.stringify({
+            type: { label: '严重程度', values: ['轻度', '中度', '重度'] }
+        })
+    },
+    {
+        name: '焦虑症',
+        description: '分享应对焦虑的方法，交流放松技巧，互相支持共同面对焦虑。',
+        keywords: '焦虑症 焦虑 紧张 恐慌 心理 压力',
+        dimensions: JSON.stringify({
+            type: { label: '类型', values: ['广泛性焦虑症', '社交焦虑症', '惊恐障碍'] }
+        })
+    }
 ];
 
 // Sample thread content
@@ -218,7 +270,7 @@ const sampleStreets = [
 function initDb() {
     console.log('Step 0: Initializing database tables...');
 
-    // Communities table
+    // Communities table (with dimensions for hierarchical sub-communities)
     communitiesDb.exec(`
         CREATE TABLE IF NOT EXISTS communities (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,7 +278,20 @@ function initDb() {
             description TEXT NOT NULL,
             keywords TEXT NOT NULL,
             member_count INTEGER DEFAULT 0,
+            dimensions TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Sub-community member counts table
+    communitiesDb.exec(`
+        CREATE TABLE IF NOT EXISTS sub_community_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            community_id INTEGER NOT NULL,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            member_count INTEGER DEFAULT 0,
+            UNIQUE (community_id, stage, type)
         )
     `);
 
@@ -256,13 +321,16 @@ function initDb() {
         )
     `);
 
-    // User-community membership
+    // User-community membership (with sub-community support)
     usersDb.exec(`
         CREATE TABLE IF NOT EXISTS user_communities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             community_id INTEGER NOT NULL,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
             joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (user_id, community_id)
+            UNIQUE (user_id, community_id, stage, type)
         )
     `);
 
@@ -299,12 +367,15 @@ function initDb() {
         )
     `);
 
-    // Thread-community links
+    // Thread-community links (with sub-community support)
     threadsDb.exec(`
         CREATE TABLE IF NOT EXISTS thread_communities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             thread_id INTEGER NOT NULL,
             community_id INTEGER NOT NULL,
-            PRIMARY KEY (thread_id, community_id)
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            UNIQUE (thread_id, community_id, stage, type)
         )
     `);
 
@@ -345,6 +416,7 @@ function clearAllData() {
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_hospitals'");
 
     // Clear communities database
+    communitiesDb.exec('DELETE FROM sub_community_members');
     communitiesDb.exec('DELETE FROM communities');
     communitiesDb.exec("DELETE FROM sqlite_sequence WHERE name='communities'");
 
@@ -355,18 +427,26 @@ function seedCommunities() {
     console.log('Step 2: Seeding 15 communities...');
 
     const insert = communitiesDb.prepare(`
-        INSERT INTO communities (name, description, keywords, member_count)
-        VALUES (@name, @description, @keywords, 0)
+        INSERT INTO communities (name, description, keywords, member_count, dimensions)
+        VALUES (@name, @description, @keywords, 0, @dimensions)
     `);
 
     const insertMany = communitiesDb.transaction((items) => {
         for (const item of items) {
-            insert.run(item);
+            insert.run({
+                name: item.name,
+                description: item.description,
+                keywords: item.keywords,
+                dimensions: item.dimensions || null
+            });
         }
     });
 
     insertMany(communities);
-    console.log('   15 communities created.');
+
+    // Count communities with dimensions
+    const withDimensions = communities.filter(c => c.dimensions).length;
+    console.log(`   15 communities created (${withDimensions} with sub-community dimensions).`);
 }
 
 function seedUsers() {
@@ -471,57 +551,139 @@ function seedUsers() {
 }
 
 function linkUsersToCommunities() {
-    console.log('Step 4: Linking users to communities...');
+    console.log('Step 4: Linking users to communities (with sub-communities)...');
 
-    // Get all user IDs and community IDs
+    // Get all user IDs and communities (with dimensions)
     const users = usersDb.prepare('SELECT id FROM users').all();
-    const communityIds = communitiesDb.prepare('SELECT id FROM communities').all().map(c => c.id);
+    const allCommunities = communitiesDb.prepare('SELECT id, dimensions FROM communities').all();
 
     const insertMembership = usersDb.prepare(`
-        INSERT INTO user_communities (user_id, community_id)
-        VALUES (?, ?)
+        INSERT OR IGNORE INTO user_communities (user_id, community_id, stage, type)
+        VALUES (?, ?, ?, ?)
     `);
 
-    // Track memberships for thread generation
+    const insertSubCommunityCount = communitiesDb.prepare(`
+        INSERT INTO sub_community_members (community_id, stage, type, member_count)
+        VALUES (?, ?, ?, 1)
+        ON CONFLICT(community_id, stage, type)
+        DO UPDATE SET member_count = member_count + 1
+    `);
+
+    // Helper to pick random item from array
+    const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // Track memberships for thread generation (including sub-community info)
     const userCommunities = {};
 
     const linkUsers = usersDb.transaction(() => {
+        let subCommunityJoins = 0;
+
         for (const user of users) {
             // Each user joins 1-5 random communities
             const numCommunities = Math.floor(Math.random() * 5) + 1;
-            const shuffled = [...communityIds].sort(() => Math.random() - 0.5);
+            const shuffled = [...allCommunities].sort(() => Math.random() - 0.5);
             const selectedCommunities = shuffled.slice(0, numCommunities);
 
-            userCommunities[user.id] = selectedCommunities;
+            userCommunities[user.id] = [];
 
-            for (const communityId of selectedCommunities) {
-                insertMembership.run(user.id, communityId);
+            for (const community of selectedCommunities) {
+                // Always join Level I (parent community)
+                insertMembership.run(user.id, community.id, '', '');
+                userCommunities[user.id].push({ id: community.id, stage: '', type: '' });
+
+                // If community has dimensions, 60% chance to join a sub-community
+                if (community.dimensions && Math.random() < 0.6) {
+                    const dims = JSON.parse(community.dimensions);
+                    const hasStage = dims.stage && dims.stage.values;
+                    const hasType = dims.type && dims.type.values;
+
+                    let stage = '';
+                    let type = '';
+
+                    if (hasStage && hasType) {
+                        // 2D matrix: randomly choose to join Level II, Level III, or both
+                        const choice = Math.random();
+                        if (choice < 0.3) {
+                            // Join Level II (stage only)
+                            stage = pickRandom(dims.stage.values);
+                            insertMembership.run(user.id, community.id, stage, '');
+                            insertSubCommunityCount.run(community.id, stage, '');
+                            userCommunities[user.id].push({ id: community.id, stage, type: '' });
+                            subCommunityJoins++;
+                        } else if (choice < 0.5) {
+                            // Join Level II (type only)
+                            type = pickRandom(dims.type.values);
+                            insertMembership.run(user.id, community.id, '', type);
+                            insertSubCommunityCount.run(community.id, '', type);
+                            userCommunities[user.id].push({ id: community.id, stage: '', type });
+                            subCommunityJoins++;
+                        } else {
+                            // Join Level III (both stage and type)
+                            // Also join corresponding Level II communities (stage-only and type-only)
+                            stage = pickRandom(dims.stage.values);
+                            type = pickRandom(dims.type.values);
+
+                            // Join Level II (stage-only)
+                            insertMembership.run(user.id, community.id, stage, '');
+                            insertSubCommunityCount.run(community.id, stage, '');
+                            subCommunityJoins++;
+
+                            // Join Level II (type-only)
+                            insertMembership.run(user.id, community.id, '', type);
+                            insertSubCommunityCount.run(community.id, '', type);
+                            subCommunityJoins++;
+
+                            // Join Level III
+                            insertMembership.run(user.id, community.id, stage, type);
+                            insertSubCommunityCount.run(community.id, stage, type);
+                            userCommunities[user.id].push({ id: community.id, stage, type });
+                            subCommunityJoins++;
+                        }
+                    } else if (hasStage) {
+                        // 1D: stage only
+                        stage = pickRandom(dims.stage.values);
+                        insertMembership.run(user.id, community.id, stage, '');
+                        insertSubCommunityCount.run(community.id, stage, '');
+                        userCommunities[user.id].push({ id: community.id, stage, type: '' });
+                        subCommunityJoins++;
+                    } else if (hasType) {
+                        // 1D: type only
+                        type = pickRandom(dims.type.values);
+                        insertMembership.run(user.id, community.id, '', type);
+                        insertSubCommunityCount.run(community.id, '', type);
+                        userCommunities[user.id].push({ id: community.id, stage: '', type });
+                        subCommunityJoins++;
+                    }
+                }
             }
         }
+
+        return subCommunityJoins;
     });
 
-    linkUsers();
+    const subCommunityJoins = linkUsers();
 
-    // Update member_count for each community
+    // Update member_count for each community (Level I count only)
     console.log('   Updating member counts...');
-    for (const communityId of communityIds) {
+    for (const community of allCommunities) {
         const count = usersDb.prepare(
-            'SELECT COUNT(*) as count FROM user_communities WHERE community_id = ?'
-        ).get(communityId);
+            "SELECT COUNT(*) as count FROM user_communities WHERE community_id = ? AND stage = '' AND type = ''"
+        ).get(community.id);
 
         communitiesDb.prepare(
             'UPDATE communities SET member_count = ? WHERE id = ?'
-        ).run(count.count, communityId);
+        ).run(count.count, community.id);
     }
 
     const membershipCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_communities').get();
     console.log(`   ${membershipCount.count} user-community links created.`);
+    console.log(`   ${subCommunityJoins} sub-community memberships created.`);
 
     return userCommunities;
 }
 
 function generateThreads(userCommunities) {
-    console.log('Step 5: Generating threads...');
+    console.log('Step 5: Generating threads (with sub-communities)...');
 
     const insertThread = threadsDb.prepare(`
         INSERT INTO threads (user_id, title, content, created_at)
@@ -529,8 +691,8 @@ function generateThreads(userCommunities) {
     `);
 
     const insertThreadCommunity = threadsDb.prepare(`
-        INSERT INTO thread_communities (thread_id, community_id)
-        VALUES (?, ?)
+        INSERT INTO thread_communities (thread_id, community_id, stage, type)
+        VALUES (?, ?, ?, ?)
     `);
 
     const generateAllThreads = threadsDb.transaction(() => {
@@ -557,15 +719,16 @@ function generateThreads(userCommunities) {
                 const threadId = Number(result.lastInsertRowid);
                 threadCount++;
 
-                // Link to 1-3 communities from the user's joined communities
+                // Link to 1-3 communities from the user's joined communities (with sub-communities)
                 if (joinedCommunities.length > 0) {
                     const maxLinks = Math.min(3, joinedCommunities.length);
                     const numLinks = Math.floor(Math.random() * maxLinks) + 1; // At least 1
                     const shuffledJoined = [...joinedCommunities].sort(() => Math.random() - 0.5);
                     const linkedCommunities = shuffledJoined.slice(0, numLinks);
 
-                    for (const communityId of linkedCommunities) {
-                        insertThreadCommunity.run(threadId, communityId);
+                    for (const community of linkedCommunities) {
+                        // community is now { id, stage, type }
+                        insertThreadCommunity.run(threadId, community.id, community.stage || '', community.type || '');
                     }
                 }
             }

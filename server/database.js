@@ -40,7 +40,26 @@ function initCommunitiesDb() {
             description TEXT NOT NULL,
             keywords TEXT NOT NULL,
             member_count INTEGER DEFAULT 0,
+            dimensions TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Add dimensions column if it doesn't exist (for existing databases)
+    const columns = communitiesDb.prepare("PRAGMA table_info(communities)").all().map(c => c.name);
+    if (!columns.includes('dimensions')) {
+        communitiesDb.exec(`ALTER TABLE communities ADD COLUMN dimensions TEXT`);
+    }
+
+    // Create sub_community_members table for tracking Level II/III membership counts
+    communitiesDb.exec(`
+        CREATE TABLE IF NOT EXISTS sub_community_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            community_id INTEGER NOT NULL,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            member_count INTEGER DEFAULT 0,
+            UNIQUE (community_id, stage, type)
         )
     `);
 
@@ -190,15 +209,27 @@ function initUsersDb() {
         usersDb.exec(`ALTER TABLE users ADD COLUMN location_living_street TEXT`);
     }
 
-    // Junction table for user-community membership
+    // Junction table for user-community membership (with sub-community support)
     usersDb.exec(`
         CREATE TABLE IF NOT EXISTS user_communities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             community_id INTEGER NOT NULL,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
             joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (user_id, community_id)
+            UNIQUE (user_id, community_id, stage, type)
         )
     `);
+
+    // Add stage and type columns if they don't exist (for existing databases)
+    const ucColumns = usersDb.prepare("PRAGMA table_info(user_communities)").all().map(c => c.name);
+    if (!ucColumns.includes('stage')) {
+        usersDb.exec(`ALTER TABLE user_communities ADD COLUMN stage TEXT`);
+    }
+    if (!ucColumns.includes('type')) {
+        usersDb.exec(`ALTER TABLE user_communities ADD COLUMN type TEXT`);
+    }
 
     // Table for user disease tags (conditions they care about)
     usersDb.exec(`
@@ -248,39 +279,137 @@ function usernameExists(username) {
     return result.count > 0;
 }
 
-// Join a community
-function joinCommunity(user_id, community_id) {
-    const stmt = usersDb.prepare(`
-        INSERT OR IGNORE INTO user_communities (user_id, community_id)
-        VALUES (?, ?)
-    `);
-    const result = stmt.run(user_id, community_id);
+// Join a community (with optional sub-community: stage and/or type)
+// Hierarchy: Level I (no stage/type) -> Level II (stage OR type) -> Level III (stage AND type)
+// Joining Level II auto-joins Level I
+// Joining Level III auto-joins Level II (both stage-only and type-only) and Level I
+function joinCommunity(user_id, community_id, stage = null, type = null) {
+    // Convert null to empty string for database storage
+    const stageValue = stage || '';
+    const typeValue = type || '';
+    const isLevelIII = stageValue && typeValue;
+    const isLevelII = (stageValue || typeValue) && !isLevelIII;
+    const isSubCommunity = stageValue || typeValue;
 
-    // Update member_count in communities table
-    if (result.changes > 0) {
-        communitiesDb.prepare(`
-            UPDATE communities SET member_count = member_count + 1 WHERE id = ?
-        `).run(community_id);
+    const insertMembership = usersDb.prepare(`
+        INSERT OR IGNORE INTO user_communities (user_id, community_id, stage, type)
+        VALUES (?, ?, ?, ?)
+    `);
+
+    const updateSubCount = communitiesDb.prepare(`
+        INSERT INTO sub_community_members (community_id, stage, type, member_count)
+        VALUES (?, ?, ?, 1)
+        ON CONFLICT(community_id, stage, type)
+        DO UPDATE SET member_count = member_count + 1
+    `);
+
+    // First, ensure user is member of Level I (parent community)
+    const checkLevelI = usersDb.prepare(`
+        SELECT COUNT(*) as count FROM user_communities
+        WHERE user_id = ? AND community_id = ? AND stage = '' AND type = ''
+    `).get(user_id, community_id);
+
+    let joinedLevelI = false;
+    if (checkLevelI.count === 0) {
+        // Join Level I first
+        const levelIResult = insertMembership.run(user_id, community_id, '', '');
+        if (levelIResult.changes > 0) {
+            joinedLevelI = true;
+            // Update main member_count
+            communitiesDb.prepare(`
+                UPDATE communities SET member_count = member_count + 1 WHERE id = ?
+            `).run(community_id);
+        }
     }
 
-    return result.changes > 0;
+    // If joining Level III, also join both Level II communities (stage-only and type-only)
+    if (isLevelIII) {
+        // Join Level II (stage-only)
+        const stageOnlyResult = insertMembership.run(user_id, community_id, stageValue, '');
+        if (stageOnlyResult.changes > 0) {
+            updateSubCount.run(community_id, stageValue, '');
+        }
+
+        // Join Level II (type-only)
+        const typeOnlyResult = insertMembership.run(user_id, community_id, '', typeValue);
+        if (typeOnlyResult.changes > 0) {
+            updateSubCount.run(community_id, '', typeValue);
+        }
+    }
+
+    // Join the target sub-community (Level II or Level III)
+    let joinedSubCommunity = false;
+    if (isSubCommunity) {
+        const result = insertMembership.run(user_id, community_id, stageValue, typeValue);
+
+        if (result.changes > 0) {
+            joinedSubCommunity = true;
+            // Update sub_community_members count
+            updateSubCount.run(community_id, stageValue, typeValue);
+        }
+    }
+
+    return isSubCommunity ? joinedSubCommunity : (joinedLevelI || checkLevelI.count > 0);
 }
 
-// Leave a community
-function leaveCommunity(user_id, community_id) {
-    const stmt = usersDb.prepare(`
-        DELETE FROM user_communities WHERE user_id = ? AND community_id = ?
-    `);
-    const result = stmt.run(user_id, community_id);
+// Leave a community (with optional sub-community: stage and/or type)
+// If leaving Level I (no stage/type), also leaves all Level II and III
+function leaveCommunity(user_id, community_id, stage = null, type = null) {
+    // Convert null to empty string for database storage
+    const stageValue = stage || '';
+    const typeValue = type || '';
+    const isLevelI = !stageValue && !typeValue;
 
-    // Update member_count in communities table
-    if (result.changes > 0) {
-        communitiesDb.prepare(`
-            UPDATE communities SET member_count = member_count - 1 WHERE id = ?
-        `).run(community_id);
+    if (isLevelI) {
+        // Leaving Level I: remove all memberships for this community (Level I, II, and III)
+        // First, get all sub-community memberships to update their counts
+        const subMemberships = usersDb.prepare(`
+            SELECT stage, type FROM user_communities
+            WHERE user_id = ? AND community_id = ? AND (stage != '' OR type != '')
+        `).all(user_id, community_id);
+
+        // Update sub_community_members counts
+        for (const sub of subMemberships) {
+            communitiesDb.prepare(`
+                UPDATE sub_community_members
+                SET member_count = member_count - 1
+                WHERE community_id = ? AND stage = ? AND type = ?
+            `).run(community_id, sub.stage, sub.type);
+        }
+
+        // Remove all memberships for this community
+        const stmt = usersDb.prepare(`
+            DELETE FROM user_communities WHERE user_id = ? AND community_id = ?
+        `);
+        const result = stmt.run(user_id, community_id);
+
+        // Update main member_count if Level I membership was removed
+        if (result.changes > 0) {
+            communitiesDb.prepare(`
+                UPDATE communities SET member_count = member_count - 1 WHERE id = ?
+            `).run(community_id);
+        }
+
+        return result.changes > 0;
+    } else {
+        // Leaving specific sub-community only
+        const stmt = usersDb.prepare(`
+            DELETE FROM user_communities
+            WHERE user_id = ? AND community_id = ? AND stage = ? AND type = ?
+        `);
+        const result = stmt.run(user_id, community_id, stageValue, typeValue);
+
+        if (result.changes > 0) {
+            // Update sub_community_members count
+            communitiesDb.prepare(`
+                UPDATE sub_community_members
+                SET member_count = member_count - 1
+                WHERE community_id = ? AND stage = ? AND type = ?
+            `).run(community_id, stageValue, typeValue);
+        }
+
+        return result.changes > 0;
     }
-
-    return result.changes > 0;
 }
 
 // Get all community IDs a user has joined
@@ -301,12 +430,55 @@ function getUserCommunities(user_id) {
     `).all(...communityIds);
 }
 
-// Check if user is member of a community
-function isUserInCommunity(user_id, community_id) {
-    const result = usersDb.prepare(`
-        SELECT COUNT(*) as count FROM user_communities WHERE user_id = ? AND community_id = ?
-    `).get(user_id, community_id);
-    return result.count > 0;
+// Check if user is member of a community (with optional sub-community check)
+function isUserInCommunity(user_id, community_id, stage = null, type = null) {
+    // Convert null to empty string
+    const stageValue = stage || '';
+    const typeValue = type || '';
+    const isLevelI = !stageValue && !typeValue;
+
+    if (isLevelI) {
+        // Check Level I membership
+        const result = usersDb.prepare(`
+            SELECT COUNT(*) as count FROM user_communities
+            WHERE user_id = ? AND community_id = ? AND stage = '' AND type = ''
+        `).get(user_id, community_id);
+        return result.count > 0;
+    } else {
+        // Check specific sub-community membership
+        const result = usersDb.prepare(`
+            SELECT COUNT(*) as count FROM user_communities
+            WHERE user_id = ? AND community_id = ? AND stage = ? AND type = ?
+        `).get(user_id, community_id, stageValue, typeValue);
+        return result.count > 0;
+    }
+}
+
+// Get all sub-community memberships for a user in a specific community
+function getUserSubCommunities(user_id, community_id) {
+    const results = usersDb.prepare(`
+        SELECT stage, type FROM user_communities
+        WHERE user_id = ? AND community_id = ? AND (stage != '' OR type != '')
+    `).all(user_id, community_id);
+    // Convert empty strings back to null for API response
+    return results.map(r => ({
+        stage: r.stage || null,
+        type: r.type || null
+    }));
+}
+
+// Get sub-community member counts for a community (for matrix display)
+function getSubCommunityMemberCounts(community_id) {
+    const results = communitiesDb.prepare(`
+        SELECT stage, type, member_count FROM sub_community_members
+        WHERE community_id = ?
+    `).all(community_id);
+    // Convert empty strings back to null for API response
+    return results.map(r => ({
+        stage: r.stage || null,
+        type: r.type || null,
+        member_count: r.member_count
+    }));
 }
 
 // ============ User Profile Functions ============
@@ -333,21 +505,63 @@ function getUserProfile(user_id) {
         SELECT hospital FROM user_hospitals WHERE user_id = ?
     `).all(user_id).map(row => row.hospital);
 
-    // Get joined communities
-    const communityIds = getUserCommunityIds(user_id);
-    let communities = [];
+    // Get all community memberships (including sub-communities)
+    const memberships = usersDb.prepare(`
+        SELECT community_id, stage, type FROM user_communities WHERE user_id = ?
+    `).all(user_id);
+
+    // Get unique community IDs
+    const communityIds = [...new Set(memberships.map(m => m.community_id))];
+
+    // Get community details
+    let communitiesMap = {};
     if (communityIds.length > 0) {
         const placeholders = communityIds.map(() => '?').join(',');
-        communities = communitiesDb.prepare(`
+        const communityRows = communitiesDb.prepare(`
             SELECT id, name FROM communities WHERE id IN (${placeholders})
         `).all(...communityIds);
+        communityRows.forEach(c => { communitiesMap[c.id] = c; });
+    }
+
+    // Build communities list with sub-community info
+    // Group by community and include the most specific sub-community membership
+    const communitiesWithDetails = [];
+    const processed = new Set();
+
+    for (const membership of memberships) {
+        const community = communitiesMap[membership.community_id];
+        if (!community) continue;
+
+        const stage = membership.stage || null;
+        const type = membership.type || null;
+
+        // Build display path
+        let displayPath = community.name;
+        const parts = [];
+        if (stage) parts.push(stage);
+        if (type) parts.push(type);
+        if (parts.length > 0) {
+            displayPath = `${community.name} > ${parts.join(' · ')}`;
+        }
+
+        const key = `${community.id}-${stage || ''}-${type || ''}`;
+        if (!processed.has(key)) {
+            processed.add(key);
+            communitiesWithDetails.push({
+                id: community.id,
+                name: community.name,
+                stage,
+                type,
+                displayPath
+            });
+        }
     }
 
     return {
         ...user,
         disease_tags: diseaseTags,
         hospitals: hospitals,
-        communities: communities
+        communities: communitiesWithDetails
     };
 }
 
@@ -432,8 +646,9 @@ function findUserByUsernamePublic(username) {
 }
 
 // Search users with filters
+// community_filters: [{id, stage, type}] - filters by community with optional stage/type
 function searchUsers({
-    community_ids, disease_tag, gender, age_min, age_max, location, location_district, location_street, hospital,
+    community_filters, disease_tag, gender, age_min, age_max, location, location_district, location_street, hospital,
     hukou, education, income_individual, income_family, consumption_level,
     housing_status, economic_dependency,
     exclude_user, limit = 50, offset = 0
@@ -442,19 +657,57 @@ function searchUsers({
     let userIds = new Set();
     let hasFilter = false;
 
-    // Filter by community membership
-    if (community_ids && community_ids.length > 0) {
+    // Filter by community membership (with optional stage/type)
+    if (community_filters && community_filters.length > 0) {
         hasFilter = true;
-        const placeholders = community_ids.map(() => '?').join(',');
-        const rows = usersDb.prepare(`
-            SELECT DISTINCT user_id FROM user_communities WHERE community_id IN (${placeholders})
-        `).all(...community_ids);
 
-        const communityUserIds = new Set(rows.map(r => r.user_id));
-        if (userIds.size === 0) {
-            userIds = communityUserIds;
-        } else {
-            userIds = new Set([...userIds].filter(id => communityUserIds.has(id)));
+        // For each community filter, find matching users
+        // A user matches if they are a member of the community at the specified level or below
+        // e.g., if filter is {id:1, stage:'0期', type:''}, match users in:
+        //   - (1, '0期', '') - exact Level II match
+        //   - (1, '0期', 'X') - any Level III with that stage
+        let matchingUserIds = null;
+
+        for (const filter of community_filters) {
+            const { id, stage, type } = filter;
+            let sql, params;
+
+            if (!stage && !type) {
+                // Level I filter: match any membership in this community
+                sql = `SELECT DISTINCT user_id FROM user_communities WHERE community_id = ?`;
+                params = [id];
+            } else if (stage && type) {
+                // Level III filter: match exact Level III
+                sql = `SELECT DISTINCT user_id FROM user_communities WHERE community_id = ? AND stage = ? AND type = ?`;
+                params = [id, stage, type];
+            } else if (stage) {
+                // Level II (stage only): match this stage (Level II or III with this stage)
+                sql = `SELECT DISTINCT user_id FROM user_communities WHERE community_id = ? AND stage = ?`;
+                params = [id, stage];
+            } else {
+                // Level II (type only): match this type (Level II or III with this type)
+                sql = `SELECT DISTINCT user_id FROM user_communities WHERE community_id = ? AND type = ?`;
+                params = [id, type];
+            }
+
+            const rows = usersDb.prepare(sql).all(...params);
+            const filterUserIds = new Set(rows.map(r => r.user_id));
+
+            // Union: user can match any of the community filters
+            if (matchingUserIds === null) {
+                matchingUserIds = filterUserIds;
+            } else {
+                // For multiple communities, user should be in any of them (OR)
+                filterUserIds.forEach(uid => matchingUserIds.add(uid));
+            }
+        }
+
+        if (matchingUserIds) {
+            if (userIds.size === 0) {
+                userIds = matchingUserIds;
+            } else {
+                userIds = new Set([...userIds].filter(id => matchingUserIds.has(id)));
+            }
         }
     }
 
@@ -467,7 +720,7 @@ function searchUsers({
         `).all(searchTerm);
 
         const diseaseUserIds = new Set(rows.map(r => r.user_id));
-        if (userIds.size === 0 && !community_ids?.length) {
+        if (userIds.size === 0 && !community_filters?.length) {
             userIds = diseaseUserIds;
         } else if (userIds.size > 0) {
             userIds = new Set([...userIds].filter(id => diseaseUserIds.has(id)));
@@ -485,7 +738,7 @@ function searchUsers({
         `).all(searchTerm);
 
         const hospitalUserIds = new Set(rows.map(r => r.user_id));
-        if (userIds.size === 0 && !community_ids?.length && !disease_tag?.trim()) {
+        if (userIds.size === 0 && !community_filters?.length && !disease_tag?.trim()) {
             userIds = hospitalUserIds;
         } else if (userIds.size > 0) {
             userIds = new Set([...userIds].filter(id => hospitalUserIds.has(id)));
@@ -601,7 +854,7 @@ function searchUsers({
         const idPlaceholders = [...userIds].map(() => '?').join(',');
         sql += ` AND id IN (${idPlaceholders})`;
         params = [...userIds, ...params];
-    } else if (community_ids?.length || disease_tag?.trim() || hospital?.trim()) {
+    } else if (community_filters?.length || disease_tag?.trim() || hospital?.trim()) {
         // If we had these filters but no matches, return empty
         return { users: [], total: 0 };
     }
@@ -666,43 +919,66 @@ function initThreadsDb() {
         )
     `);
 
-    // Junction table for thread-community many-to-many relationship
+    // Junction table for thread-community many-to-many relationship (with sub-community support)
     threadsDb.exec(`
         CREATE TABLE IF NOT EXISTS thread_communities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             thread_id INTEGER NOT NULL,
             community_id INTEGER NOT NULL,
-            PRIMARY KEY (thread_id, community_id)
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            UNIQUE (thread_id, community_id, stage, type)
         )
     `);
+
+    // Add stage and type columns if they don't exist (for existing databases)
+    const tcColumns = threadsDb.prepare("PRAGMA table_info(thread_communities)").all().map(c => c.name);
+    if (!tcColumns.includes('stage')) {
+        threadsDb.exec(`ALTER TABLE thread_communities ADD COLUMN stage TEXT`);
+    }
+    if (!tcColumns.includes('type')) {
+        threadsDb.exec(`ALTER TABLE thread_communities ADD COLUMN type TEXT`);
+    }
 
     const count = threadsDb.prepare('SELECT COUNT(*) as count FROM threads').get();
     console.log(`Threads DB: ${count.count} threads`);
 }
 
 // Create a new thread with optional community links
-function createThread({ user_id, title, content, community_ids = [] }) {
+// community_links can be:
+//   - Array of IDs: [1, 2, 3] (legacy format, binds to Level I only)
+//   - Array of objects: [{id: 1, stage: '', type: ''}, {id: 1, stage: '0期', type: '三阴性'}]
+function createThread({ user_id, title, content, community_ids = [], community_links = [] }) {
     const insertThread = threadsDb.prepare(`
         INSERT INTO threads (user_id, title, content)
         VALUES (@user_id, @title, @content)
     `);
 
-    const insertCommunity = threadsDb.prepare(`
-        INSERT INTO thread_communities (thread_id, community_id)
-        VALUES (?, ?)
+    const insertCommunityLink = threadsDb.prepare(`
+        INSERT OR IGNORE INTO thread_communities (thread_id, community_id, stage, type)
+        VALUES (?, ?, ?, ?)
     `);
 
-    const createWithCommunities = threadsDb.transaction(({ user_id, title, content, community_ids }) => {
+    const createWithCommunities = threadsDb.transaction(({ user_id, title, content, community_ids, community_links }) => {
         const result = insertThread.run({ user_id, title, content });
         const threadId = result.lastInsertRowid;
 
+        // Handle legacy format (array of IDs)
         for (const communityId of community_ids) {
-            insertCommunity.run(threadId, communityId);
+            insertCommunityLink.run(threadId, communityId, '', '');
+        }
+
+        // Handle new format (array of objects with stage/type)
+        for (const link of community_links) {
+            const stage = link.stage || '';
+            const type = link.type || '';
+            insertCommunityLink.run(threadId, link.id, stage, type);
         }
 
         return threadId;
     });
 
-    return createWithCommunities({ user_id, title, content, community_ids });
+    return createWithCommunities({ user_id, title, content, community_ids, community_links });
 }
 
 // Get all threads for a user
@@ -736,6 +1012,13 @@ function getThreadById(id) {
     return { ...thread, community_ids };
 }
 
+// Get thread community details with stage/type info
+function getThreadCommunityDetails(threadId) {
+    return threadsDb.prepare(`
+        SELECT community_id, stage, type FROM thread_communities WHERE thread_id = ?
+    `).all(threadId);
+}
+
 // Delete a thread (and its community links)
 function deleteThread(id, user_id) {
     const deleteLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
@@ -750,12 +1033,42 @@ function deleteThread(id, user_id) {
     return deleteWithLinks(id, user_id);
 }
 
-// Get threads by community ID with pagination
-function getThreadsByCommunityId(community_id, limit = 10, offset = 0) {
-    // Get thread IDs linked to this community
-    const threadIds = threadsDb.prepare(`
-        SELECT thread_id FROM thread_communities WHERE community_id = ?
-    `).all(community_id).map(row => row.thread_id);
+// Get threads by community ID with pagination (supports sub-community filtering)
+// Thread visibility logic (bubble up):
+// - Level I (no stage/type): shows ALL threads for this community
+// - Level II (stage only): shows threads with matching stage (any type or no type)
+// - Level II (type only): shows threads with matching type (any stage or no stage)
+// - Level III (both stage and type): shows only threads with exact match
+function getThreadsByCommunityId(community_id, limit = 10, offset = 0, stage = null, type = null) {
+    // Convert null/empty to empty string for comparison
+    const stageValue = stage || '';
+    const typeValue = type || '';
+    let threadIds;
+
+    if (!stageValue && !typeValue) {
+        // Level I: get ALL threads for this community
+        threadIds = threadsDb.prepare(`
+            SELECT DISTINCT thread_id FROM thread_communities WHERE community_id = ?
+        `).all(community_id).map(row => row.thread_id);
+    } else if (stageValue && typeValue) {
+        // Level III: get threads with exact stage AND type match
+        threadIds = threadsDb.prepare(`
+            SELECT DISTINCT thread_id FROM thread_communities
+            WHERE community_id = ? AND stage = ? AND type = ?
+        `).all(community_id, stageValue, typeValue).map(row => row.thread_id);
+    } else if (stageValue) {
+        // Level II (stage): get threads with matching stage (any type)
+        threadIds = threadsDb.prepare(`
+            SELECT DISTINCT thread_id FROM thread_communities
+            WHERE community_id = ? AND stage = ?
+        `).all(community_id, stageValue).map(row => row.thread_id);
+    } else {
+        // Level II (type): get threads with matching type (any stage)
+        threadIds = threadsDb.prepare(`
+            SELECT DISTINCT thread_id FROM thread_communities
+            WHERE community_id = ? AND type = ?
+        `).all(community_id, typeValue).map(row => row.thread_id);
+    }
 
     if (threadIds.length === 0) {
         return { threads: [], total: 0 };
@@ -774,42 +1087,62 @@ function getThreadsByCommunityId(community_id, limit = 10, offset = 0) {
         LIMIT ? OFFSET ?
     `).all(...threadIds, limit, offset);
 
-    // Get community IDs for each thread
-    const getCommunityIds = threadsDb.prepare(`
-        SELECT community_id FROM thread_communities WHERE thread_id = ?
+    // Get community info (with stage/type) for each thread
+    const getCommunityInfo = threadsDb.prepare(`
+        SELECT community_id, stage, type FROM thread_communities WHERE thread_id = ?
     `);
 
-    const threadsWithCommunities = threads.map(thread => ({
-        ...thread,
-        community_ids: getCommunityIds.all(thread.id).map(row => row.community_id)
-    }));
+    const threadsWithCommunities = threads.map(thread => {
+        const communityInfo = getCommunityInfo.all(thread.id);
+        return {
+            ...thread,
+            community_ids: communityInfo.map(row => row.community_id),
+            // Convert empty strings to null for API response
+            community_details: communityInfo.map(row => ({
+                community_id: row.community_id,
+                stage: row.stage || null,
+                type: row.type || null
+            }))
+        };
+    });
 
     return { threads: threadsWithCommunities, total };
 }
 
 // Update a thread
-function updateThread({ id, user_id, title, content, community_ids = [] }) {
-    const updateThread = threadsDb.prepare(`
+// community_links: [{id: 1, stage: '', type: ''}, {id: 1, stage: '0期', type: '三阴性'}]
+function updateThread({ id, user_id, title, content, community_ids = [], community_links = [] }) {
+    const updateThreadStmt = threadsDb.prepare(`
         UPDATE threads SET title = @title, content = @content
         WHERE id = @id AND user_id = @user_id
     `);
 
     const deleteLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
-    const insertLink = threadsDb.prepare('INSERT INTO thread_communities (thread_id, community_id) VALUES (?, ?)');
+    const insertLink = threadsDb.prepare('INSERT OR IGNORE INTO thread_communities (thread_id, community_id, stage, type) VALUES (?, ?, ?, ?)');
 
-    const updateWithCommunities = threadsDb.transaction(({ id, user_id, title, content, community_ids }) => {
-        const result = updateThread.run({ id, user_id, title, content });
+    const updateWithCommunities = threadsDb.transaction(({ id, user_id, title, content, community_ids, community_links }) => {
+        const result = updateThreadStmt.run({ id, user_id, title, content });
         if (result.changes === 0) return false;
 
         // Update community links
         deleteLinks.run(id);
+
+        // Handle legacy format (array of IDs)
         for (const communityId of community_ids) {
-            insertLink.run(id, communityId);
+            insertLink.run(id, communityId, '', '');
         }
+
+        // Handle new format (array of objects with stage/type)
+        for (const link of community_links) {
+            const stage = link.stage || '';
+            const type = link.type || '';
+            insertLink.run(id, link.id, stage, type);
+        }
+
         return true;
     });
 
-    return updateWithCommunities({ id, user_id, title, content, community_ids });
+    return updateWithCommunities({ id, user_id, title, content, community_ids, community_links });
 }
 
 // ============ Replies Database ============
@@ -905,6 +1238,7 @@ module.exports = {
     getAllCommunities,
     searchCommunities,
     getCommunityById,
+    getSubCommunityMemberCounts,
     // User functions
     createUser,
     findUserByUsername,
@@ -916,6 +1250,7 @@ module.exports = {
     getUserCommunityIds,
     getUserCommunities,
     isUserInCommunity,
+    getUserSubCommunities,
     // User profile functions
     getUserProfile,
     updateUserProfile,
@@ -925,6 +1260,7 @@ module.exports = {
     createThread,
     getThreadsByUserId,
     getThreadById,
+    getThreadCommunityDetails,
     getThreadsByCommunityId,
     deleteThread,
     updateThread,

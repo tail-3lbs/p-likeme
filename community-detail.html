@@ -39,8 +39,15 @@
             <div class="container">
                 <!-- 社区信息卡片 -->
                 <div class="community-detail-card">
+                    <!-- Breadcrumb for Level II/III -->
+                    <div class="community-breadcrumb" id="community-breadcrumb" style="display: none;">
+                        <!-- Breadcrumb will be loaded here -->
+                    </div>
                     <div class="community-detail-header">
-                        <h1 id="community-name"></h1>
+                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                            <span class="level-badge level-1" id="level-badge">一级社区</span>
+                            <h1 id="community-name" style="margin: 0;"></h1>
+                        </div>
                         <div class="community-detail-meta">
                             <span class="member-count" id="community-members"></span>
                         </div>
@@ -53,6 +60,14 @@
                             <!-- Keywords will be loaded here -->
                         </div>
                         <button class="btn btn-primary" id="join-btn">加入社区</button>
+                    </div>
+
+                    <!-- Sub-communities section (only shown for Level I with dimensions) -->
+                    <div class="sub-communities-section" id="sub-communities-section" style="display: none;">
+                        <h3>细分社区</h3>
+                        <div id="sub-communities-container">
+                            <!-- Matrix or list will be rendered here -->
+                        </div>
                     </div>
                 </div>
 

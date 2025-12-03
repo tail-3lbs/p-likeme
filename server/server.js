@@ -6,7 +6,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById } = require('./database');
+const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById, getSubCommunityMemberCounts, isUserInCommunity, getUserSubCommunities } = require('./database');
 const authRoutes = require('./routes/auth');
 const { authMiddleware } = require('./routes/auth');
 const threadsRoutes = require('./routes/threads');
@@ -37,6 +37,7 @@ app.use('/api/threads', repliesRoutes);
  * GET /api/communities
  * Get all communities or search
  * Query params: ?q=搜索词
+ * Note: Search also looks through sub-community dimension values and returns hints
  */
 app.get('/api/communities', (req, res) => {
     try {
@@ -47,6 +48,74 @@ app.get('/api/communities', (req, res) => {
         if (q && q.trim()) {
             // Search - return all matches
             communities = searchCommunities(q.trim());
+            const searchTerm = q.trim().toLowerCase();
+
+            // Also search through dimension values for sub-community hints
+            const allCommunities = getAllCommunities();
+
+            // Add hint property for communities that match via dimension values
+            communities = communities.map(community => {
+                if (community.dimensions) {
+                    try {
+                        const dims = JSON.parse(community.dimensions);
+                        const matchedValues = [];
+
+                        if (dims.stage && dims.stage.values) {
+                            dims.stage.values.forEach(val => {
+                                if (val.toLowerCase().includes(searchTerm)) {
+                                    matchedValues.push(val);
+                                }
+                            });
+                        }
+                        if (dims.type && dims.type.values) {
+                            dims.type.values.forEach(val => {
+                                if (val.toLowerCase().includes(searchTerm)) {
+                                    matchedValues.push(val);
+                                }
+                            });
+                        }
+
+                        if (matchedValues.length > 0) {
+                            return { ...community, subCommunityHint: matchedValues.join(', ') };
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+                return community;
+            });
+
+            // Also find communities that weren't in results but have matching dimension values
+            const resultIds = new Set(communities.map(c => c.id));
+            allCommunities.forEach(community => {
+                if (!resultIds.has(community.id) && community.dimensions) {
+                    try {
+                        const dims = JSON.parse(community.dimensions);
+                        const matchedValues = [];
+
+                        if (dims.stage && dims.stage.values) {
+                            dims.stage.values.forEach(val => {
+                                if (val.toLowerCase().includes(searchTerm)) {
+                                    matchedValues.push(val);
+                                }
+                            });
+                        }
+                        if (dims.type && dims.type.values) {
+                            dims.type.values.forEach(val => {
+                                if (val.toLowerCase().includes(searchTerm)) {
+                                    matchedValues.push(val);
+                                }
+                            });
+                        }
+
+                        if (matchedValues.length > 0) {
+                            communities.push({ ...community, subCommunityHint: matchedValues.join(', ') });
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+            });
         } else {
             // Get all communities
             communities = getAllCommunities();
@@ -69,10 +138,12 @@ app.get('/api/communities', (req, res) => {
 /**
  * GET /api/communities/:id
  * Get a single community by ID
+ * Query params: ?stage=xxx&type=xxx for sub-community info
  */
 app.get('/api/communities/:id', (req, res) => {
     try {
         const { id } = req.params;
+        const { stage, type } = req.query;
         const community = getCommunityById(parseInt(id));
 
         if (!community) {
@@ -82,9 +153,32 @@ app.get('/api/communities/:id', (req, res) => {
             });
         }
 
+        // Parse dimensions if they exist
+        let dimensions = null;
+        if (community.dimensions) {
+            try {
+                dimensions = JSON.parse(community.dimensions);
+            } catch (e) {
+                console.error('Error parsing dimensions:', e);
+            }
+        }
+
+        // Get sub-community member counts for matrix display
+        const subCommunityMembers = getSubCommunityMemberCounts(parseInt(id));
+
+        // Build response with parsed dimensions and sub-community info
+        const response = {
+            ...community,
+            dimensions,
+            subCommunityMembers,
+            // Current sub-community context (if viewing Level II or III)
+            currentStage: stage || null,
+            currentType: type || null
+        };
+
         res.json({
             success: true,
-            data: community
+            data: response
         });
     } catch (error) {
         console.error('Error fetching community:', error);
@@ -98,7 +192,12 @@ app.get('/api/communities/:id', (req, res) => {
 /**
  * GET /api/communities/:id/threads
  * Get all threads linked to a community (public, with pagination)
- * Query params: ?limit=10&offset=0
+ * Query params: ?limit=10&offset=0&stage=xxx&type=xxx
+ * Sub-community filtering:
+ * - No stage/type: shows ALL threads for this community (Level I)
+ * - stage only: shows threads with matching stage (Level II)
+ * - type only: shows threads with matching type (Level II)
+ * - both: shows only threads with exact match (Level III)
  */
 app.get('/api/communities/:id/threads', (req, res) => {
     try {
@@ -114,8 +213,10 @@ app.get('/api/communities/:id/threads', (req, res) => {
 
         const limit = parseInt(req.query.limit) || 10;
         const offset = parseInt(req.query.offset) || 0;
+        const stage = req.query.stage || null;
+        const type = req.query.type || null;
 
-        const { threads, total } = getThreadsByCommunityId(communityId, limit, offset);
+        const { threads, total } = getThreadsByCommunityId(communityId, limit, offset, stage, type);
 
         // Add author info and community names for each thread
         const communities = getAllCommunities();
@@ -130,7 +231,9 @@ app.get('/api/communities/:id/threads', (req, res) => {
                 communities: thread.community_ids.map(id => ({
                     id,
                     name: communityMap[id] || '未知社区'
-                }))
+                })),
+                // Include sub-community details for display
+                communityDetails: thread.community_details || []
             };
         });
 
@@ -153,11 +256,27 @@ app.get('/api/communities/:id/threads', (req, res) => {
 /**
  * GET /api/user/communities
  * Get communities the current user has joined
- * Query params: ?details=true for full community objects, otherwise returns IDs only
+ * Query params:
+ *   ?details=true for full community objects
+ *   ?community_id=X to get sub-community memberships for a specific community
  */
 app.get('/api/user/communities', authMiddleware, (req, res) => {
     try {
-        const { details } = req.query;
+        const { details, community_id } = req.query;
+
+        // If community_id is provided, get sub-community memberships for that community
+        if (community_id) {
+            const subCommunities = getUserSubCommunities(req.user.id, parseInt(community_id));
+            const isLevelIMember = isUserInCommunity(req.user.id, parseInt(community_id));
+            res.json({
+                success: true,
+                data: {
+                    isLevelIMember,
+                    subCommunities
+                }
+            });
+            return;
+        }
 
         if (details === 'true') {
             const communities = getUserCommunities(req.user.id);
@@ -184,10 +303,13 @@ app.get('/api/user/communities', authMiddleware, (req, res) => {
 /**
  * POST /api/communities/:id/join
  * Join a community (requires authentication)
+ * Body params: { stage, type } for sub-community joining
+ * Note: Joining a sub-community auto-joins Level I
  */
 app.post('/api/communities/:id/join', authMiddleware, (req, res) => {
     try {
         const communityId = parseInt(req.params.id);
+        const { stage, type } = req.body || {};
         const community = getCommunityById(communityId);
 
         if (!community) {
@@ -197,19 +319,20 @@ app.post('/api/communities/:id/join', authMiddleware, (req, res) => {
             });
         }
 
-        const joined = joinCommunity(req.user.id, communityId);
+        const joined = joinCommunity(req.user.id, communityId, stage || null, type || null);
+        const isSubCommunity = stage || type;
 
         if (joined) {
             res.json({
                 success: true,
-                message: '加入成功',
-                data: { community_id: communityId }
+                message: isSubCommunity ? '加入细分社区成功' : '加入成功',
+                data: { community_id: communityId, stage: stage || null, type: type || null }
             });
         } else {
             res.json({
                 success: true,
-                message: '您已经是该社区成员',
-                data: { community_id: communityId }
+                message: isSubCommunity ? '您已经是该细分社区成员' : '您已经是该社区成员',
+                data: { community_id: communityId, stage: stage || null, type: type || null }
             });
         }
     } catch (error) {
@@ -224,23 +347,28 @@ app.post('/api/communities/:id/join', authMiddleware, (req, res) => {
 /**
  * DELETE /api/communities/:id/leave
  * Leave a community (requires authentication)
+ * Query params: ?stage=xxx&type=xxx for leaving specific sub-community
+ * Note: Leaving Level I (no stage/type) auto-leaves all Level II and III
  */
 app.delete('/api/communities/:id/leave', authMiddleware, (req, res) => {
     try {
         const communityId = parseInt(req.params.id);
-        const left = leaveCommunity(req.user.id, communityId);
+        const { stage, type } = req.query;
+        const isSubCommunity = stage || type;
+
+        const left = leaveCommunity(req.user.id, communityId, stage || null, type || null);
 
         if (left) {
             res.json({
                 success: true,
-                message: '已退出社区',
-                data: { community_id: communityId }
+                message: isSubCommunity ? '已退出细分社区' : '已退出社区',
+                data: { community_id: communityId, stage: stage || null, type: type || null }
             });
         } else {
             res.json({
                 success: true,
-                message: '您尚未加入该社区',
-                data: { community_id: communityId }
+                message: isSubCommunity ? '您尚未加入该细分社区' : '您尚未加入该社区',
+                data: { community_id: communityId, stage: stage || null, type: type || null }
             });
         }
     } catch (error) {

@@ -348,11 +348,15 @@ router.put('/profile', authMiddleware, (req, res) => {
 /**
  * GET /api/auth/users/search
  * Search users with filters (public, no auth required)
+ * Query params:
+ *   - communities: comma-separated community IDs (legacy)
+ *   - community_filters: JSON array [{id, stage, type}] for sub-community filtering
  */
 router.get('/users/search', (req, res) => {
     try {
         const {
-            communities,  // comma-separated community IDs
+            communities,  // comma-separated community IDs (legacy)
+            community_filters,  // JSON array [{id, stage, type}]
             disease_tag,
             gender,
             age_min,
@@ -373,14 +377,24 @@ router.get('/users/search', (req, res) => {
             offset = 0
         } = req.query;
 
-        // Parse community IDs
-        let community_ids = [];
-        if (communities) {
-            community_ids = communities.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        // Parse community filters (new format with stage/type support)
+        let parsedCommunityFilters = [];
+        if (community_filters) {
+            try {
+                parsedCommunityFilters = JSON.parse(community_filters);
+            } catch (e) {
+                console.error('Failed to parse community_filters:', e);
+            }
+        } else if (communities) {
+            // Legacy format: comma-separated IDs
+            parsedCommunityFilters = communities.split(',')
+                .map(id => parseInt(id.trim()))
+                .filter(id => !isNaN(id))
+                .map(id => ({ id, stage: '', type: '' }));
         }
 
         const result = searchUsers({
-            community_ids,
+            community_filters: parsedCommunityFilters,
             disease_tag,
             gender,
             age_min,

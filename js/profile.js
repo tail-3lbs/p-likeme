@@ -125,14 +125,28 @@ function renderViewMode() {
     const joinDate = new Date(profileData.created_at);
     document.getElementById('display-join-date').textContent = `加入于 ${joinDate.toLocaleDateString('zh-CN')}`;
 
-    // Communities
+    // Communities (with sub-community info)
     const communitiesEl = document.getElementById('display-communities');
     if (profileData.communities && profileData.communities.length > 0) {
-        communitiesEl.innerHTML = profileData.communities.map(c =>
-            `<a href="community-detail.html?id=${c.id}" class="profile-tag community-tag">${c.name}</a>`
-        ).join('');
+        communitiesEl.innerHTML = profileData.communities.map(c => {
+            // Build URL with stage/type parameters
+            let href = `community-detail.html?id=${c.id}`;
+            if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
+            if (c.type) href += `&type=${encodeURIComponent(c.type)}`;
+
+            // Use displayPath if available, otherwise just the name
+            const displayText = c.displayPath || c.name;
+            return `<a href="${href}" class="profile-tag community-tag">${escapeHtml(displayText)}</a>`;
+        }).join('');
     } else {
         communitiesEl.innerHTML = '<span class="empty-hint">暂未加入任何社区</span>';
+    }
+
+    // Helper function for HTML escaping
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Disease tags

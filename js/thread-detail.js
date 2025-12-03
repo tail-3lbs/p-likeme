@@ -104,12 +104,17 @@ function renderThread(thread) {
     document.getElementById('thread-date').textContent = formatDate(thread.created_at);
     document.getElementById('thread-body').textContent = thread.content;
 
-    // Render communities
+    // Render communities with full path (including stage/type)
     const communitiesEl = document.getElementById('thread-communities');
     if (thread.communities && thread.communities.length > 0) {
-        communitiesEl.innerHTML = thread.communities.map(c =>
-            `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`
-        ).join('');
+        communitiesEl.innerHTML = thread.communities.map(c => {
+            // Build URL with stage/type parameters
+            let href = `community-detail.html?id=${c.id}`;
+            if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
+            if (c.type) href += `&type=${encodeURIComponent(c.type)}`;
+
+            return `<span class="community-tag" data-community-id="${c.id}" data-stage="${c.stage || ''}" data-type="${c.type || ''}" data-href="${href}">${escapeHtml(c.displayPath)}</span>`;
+        }).join('');
     } else {
         communitiesEl.innerHTML = '';
     }
@@ -590,11 +595,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadThread();
     initReplySection();
 
-    // Community tag clicks - redirect to community detail page
+    // Community tag clicks - redirect to community detail page (with stage/type if present)
     document.getElementById('thread-communities').addEventListener('click', (e) => {
-        const tag = e.target.closest('.community-tag[data-community-id]');
+        const tag = e.target.closest('.community-tag[data-href]');
         if (tag) {
-            window.location.href = `community-detail.html?id=${tag.dataset.communityId}`;
+            window.location.href = tag.dataset.href;
         }
     });
 });
