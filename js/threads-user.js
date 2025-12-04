@@ -169,8 +169,11 @@ function renderThreads(threads) {
                 </div>
                 <p>${escapeHtml(thread.content)}</p>
             </a>
-            <div class="thread-communities">
-                ${thread.communities.map(c => `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`).join('')}
+            <div class="thread-card-info">
+                <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
+                <div class="thread-communities">
+                    ${thread.communities.map(c => `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`).join('')}
+                </div>
             </div>
             ${isOwnPage ? `
             <div class="thread-card-footer">

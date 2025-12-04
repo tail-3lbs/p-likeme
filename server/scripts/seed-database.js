@@ -173,6 +173,44 @@ const sampleReplyToReplies = [
     '感谢你的分享！'
 ];
 
+// Sample guru questions
+const sampleGuruQuestionTitles = [
+    '请问您当时是怎么发现的？',
+    '治疗过程中有什么需要特别注意的吗？',
+    '饮食方面有什么建议？',
+    '运动方面应该注意什么？',
+    '怎么调节心态？',
+    '家人应该怎么配合？',
+    '复查频率是怎样的？',
+    '有没有推荐的医院或医生？',
+    '副作用是怎么应对的？',
+    '日常生活有什么改变？'
+];
+
+const sampleGuruQuestionContents = [
+    '我最近刚确诊，心里很慌。想请教一下您当时是怎么发现问题的？有什么早期症状吗？',
+    '马上要开始治疗了，有些紧张。想问问您在治疗过程中有什么需要特别注意的事项吗？',
+    '医生说要注意饮食，但具体应该怎么吃呢？有没有什么食物是一定要避免的？',
+    '我平时喜欢运动，确诊后不知道还能不能继续。请问运动方面有什么建议吗？',
+    '最近心情很低落，看到您分享的经历很受鼓舞。想请教您是怎么调整心态的？',
+    '家人都很担心我，有时候反而给我压力。请问您觉得家人应该怎么配合比较好？',
+    '治疗结束后需要定期复查吗？一般多久查一次？主要查什么项目？',
+    '您是在哪家医院治疗的？能推荐一下吗？或者有没有认识的好医生？',
+    '听说治疗会有一些副作用，想问问您是怎么应对的？有没有什么缓解的方法？',
+    '想知道确诊后您的日常生活有什么改变？作息、工作这些方面呢？'
+];
+
+const sampleGuruQuestionReplies = [
+    '谢谢你的问题。根据我的经验...',
+    '这是个很好的问题！我建议...',
+    '我当时也有同样的困惑。后来发现...',
+    '你的担心是很正常的。我的建议是...',
+    '这个问题我来详细说说...',
+    '根据我的亲身经历...',
+    '首先，不要太焦虑。关于这个问题...',
+    '我来分享一下我的做法...'
+];
+
 // Profile data for users
 const genders = ['女', '女', '女', '女', '男', '其他']; // Weighted towards female
 
@@ -209,6 +247,18 @@ const diseaseTags = [
     '抑郁症', '焦虑症', '失眠', '产后抑郁',
     '甲状腺结节', '骨质疏松', '更年期综合征',
     'HPV感染', '乳腺增生', '乳腺结节'
+];
+
+// Guru intro samples (multi-line)
+const guruIntros = [
+    '作为一名乳腺癌康复者，我经历了从确诊到治疗再到康复的全过程。\n\n希望能用我的经验帮助更多正在经历同样困境的姐妹们。在这里，你可以问我任何关于治疗、康复、心态调整的问题。',
+    '我是一名内分泌科医生，同时也是糖尿病患者。双重身份让我更能理解病友们的处境。\n\n欢迎大家向我咨询血糖管理、饮食控制、运动方案等方面的问题。',
+    '从抑郁症走出来已经三年了。这段经历让我更加珍惜生活，也让我想要帮助更多还在黑暗中的朋友。\n\n如果你正在经历困难，请相信，隧道的尽头一定有光。',
+    '作为试管婴儿成功的过来人，我深知这条路的艰辛。三次促排，两次移植，终于迎来了我的宝宝。\n\n如果你正在备孕路上，有任何疑问都可以问我。',
+    '子宫内膜异位症让我痛苦了十多年，尝试过各种治疗方法。现在终于找到了适合自己的方案。\n\n希望我的经验能帮助到正在寻找出路的你。',
+    '确诊宫颈癌的那一刻，我以为人生就此结束。但现在回头看，那只是一个新的开始。\n\n五年抗癌路，我学会了很多，也愿意把这些分享给需要的人。',
+    '作为焦虑症患者，我曾经连门都不敢出。通过系统的治疗和自我调节，现在的我已经能够正常生活工作。\n\n如果你也在与焦虑斗争，欢迎来找我聊聊。',
+    '心血管疾病让我不得不改变整个生活方式。但这也让我变得更加健康。\n\n现在我想把这些年积累的心血管健康知识分享给大家。'
 ];
 
 // New profile fields
@@ -317,6 +367,33 @@ function initDb() {
             consumption_level TEXT,
             housing_status TEXT,
             economic_dependency TEXT,
+            is_guru INTEGER DEFAULT 0,
+            guru_intro TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Guru questions table
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS guru_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guru_user_id INTEGER NOT NULL,
+            asker_user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            reply_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Guru question replies table
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS guru_question_replies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            parent_reply_id INTEGER DEFAULT NULL,
+            content TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -407,6 +484,8 @@ function clearAllData() {
     threadsDb.exec("DELETE FROM sqlite_sequence WHERE name='threads'");
 
     // Clear users database
+    usersDb.exec('DELETE FROM guru_question_replies');
+    usersDb.exec('DELETE FROM guru_questions');
     usersDb.exec('DELETE FROM user_communities');
     usersDb.exec('DELETE FROM user_disease_tags');
     usersDb.exec('DELETE FROM user_hospitals');
@@ -414,6 +493,8 @@ function clearAllData() {
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='users'");
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_disease_tags'");
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_hospitals'");
+    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='guru_questions'");
+    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='guru_question_replies'");
 
     // Clear communities database
     communitiesDb.exec('DELETE FROM sub_community_members');
@@ -456,9 +537,12 @@ function seedUsers() {
         INSERT INTO users (username, password_hash, gender, age, profession, marriage_status,
             location_from, location_living, location_living_district, location_living_street,
             income_individual, income_family, family_size, hukou, education,
-            consumption_level, housing_status, economic_dependency)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            consumption_level, housing_status, economic_dependency, is_guru, guru_intro)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+
+    // Randomly select 8 users to be gurus (user IDs 5, 12, 23, 34, 45, 56, 67, 78)
+    const guruUserNumbers = [5, 12, 23, 34, 45, 56, 67, 78];
 
     const insertDiseaseTag = usersDb.prepare(`
         INSERT INTO user_disease_tags (user_id, tag) VALUES (?, ?)
@@ -510,11 +594,15 @@ function seedUsers() {
             const housing_status = Math.random() < 0.6 ? pickRandom(housingStatuses) : null;
             const economic_dependency = Math.random() < 0.55 ? pickRandom(economicDependencyLevels) : null;
 
+            // Determine if this user is a guru
+            const isGuru = guruUserNumbers.includes(i) ? 1 : 0;
+            const guruIntro = isGuru ? pickRandom(guruIntros) : null;
+
             const result = insertUser.run(
                 username, password_hash, gender, age, profession, marriage_status,
                 location_from, location_living, location_living_district, location_living_street,
                 income_individual, income_family, family_size, hukou, education,
-                consumption_level, housing_status, economic_dependency
+                consumption_level, housing_status, economic_dependency, isGuru, guruIntro
             );
             const userId = Number(result.lastInsertRowid);
 
@@ -543,7 +631,10 @@ function seedUsers() {
     const diseaseTagCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_disease_tags').get();
     const hospitalCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_hospitals').get();
 
+    const guruCount = usersDb.prepare('SELECT COUNT(*) as count FROM users WHERE is_guru = 1').get();
+
     console.log('   100 users created with profile data.');
+    console.log(`   ${guruCount.count} users designated as gurus (明星).`);
     console.log(`   ${diseaseTagCount.count} disease tags assigned.`);
     console.log(`   ${hospitalCount.count} hospital records created.`);
     console.log('   Username format: user001 to user100');
@@ -830,32 +921,128 @@ function generateReplies() {
     console.log(`   ${stackedReplies} stacked replies (within cards).`);
 }
 
+function generateGuruQuestions() {
+    console.log('Step 7: Generating guru questions and replies...');
+
+    // Get all gurus and non-guru users
+    const gurus = usersDb.prepare('SELECT id, username FROM users WHERE is_guru = 1').all();
+    const nonGuruUsers = usersDb.prepare('SELECT id FROM users WHERE is_guru = 0').all();
+
+    if (gurus.length === 0) {
+        console.log('   No gurus found, skipping guru questions.');
+        return;
+    }
+
+    const insertQuestion = usersDb.prepare(`
+        INSERT INTO guru_questions (guru_user_id, asker_user_id, title, content, reply_count, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertReply = usersDb.prepare(`
+        INSERT INTO guru_question_replies (question_id, user_id, parent_reply_id, content, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    let totalQuestions = 0;
+    let totalReplies = 0;
+
+    const generateAll = usersDb.transaction(() => {
+        for (const guru of gurus) {
+            // Each guru gets 2-5 questions
+            const numQuestions = Math.floor(Math.random() * 4) + 2;
+
+            for (let i = 0; i < numQuestions; i++) {
+                const asker = pickRandom(nonGuruUsers);
+                const title = pickRandom(sampleGuruQuestionTitles);
+                const content = pickRandom(sampleGuruQuestionContents);
+
+                // Random time (1-20 days ago)
+                const now = new Date();
+                const daysAgo = Math.floor(Math.random() * 20) + 1;
+                const questionTime = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+                const questionTimestamp = questionTime.toISOString().replace('T', ' ').substring(0, 19);
+
+                // Insert question with 0 reply_count initially
+                const result = insertQuestion.run(guru.id, asker.id, title, content, 0, questionTimestamp);
+                const questionId = Number(result.lastInsertRowid);
+                totalQuestions++;
+
+                // 70% chance the guru replies
+                let replyCount = 0;
+                if (Math.random() < 0.7) {
+                    const replyContent = pickRandom(sampleGuruQuestionReplies);
+                    const hoursLater = Math.floor(Math.random() * 48) + 1;
+                    const replyTime = new Date(questionTime.getTime() + hoursLater * 60 * 60 * 1000);
+                    const replyTimestamp = replyTime.toISOString().replace('T', ' ').substring(0, 19);
+
+                    insertReply.run(questionId, guru.id, null, replyContent, replyTimestamp);
+                    totalReplies++;
+                    replyCount++;
+
+                    // 40% chance of follow-up from asker
+                    if (Math.random() < 0.4) {
+                        const followUpContent = pickRandom(sampleReplyToReplies);
+                        const followUpTime = new Date(replyTime.getTime() + Math.floor(Math.random() * 24) * 60 * 60 * 1000);
+                        const followUpTimestamp = followUpTime.toISOString().replace('T', ' ').substring(0, 19);
+
+                        insertReply.run(questionId, asker.id, null, followUpContent, followUpTimestamp);
+                        totalReplies++;
+                        replyCount++;
+                    }
+                }
+
+                // Update reply count
+                if (replyCount > 0) {
+                    usersDb.prepare('UPDATE guru_questions SET reply_count = ? WHERE id = ?').run(replyCount, questionId);
+                }
+            }
+        }
+    });
+
+    generateAll();
+
+    console.log(`   ${totalQuestions} guru questions created.`);
+    console.log(`   ${totalReplies} guru question replies created.`);
+}
+
 function printSummary() {
     console.log('\n========== SEED COMPLETE ==========\n');
 
     const communityCount = communitiesDb.prepare('SELECT COUNT(*) as count FROM communities').get();
     const userCount = usersDb.prepare('SELECT COUNT(*) as count FROM users').get();
+    const guruCount = usersDb.prepare('SELECT COUNT(*) as count FROM users WHERE is_guru = 1').get();
     const membershipCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_communities').get();
     const threadCount = threadsDb.prepare('SELECT COUNT(*) as count FROM threads').get();
     const threadCommunityCount = threadsDb.prepare('SELECT COUNT(*) as count FROM thread_communities').get();
     const replyCount = repliesDb.prepare('SELECT COUNT(*) as count FROM replies').get();
     const topLevelReplyCount = repliesDb.prepare('SELECT COUNT(*) as count FROM replies WHERE parent_reply_id IS NULL').get();
+    const guruQuestionCount = usersDb.prepare('SELECT COUNT(*) as count FROM guru_questions').get();
+    const guruQuestionReplyCount = usersDb.prepare('SELECT COUNT(*) as count FROM guru_question_replies').get();
 
     console.log('Database Statistics:');
     console.log(`  Communities:            ${communityCount.count}`);
     console.log(`  Users:                  ${userCount.count}`);
+    console.log(`    - Gurus (明星):       ${guruCount.count}`);
     console.log(`  User-Community links:   ${membershipCount.count}`);
     console.log(`  Threads:                ${threadCount.count}`);
     console.log(`  Thread-Community links: ${threadCommunityCount.count}`);
     console.log(`  Replies:                ${replyCount.count}`);
     console.log(`    - Top-level (cards):  ${topLevelReplyCount.count}`);
     console.log(`    - Stacked:            ${replyCount.count - topLevelReplyCount.count}`);
+    console.log(`  Guru Questions:         ${guruQuestionCount.count}`);
+    console.log(`  Guru Question Replies:  ${guruQuestionReplyCount.count}`);
 
     console.log('\nSample member counts:');
     const sampleCommunities = communitiesDb.prepare('SELECT name, member_count FROM communities LIMIT 5').all();
     for (const c of sampleCommunities) {
         console.log(`  ${c.name}: ${c.member_count} members`);
     }
+
+    console.log('\nGurus (明星):');
+    const guruList = usersDb.prepare('SELECT username FROM users WHERE is_guru = 1').all();
+    console.log(`  ${guruList.map(g => g.username).join(', ')}`);
 
     console.log('\nTest Login:');
     console.log('  Username: user001');
@@ -877,6 +1064,7 @@ function main() {
     const userCommunities = linkUsersToCommunities();
     generateThreads(userCommunities);
     generateReplies();
+    generateGuruQuestions();
     printSummary();
 }
 

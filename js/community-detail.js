@@ -452,6 +452,7 @@ function createThreadCard(thread) {
         </div>
         <div class="thread-card-footer">
             <span class="thread-author">作者：${escapeHtml(thread.author)}</span>
+            <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
             <div class="thread-communities">
                 ${communityTags}
             </div>

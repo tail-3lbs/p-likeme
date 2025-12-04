@@ -21,6 +21,7 @@ const viewMode = document.getElementById('view-mode');
 const editMode = document.getElementById('edit-mode');
 const editProfileBtn = document.getElementById('edit-profile-btn');
 const viewThreadsBtn = document.getElementById('view-threads-btn');
+const viewGuruBtn = document.getElementById('view-guru-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const profileForm = document.getElementById('profile-form');
 const profileError = document.getElementById('profile-error');
@@ -67,10 +68,19 @@ async function loadProfile() {
         if (isOwnProfile) {
             editProfileBtn.style.display = 'block';
             viewThreadsBtn.style.display = 'none';
+            viewGuruBtn.style.display = 'none';
         } else {
             editProfileBtn.style.display = 'none';
             viewThreadsBtn.style.display = 'block';
             viewThreadsBtn.href = `threads-user.html?user=${encodeURIComponent(profileUsername)}`;
+
+            // Show guru link if user is a guru
+            if (profileData.is_guru) {
+                viewGuruBtn.style.display = 'block';
+                viewGuruBtn.href = `guru-detail.html?user=${encodeURIComponent(profileUsername)}`;
+            } else {
+                viewGuruBtn.style.display = 'none';
+            }
         }
 
     } catch (error) {

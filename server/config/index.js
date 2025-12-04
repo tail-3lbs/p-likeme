@@ -38,7 +38,16 @@ module.exports = {
         DISEASE_TAG_MAX: 50,
         HOSPITAL_NAME_MAX: 100,
         MAX_DISEASE_TAGS: 20,
-        MAX_HOSPITALS: 10
+        MAX_HOSPITALS: 10,
+
+        // Guru
+        GURU_INTRO_MAX: 2000,
+        GURU_QUESTION_TITLE_MIN: 1,
+        GURU_QUESTION_TITLE_MAX: 200,
+        GURU_QUESTION_CONTENT_MIN: 1,
+        GURU_QUESTION_CONTENT_MAX: 5000,
+        GURU_REPLY_CONTENT_MIN: 1,
+        GURU_REPLY_CONTENT_MAX: 5000
     },
 
     // Server configuration

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>像我一样 - 学习项目</title>
+    <title>明星详情 - 像我一样</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,10 +14,10 @@
                 <a href="index.html">像我一样</a>
             </div>
             <ul class="nav-links">
-                <li><a href="index.html" class="active">首页</a></li>
+                <li><a href="index.html">首页</a></li>
                 <li><a href="community.html">社区</a></li>
                 <li><a href="discover.html">群友</a></li>
-                <li><a href="guru.html">明星</a></li>
+                <li><a href="guru.html" class="active">明星</a></li>
                 <li><a href="threads-user.html">分享</a></li>
             </ul>
             <div class="nav-actions" id="nav-actions">
@@ -27,62 +27,102 @@
         </nav>
     </header>
 
-    <!-- 主视觉区 -->
     <main>
-        <section class="hero">
-            <div class="hero-container">
-                <!-- 左侧：文字内容 -->
-                <div class="hero-content">
-                    <h1>找到你的社区<br>找到你的力量</h1>
-                    <p class="hero-subtitle">加入超过85万会员，通过分享经验，释放健康洞察的力量。</p>
-                </div>
+        <!-- 加载状态 -->
+        <div class="loading" id="guru-loading">加载中...</div>
 
-                <!-- 右侧：图片轮播 -->
-                <div class="hero-carousel">
-                    <div class="carousel-container">
-                        <div class="carousel-slide active">
-                            <img src="images/hero-1.png" alt="图片1">
-                        </div>
-                        <div class="carousel-slide">
-                            <img src="images/hero-2.png" alt="图片2">
-                        </div>
-                        <div class="carousel-slide">
-                            <img src="images/hero-3.png" alt="图片3">
-                        </div>
-                    </div>
-                    <!-- 导航圆点 -->
-                    <div class="carousel-dots">
-                        <span class="dot active" data-index="0"></span>
-                        <span class="dot" data-index="1"></span>
-                        <span class="dot" data-index="2"></span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 遇见同路人 -->
-        <section class="getting-started">
+        <!-- 未找到提示 -->
+        <div class="guru-not-found" id="guru-not-found" style="display: none;">
             <div class="container">
-                <h2>遇见同路人</h2>
-                <div class="steps">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <h3>找到你的社区</h3>
-                        <p>浏览30个健康社区，找到与你有相同经历的人，成为安全社区的一份子。</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <h3>分享你的故事</h3>
-                        <p>向社区介绍你自己。分享你的健康历程和你需要的支持，多少由你决定。</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <h3>加入讨论</h3>
-                        <p>获取个性化的答案，提供建议，并获得真正理解你的人的支持。</p>
+                <h2>明星不存在</h2>
+                <p>该用户不是明星或不存在</p>
+                <a href="guru.html" class="btn btn-primary">返回明星列表</a>
+            </div>
+        </div>
+
+        <!-- 明星详情内容 -->
+        <div id="guru-content" style="display: none;">
+            <!-- 明星信息头部 -->
+            <section class="guru-header">
+                <div class="container">
+                    <div class="guru-profile">
+                        <div class="guru-avatar" id="guru-avatar">U</div>
+                        <div class="guru-info">
+                            <h1 id="guru-username">用户名</h1>
+                            <div class="guru-meta">
+                                <span id="guru-join-date">加入于 2024-01-01</span>
+                            </div>
+                        </div>
+                        <div class="guru-actions">
+                            <a href="#" class="btn btn-outline" id="view-profile-btn">查看资料</a>
+                            <button class="btn btn-primary" id="edit-intro-btn" style="display: none;">编辑简介</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+
+            <!-- 明星简介 -->
+            <section class="guru-intro-section">
+                <div class="container">
+                    <h2>个人简介</h2>
+                    <div class="guru-intro" id="guru-intro">
+                        <p class="empty-hint">暂无简介</p>
+                    </div>
+
+                    <!-- 编辑简介表单 -->
+                    <div class="edit-intro-form" id="edit-intro-form" style="display: none;">
+                        <textarea id="intro-textarea" placeholder="写一些关于自己的介绍..." rows="6"></textarea>
+                        <div class="form-actions">
+                            <button class="btn btn-outline" id="cancel-edit-intro">取消</button>
+                            <button class="btn btn-primary" id="save-intro">保存</button>
+                        </div>
+                        <div class="form-error" id="intro-error"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 明星的分享 -->
+            <section class="guru-threads-section">
+                <div class="container">
+                    <h2>TA的分享</h2>
+                    <div class="threads-list" id="guru-threads">
+                        <p class="empty-hint">暂无分享</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 问答区域 -->
+            <section class="guru-qa-section">
+                <div class="container">
+                    <div class="qa-header">
+                        <h2>问答</h2>
+                        <button class="btn btn-primary" id="ask-question-btn">提问</button>
+                    </div>
+
+                    <!-- 提问表单 -->
+                    <div class="ask-form" id="ask-form" style="display: none;">
+                        <div class="form-group">
+                            <label for="question-title">标题</label>
+                            <input type="text" id="question-title" placeholder="请输入问题标题">
+                        </div>
+                        <div class="form-group">
+                            <label for="question-content">内容</label>
+                            <textarea id="question-content" placeholder="详细描述你的问题..." rows="4"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-outline" id="cancel-ask">取消</button>
+                            <button class="btn btn-primary" id="submit-question">提交问题</button>
+                        </div>
+                        <div class="form-error" id="ask-error"></div>
+                    </div>
+
+                    <!-- 问题列表 -->
+                    <div class="questions-list" id="questions-list">
+                        <p class="empty-hint">暂无问题</p>
+                    </div>
+                </div>
+            </section>
+        </div>
     </main>
 
     <!-- 页脚 -->
@@ -90,7 +130,6 @@
         <div class="container">
             <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
             <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
-            <p>测试用户：<a href="test-users.html">页面链接</a></p>
         </div>
     </footer>
 
@@ -183,5 +222,6 @@
 
     <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/guru-detail.js"></script>
 </body>
 </html>

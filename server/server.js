@@ -13,6 +13,7 @@ const { authMiddleware } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const threadsRoutes = require('./routes/threads');
 const repliesRoutes = require('./routes/replies');
+const gurusRoutes = require('./routes/gurus');
 
 const app = express();
 
@@ -35,6 +36,9 @@ app.use('/api/threads', threadsRoutes);
 
 // Replies Routes (nested under threads)
 app.use('/api/threads', repliesRoutes);
+
+// Gurus Routes
+app.use('/api/gurus', gurusRoutes);
 
 // API Routes
 

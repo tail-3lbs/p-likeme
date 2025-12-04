@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>像我一样 - 学习项目</title>
+    <title>明星 - 像我一样</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,10 +14,10 @@
                 <a href="index.html">像我一样</a>
             </div>
             <ul class="nav-links">
-                <li><a href="index.html" class="active">首页</a></li>
+                <li><a href="index.html">首页</a></li>
                 <li><a href="community.html">社区</a></li>
                 <li><a href="discover.html">群友</a></li>
-                <li><a href="guru.html">明星</a></li>
+                <li><a href="guru.html" class="active">明星</a></li>
                 <li><a href="threads-user.html">分享</a></li>
             </ul>
             <div class="nav-actions" id="nav-actions">
@@ -27,59 +27,25 @@
         </nav>
     </header>
 
-    <!-- 主视觉区 -->
     <main>
-        <section class="hero">
-            <div class="hero-container">
-                <!-- 左侧：文字内容 -->
-                <div class="hero-content">
-                    <h1>找到你的社区<br>找到你的力量</h1>
-                    <p class="hero-subtitle">加入超过85万会员，通过分享经验，释放健康洞察的力量。</p>
-                </div>
-
-                <!-- 右侧：图片轮播 -->
-                <div class="hero-carousel">
-                    <div class="carousel-container">
-                        <div class="carousel-slide active">
-                            <img src="images/hero-1.png" alt="图片1">
-                        </div>
-                        <div class="carousel-slide">
-                            <img src="images/hero-2.png" alt="图片2">
-                        </div>
-                        <div class="carousel-slide">
-                            <img src="images/hero-3.png" alt="图片3">
-                        </div>
-                    </div>
-                    <!-- 导航圆点 -->
-                    <div class="carousel-dots">
-                        <span class="dot active" data-index="0"></span>
-                        <span class="dot" data-index="1"></span>
-                        <span class="dot" data-index="2"></span>
-                    </div>
-                </div>
+        <!-- 标题区域 -->
+        <section class="community-header">
+            <div class="container">
+                <h1>社区明星</h1>
+                <p>他们是社区的引路人，用亲身经历帮助更多人</p>
             </div>
         </section>
 
-        <!-- 遇见同路人 -->
-        <section class="getting-started">
+        <!-- 明星列表 -->
+        <section class="guru-list">
             <div class="container">
-                <h2>遇见同路人</h2>
-                <div class="steps">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <h3>找到你的社区</h3>
-                        <p>浏览30个健康社区，找到与你有相同经历的人，成为安全社区的一份子。</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <h3>分享你的故事</h3>
-                        <p>向社区介绍你自己。分享你的健康历程和你需要的支持，多少由你决定。</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <h3>加入讨论</h3>
-                        <p>获取个性化的答案，提供建议，并获得真正理解你的人的支持。</p>
-                    </div>
+                <div class="gurus" id="gurus">
+                    <div class="loading" id="loading">加载中...</div>
+                </div>
+
+                <!-- 无结果提示 -->
+                <div class="no-results" id="no-results" style="display: none;">
+                    <p>暂无明星用户</p>
                 </div>
             </div>
         </section>
@@ -90,7 +56,6 @@
         <div class="container">
             <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
             <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
-            <p>测试用户：<a href="test-users.html">页面链接</a></p>
         </div>
     </footer>
 
@@ -183,5 +148,6 @@
 
     <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/guru.js"></script>
 </body>
 </html>

@@ -208,6 +208,12 @@ function initUsersDb() {
     if (!columns.includes('location_living_street')) {
         usersDb.exec(`ALTER TABLE users ADD COLUMN location_living_street TEXT`);
     }
+    if (!columns.includes('is_guru')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN is_guru INTEGER DEFAULT 0`);
+    }
+    if (!columns.includes('guru_intro')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN guru_intro TEXT`);
+    }
 
     // Junction table for user-community membership (with sub-community support)
     usersDb.exec(`
@@ -544,7 +550,7 @@ function getUserProfile(user_id) {
         SELECT id, username, gender, age, profession, marriage_status,
                location_from, location_living, location_living_district, location_living_street,
                income_individual, income_family, family_size, hukou, education,
-               consumption_level, housing_status, economic_dependency, created_at
+               consumption_level, housing_status, economic_dependency, is_guru, created_at
         FROM users WHERE id = ?
     `).get(user_id);
 
@@ -1051,7 +1057,8 @@ function getThreadsByUserId(user_id) {
 
     return threads.map(thread => ({
         ...thread,
-        community_ids: getCommunityIds.all(thread.id).map(row => row.community_id)
+        community_ids: getCommunityIds.all(thread.id).map(row => row.community_id),
+        reply_count: getReplyCountByThreadId(thread.id)
     }));
 }
 
@@ -1156,6 +1163,7 @@ function getThreadsByCommunityId(community_id, limit = 10, offset = 0, stage = n
         return {
             ...thread,
             community_ids: communityInfo.map(row => row.community_id),
+            reply_count: getReplyCountByThreadId(thread.id),
             // Convert empty strings to null for API response
             community_details: communityInfo.map(row => ({
                 community_id: row.community_id,
@@ -1278,12 +1286,167 @@ function getReplyCountByThreadId(thread_id) {
     return result.count;
 }
 
+// ============ Guru Database ============
+
+function initGuruDb() {
+    // Guru questions table (questions asked to gurus)
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS guru_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guru_user_id INTEGER NOT NULL,
+            asker_user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            reply_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Create index for faster queries
+    usersDb.exec(`
+        CREATE INDEX IF NOT EXISTS idx_guru_questions_guru_id ON guru_questions(guru_user_id)
+    `);
+
+    // Guru question replies table
+    usersDb.exec(`
+        CREATE TABLE IF NOT EXISTS guru_question_replies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            parent_reply_id INTEGER DEFAULT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // Create index for faster queries
+    usersDb.exec(`
+        CREATE INDEX IF NOT EXISTS idx_guru_question_replies_question_id ON guru_question_replies(question_id)
+    `);
+
+    const questionCount = usersDb.prepare('SELECT COUNT(*) as count FROM guru_questions').get();
+    console.log(`Guru Questions DB: ${questionCount.count} questions`);
+}
+
+// Get all gurus
+function getAllGurus() {
+    return usersDb.prepare(`
+        SELECT id, username, guru_intro, created_at
+        FROM users
+        WHERE is_guru = 1
+        ORDER BY id
+    `).all();
+}
+
+// Check if user is a guru
+function isUserGuru(userId) {
+    const result = usersDb.prepare('SELECT is_guru FROM users WHERE id = ?').get(userId);
+    return result && result.is_guru === 1;
+}
+
+// Get guru by username
+function getGuruByUsername(username) {
+    return usersDb.prepare(`
+        SELECT id, username, guru_intro, created_at
+        FROM users
+        WHERE username = ? AND is_guru = 1
+    `).get(username);
+}
+
+// Update guru intro (guru can edit their own intro)
+function updateGuruIntro(userId, intro) {
+    const stmt = usersDb.prepare('UPDATE users SET guru_intro = ? WHERE id = ? AND is_guru = 1');
+    const result = stmt.run(intro, userId);
+    return result.changes > 0;
+}
+
+// Create a guru question
+function createGuruQuestion({ guru_user_id, asker_user_id, title, content }) {
+    const stmt = usersDb.prepare(`
+        INSERT INTO guru_questions (guru_user_id, asker_user_id, title, content)
+        VALUES (@guru_user_id, @asker_user_id, @title, @content)
+    `);
+    const result = stmt.run({ guru_user_id, asker_user_id, title, content });
+    return result.lastInsertRowid;
+}
+
+// Get questions for a guru
+function getGuruQuestions(guruUserId, limit = 50, offset = 0) {
+    return usersDb.prepare(`
+        SELECT * FROM guru_questions
+        WHERE guru_user_id = ?
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+    `).all(guruUserId, limit, offset);
+}
+
+// Get a single guru question by ID
+function getGuruQuestionById(questionId) {
+    return usersDb.prepare('SELECT * FROM guru_questions WHERE id = ?').get(questionId);
+}
+
+// Delete a guru question (only asker can delete)
+function deleteGuruQuestion(questionId, userId) {
+    // First delete all replies
+    usersDb.prepare('DELETE FROM guru_question_replies WHERE question_id = ?').run(questionId);
+    // Then delete the question
+    const stmt = usersDb.prepare('DELETE FROM guru_questions WHERE id = ? AND asker_user_id = ?');
+    const result = stmt.run(questionId, userId);
+    return result.changes > 0;
+}
+
+// Create a reply to a guru question
+function createGuruQuestionReply({ question_id, user_id, content, parent_reply_id = null }) {
+    const stmt = usersDb.prepare(`
+        INSERT INTO guru_question_replies (question_id, user_id, content, parent_reply_id)
+        VALUES (@question_id, @user_id, @content, @parent_reply_id)
+    `);
+    const result = stmt.run({ question_id, user_id, content, parent_reply_id });
+
+    // Update reply count on the question
+    usersDb.prepare('UPDATE guru_questions SET reply_count = reply_count + 1 WHERE id = ?').run(question_id);
+
+    return result.lastInsertRowid;
+}
+
+// Get replies for a guru question
+function getGuruQuestionReplies(questionId) {
+    return usersDb.prepare(`
+        SELECT * FROM guru_question_replies
+        WHERE question_id = ?
+        ORDER BY created_at ASC
+    `).all(questionId);
+}
+
+// Get a single guru question reply by ID
+function getGuruQuestionReplyById(replyId) {
+    return usersDb.prepare('SELECT * FROM guru_question_replies WHERE id = ?').get(replyId);
+}
+
+// Delete a guru question reply (only owner can delete)
+function deleteGuruQuestionReply(replyId, userId) {
+    // Get the reply first to update question's reply_count
+    const reply = usersDb.prepare('SELECT question_id FROM guru_question_replies WHERE id = ? AND user_id = ?').get(replyId, userId);
+    if (!reply) return false;
+
+    const stmt = usersDb.prepare('DELETE FROM guru_question_replies WHERE id = ? AND user_id = ?');
+    const result = stmt.run(replyId, userId);
+
+    if (result.changes > 0) {
+        // Update reply count
+        usersDb.prepare('UPDATE guru_questions SET reply_count = reply_count - 1 WHERE id = ?').run(reply.question_id);
+        return true;
+    }
+    return false;
+}
+
 // ============ Initialize ============
 
 initCommunitiesDb();
 initUsersDb();
 initThreadsDb();
 initRepliesDb();
+initGuruDb();
 
 // ============ Exports ============
 
@@ -1329,5 +1492,18 @@ module.exports = {
     getReplyById,
     deleteReply,
     deleteRepliesByThreadId,
-    getReplyCountByThreadId
+    getReplyCountByThreadId,
+    // Guru functions
+    getAllGurus,
+    isUserGuru,
+    getGuruByUsername,
+    updateGuruIntro,
+    createGuruQuestion,
+    getGuruQuestions,
+    getGuruQuestionById,
+    deleteGuruQuestion,
+    createGuruQuestionReply,
+    getGuruQuestionReplies,
+    getGuruQuestionReplyById,
+    deleteGuruQuestionReply
 };

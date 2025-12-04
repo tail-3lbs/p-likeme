@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>像我一样 - 学习项目</title>
+    <title>问答详情 - 像我一样</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,10 +14,10 @@
                 <a href="index.html">像我一样</a>
             </div>
             <ul class="nav-links">
-                <li><a href="index.html" class="active">首页</a></li>
+                <li><a href="index.html">首页</a></li>
                 <li><a href="community.html">社区</a></li>
                 <li><a href="discover.html">群友</a></li>
-                <li><a href="guru.html">明星</a></li>
+                <li><a href="guru.html" class="active">明星</a></li>
                 <li><a href="threads-user.html">分享</a></li>
             </ul>
             <div class="nav-actions" id="nav-actions">
@@ -27,59 +27,86 @@
         </nav>
     </header>
 
-    <!-- 主视觉区 -->
     <main>
-        <section class="hero">
-            <div class="hero-container">
-                <!-- 左侧：文字内容 -->
-                <div class="hero-content">
-                    <h1>找到你的社区<br>找到你的力量</h1>
-                    <p class="hero-subtitle">加入超过85万会员，通过分享经验，释放健康洞察的力量。</p>
+        <!-- 加载中 -->
+        <section class="thread-page" id="question-loading">
+            <div class="container">
+                <div class="loading">加载中...</div>
+            </div>
+        </section>
+
+        <!-- 问题内容 -->
+        <section class="thread-page" id="question-content" style="display: none;">
+            <div class="container">
+                <!-- 返回明星页面链接 -->
+                <div class="back-link">
+                    <a href="#" id="back-to-guru">&larr; 返回明星主页</a>
                 </div>
 
-                <!-- 右侧：图片轮播 -->
-                <div class="hero-carousel">
-                    <div class="carousel-container">
-                        <div class="carousel-slide active">
-                            <img src="images/hero-1.png" alt="图片1">
-                        </div>
-                        <div class="carousel-slide">
-                            <img src="images/hero-2.png" alt="图片2">
-                        </div>
-                        <div class="carousel-slide">
-                            <img src="images/hero-3.png" alt="图片3">
+                <div class="thread-detail">
+                    <div class="thread-detail-header">
+                        <h1 id="question-title"></h1>
+                        <div class="thread-meta">
+                            <span class="thread-author">提问者：<a href="#" id="question-asker"></a></span>
+                            <span>向</span>
+                            <span class="guru-link"><a href="#" id="question-guru"></a> <span class="guru-badge">明星</span></span>
+                            <span>提问</span>
+                            <span class="thread-date" id="question-date"></span>
                         </div>
                     </div>
-                    <!-- 导航圆点 -->
-                    <div class="carousel-dots">
-                        <span class="dot active" data-index="0"></span>
-                        <span class="dot" data-index="1"></span>
-                        <span class="dot" data-index="2"></span>
+                    <div class="thread-detail-body">
+                        <div id="question-body"></div>
+                    </div>
+                    <div class="thread-actions-bar" id="question-actions-bar" style="display: none;">
+                        <button class="btn btn-danger" id="delete-question-btn">删除问题</button>
+                    </div>
+                </div>
+
+                <!-- Replies Section -->
+                <div class="replies-section">
+                    <h2 class="replies-title">回复 (<span id="replies-count">0</span>)</h2>
+
+                    <!-- Reply Form -->
+                    <div class="reply-form-container" id="reply-form-container">
+                        <div id="replying-to-hint" class="replying-to-hint" style="display: none;">
+                            回复 <strong id="replying-to-username"></strong>
+                            <button type="button" class="cancel-reply-btn" id="cancel-reply-btn">取消</button>
+                        </div>
+                        <form id="reply-form">
+                            <input type="hidden" id="parent-reply-id" value="">
+                            <div class="form-group">
+                                <textarea id="reply-content" name="content" placeholder="写下你的回复..." rows="3"></textarea>
+                            </div>
+                            <div class="form-error" id="reply-error"></div>
+                            <button type="submit" class="btn btn-primary" id="reply-submit-btn">发表回复</button>
+                        </form>
+                    </div>
+
+                    <!-- Login hint for non-logged-in users -->
+                    <div class="reply-login-hint" id="reply-login-hint" style="display: none;">
+                        <p>请<a href="#" id="reply-login-link">登录</a>后参与讨论</p>
+                    </div>
+
+                    <!-- Replies List -->
+                    <div class="replies-list" id="replies-list">
+                        <!-- Replies will be loaded here -->
+                    </div>
+
+                    <!-- No replies message -->
+                    <div class="no-replies" id="no-replies" style="display: none;">
+                        <p>还没有回复，快来发表第一条回复吧！</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 遇见同路人 -->
-        <section class="getting-started">
+        <!-- 错误提示 -->
+        <section class="thread-page" id="question-error" style="display: none;">
             <div class="container">
-                <h2>遇见同路人</h2>
-                <div class="steps">
-                    <div class="step">
-                        <div class="step-number">1</div>
-                        <h3>找到你的社区</h3>
-                        <p>浏览30个健康社区，找到与你有相同经历的人，成为安全社区的一份子。</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <h3>分享你的故事</h3>
-                        <p>向社区介绍你自己。分享你的健康历程和你需要的支持，多少由你决定。</p>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <h3>加入讨论</h3>
-                        <p>获取个性化的答案，提供建议，并获得真正理解你的人的支持。</p>
-                    </div>
+                <div class="error-box">
+                    <h2>无法加载问题</h2>
+                    <p id="error-message">问题不存在或已被删除</p>
+                    <a href="guru.html" class="btn btn-primary">返回明星列表</a>
                 </div>
             </div>
         </section>
@@ -90,7 +117,6 @@
         <div class="container">
             <p>本项目仅供学习目的。如有侵权，请联系我们，我们将立即删除相关内容。</p>
             <p>联系方式请访问：<a href="https://github.com/tail-3lbs/p-likeme" target="_blank">https://github.com/tail-3lbs/p-likeme</a></p>
-            <p>测试用户：<a href="test-users.html">页面链接</a></p>
         </div>
     </footer>
 
@@ -183,5 +209,6 @@
 
     <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/guru-question.js"></script>
 </body>
 </html>
