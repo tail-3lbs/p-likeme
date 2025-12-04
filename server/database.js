@@ -283,17 +283,24 @@ function usernameExists(username) {
 // Hierarchy: Level I (no stage/type) -> Level II (stage OR type) -> Level III (stage AND type)
 // Joining Level II auto-joins Level I
 // Joining Level III auto-joins Level II (both stage-only and type-only) and Level I
+//
+// Race condition fix: Uses transactions to ensure atomicity within each database.
+// The membership inserts are atomic, and count updates only happen when actual changes occur.
 function joinCommunity(user_id, community_id, stage = null, type = null) {
     // Convert null to empty string for database storage
     const stageValue = stage || '';
     const typeValue = type || '';
     const isLevelIII = stageValue && typeValue;
-    const isLevelII = (stageValue || typeValue) && !isLevelIII;
     const isSubCommunity = stageValue || typeValue;
 
+    // Prepare statements
     const insertMembership = usersDb.prepare(`
         INSERT OR IGNORE INTO user_communities (user_id, community_id, stage, type)
         VALUES (?, ?, ?, ?)
+    `);
+
+    const updateMainCount = communitiesDb.prepare(`
+        UPDATE communities SET member_count = member_count + 1 WHERE id = ?
     `);
 
     const updateSubCount = communitiesDb.prepare(`
@@ -303,112 +310,160 @@ function joinCommunity(user_id, community_id, stage = null, type = null) {
         DO UPDATE SET member_count = member_count + 1
     `);
 
-    // First, ensure user is member of Level I (parent community)
-    const checkLevelI = usersDb.prepare(`
-        SELECT COUNT(*) as count FROM user_communities
-        WHERE user_id = ? AND community_id = ? AND stage = '' AND type = ''
-    `).get(user_id, community_id);
+    // Track what memberships were actually added (for count updates)
+    const addedMemberships = [];
 
-    let joinedLevelI = false;
-    if (checkLevelI.count === 0) {
-        // Join Level I first
+    // Atomic transaction for all membership inserts in usersDb
+    const insertMemberships = usersDb.transaction(() => {
+        // Always ensure Level I membership exists
         const levelIResult = insertMembership.run(user_id, community_id, '', '');
         if (levelIResult.changes > 0) {
-            joinedLevelI = true;
-            // Update main member_count
-            communitiesDb.prepare(`
-                UPDATE communities SET member_count = member_count + 1 WHERE id = ?
-            `).run(community_id);
+            addedMemberships.push({ stage: '', type: '', isLevelI: true });
         }
+
+        // If joining Level III, also join both Level II communities
+        if (isLevelIII) {
+            // Join Level II (stage-only)
+            const stageOnlyResult = insertMembership.run(user_id, community_id, stageValue, '');
+            if (stageOnlyResult.changes > 0) {
+                addedMemberships.push({ stage: stageValue, type: '' });
+            }
+
+            // Join Level II (type-only)
+            const typeOnlyResult = insertMembership.run(user_id, community_id, '', typeValue);
+            if (typeOnlyResult.changes > 0) {
+                addedMemberships.push({ stage: '', type: typeValue });
+            }
+        }
+
+        // Join the target sub-community (Level II or Level III)
+        if (isSubCommunity) {
+            const result = insertMembership.run(user_id, community_id, stageValue, typeValue);
+            if (result.changes > 0) {
+                addedMemberships.push({ stage: stageValue, type: typeValue });
+            }
+        }
+
+        return addedMemberships.length > 0;
+    });
+
+    // Execute membership inserts atomically
+    const membershipAdded = insertMemberships();
+
+    // Atomic transaction for count updates in communitiesDb
+    // Only update counts for memberships that were actually added
+    if (addedMemberships.length > 0) {
+        const updateCounts = communitiesDb.transaction(() => {
+            for (const membership of addedMemberships) {
+                if (membership.isLevelI) {
+                    // Update main community member_count
+                    updateMainCount.run(community_id);
+                } else {
+                    // Update sub_community_members count
+                    updateSubCount.run(community_id, membership.stage, membership.type);
+                }
+            }
+        });
+        updateCounts();
     }
 
-    // If joining Level III, also join both Level II communities (stage-only and type-only)
-    if (isLevelIII) {
-        // Join Level II (stage-only)
-        const stageOnlyResult = insertMembership.run(user_id, community_id, stageValue, '');
-        if (stageOnlyResult.changes > 0) {
-            updateSubCount.run(community_id, stageValue, '');
-        }
-
-        // Join Level II (type-only)
-        const typeOnlyResult = insertMembership.run(user_id, community_id, '', typeValue);
-        if (typeOnlyResult.changes > 0) {
-            updateSubCount.run(community_id, '', typeValue);
-        }
-    }
-
-    // Join the target sub-community (Level II or Level III)
-    let joinedSubCommunity = false;
-    if (isSubCommunity) {
-        const result = insertMembership.run(user_id, community_id, stageValue, typeValue);
-
-        if (result.changes > 0) {
-            joinedSubCommunity = true;
-            // Update sub_community_members count
-            updateSubCount.run(community_id, stageValue, typeValue);
-        }
-    }
-
-    return isSubCommunity ? joinedSubCommunity : (joinedLevelI || checkLevelI.count > 0);
+    return membershipAdded;
 }
 
 // Leave a community (with optional sub-community: stage and/or type)
 // If leaving Level I (no stage/type), also leaves all Level II and III
+//
+// Race condition fix: Uses transactions to ensure atomicity within each database.
+// Collects memberships to remove first, then performs atomic deletes and count updates.
 function leaveCommunity(user_id, community_id, stage = null, type = null) {
     // Convert null to empty string for database storage
     const stageValue = stage || '';
     const typeValue = type || '';
     const isLevelI = !stageValue && !typeValue;
 
+    // Prepare statements
+    const updateMainCount = communitiesDb.prepare(`
+        UPDATE communities SET member_count = member_count - 1 WHERE id = ?
+    `);
+
+    const updateSubCount = communitiesDb.prepare(`
+        UPDATE sub_community_members
+        SET member_count = member_count - 1
+        WHERE community_id = ? AND stage = ? AND type = ?
+    `);
+
     if (isLevelI) {
         // Leaving Level I: remove all memberships for this community (Level I, II, and III)
-        // First, get all sub-community memberships to update their counts
-        const subMemberships = usersDb.prepare(`
-            SELECT stage, type FROM user_communities
-            WHERE user_id = ? AND community_id = ? AND (stage != '' OR type != '')
-        `).all(user_id, community_id);
+        // Track removed memberships for count updates
+        let removedSubMemberships = [];
+        let hadLevelIMembership = false;
 
-        // Update sub_community_members counts
-        for (const sub of subMemberships) {
-            communitiesDb.prepare(`
-                UPDATE sub_community_members
-                SET member_count = member_count - 1
-                WHERE community_id = ? AND stage = ? AND type = ?
-            `).run(community_id, sub.stage, sub.type);
+        // Atomic transaction for membership operations in usersDb
+        const removeMemberships = usersDb.transaction(() => {
+            // First, get all sub-community memberships to update their counts
+            removedSubMemberships = usersDb.prepare(`
+                SELECT stage, type FROM user_communities
+                WHERE user_id = ? AND community_id = ? AND (stage != '' OR type != '')
+            `).all(user_id, community_id);
+
+            // Check if user had Level I membership
+            const levelICheck = usersDb.prepare(`
+                SELECT COUNT(*) as count FROM user_communities
+                WHERE user_id = ? AND community_id = ? AND stage = '' AND type = ''
+            `).get(user_id, community_id);
+            hadLevelIMembership = levelICheck.count > 0;
+
+            // Remove all memberships for this community
+            const result = usersDb.prepare(`
+                DELETE FROM user_communities WHERE user_id = ? AND community_id = ?
+            `).run(user_id, community_id);
+
+            return result.changes > 0;
+        });
+
+        const removed = removeMemberships();
+
+        // Atomic transaction for count updates in communitiesDb
+        if (removed) {
+            const updateCounts = communitiesDb.transaction(() => {
+                // Update sub-community counts
+                for (const sub of removedSubMemberships) {
+                    updateSubCount.run(community_id, sub.stage, sub.type);
+                }
+
+                // Update main member_count if Level I membership was removed
+                if (hadLevelIMembership) {
+                    updateMainCount.run(community_id);
+                }
+            });
+            updateCounts();
         }
 
-        // Remove all memberships for this community
-        const stmt = usersDb.prepare(`
-            DELETE FROM user_communities WHERE user_id = ? AND community_id = ?
-        `);
-        const result = stmt.run(user_id, community_id);
-
-        // Update main member_count if Level I membership was removed
-        if (result.changes > 0) {
-            communitiesDb.prepare(`
-                UPDATE communities SET member_count = member_count - 1 WHERE id = ?
-            `).run(community_id);
-        }
-
-        return result.changes > 0;
+        return removed;
     } else {
         // Leaving specific sub-community only
-        const stmt = usersDb.prepare(`
-            DELETE FROM user_communities
-            WHERE user_id = ? AND community_id = ? AND stage = ? AND type = ?
-        `);
-        const result = stmt.run(user_id, community_id, stageValue, typeValue);
+        let removed = false;
 
-        if (result.changes > 0) {
-            // Update sub_community_members count
-            communitiesDb.prepare(`
-                UPDATE sub_community_members
-                SET member_count = member_count - 1
-                WHERE community_id = ? AND stage = ? AND type = ?
-            `).run(community_id, stageValue, typeValue);
+        // Atomic transaction for membership deletion in usersDb
+        const removeMembership = usersDb.transaction(() => {
+            const result = usersDb.prepare(`
+                DELETE FROM user_communities
+                WHERE user_id = ? AND community_id = ? AND stage = ? AND type = ?
+            `).run(user_id, community_id, stageValue, typeValue);
+            return result.changes > 0;
+        });
+
+        removed = removeMembership();
+
+        // Update count in communitiesDb if membership was removed
+        if (removed) {
+            const updateCount = communitiesDb.transaction(() => {
+                updateSubCount.run(community_id, stageValue, typeValue);
+            });
+            updateCount();
         }
 
-        return result.changes > 0;
+        return removed;
     }
 }
 
@@ -760,13 +815,13 @@ function searchUsers({
     if (age_min !== undefined && age_min !== null && age_min !== '') {
         hasFilter = true;
         conditions.push('age >= ?');
-        params.push(parseInt(age_min));
+        params.push(parseInt(age_min, 10));
     }
 
     if (age_max !== undefined && age_max !== null && age_max !== '') {
         hasFilter = true;
         conditions.push('age <= ?');
-        params.push(parseInt(age_max));
+        params.push(parseInt(age_max, 10));
     }
 
     if (location && location.trim()) {

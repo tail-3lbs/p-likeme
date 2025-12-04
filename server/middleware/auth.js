@@ -1,6 +1,8 @@
 /**
  * Authentication Middleware
  * JWT token verification for protected routes
+ *
+ * Security: Reads JWT from HttpOnly cookie (not accessible via JavaScript)
  */
 
 const jwt = require('jsonwebtoken');
@@ -11,13 +13,12 @@ const { JWT_SECRET } = require('../config');
  * Returns 401 if token is missing or invalid
  */
 function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
+    // Read token from HttpOnly cookie
+    const token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
         return res.status(401).json({ success: false, error: '未登录' });
     }
-
-    const token = authHeader.substring(7);
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
@@ -33,10 +34,10 @@ function authMiddleware(req, res, next) {
  * Doesn't fail if no token, just sets req.user if valid
  */
 function optionalAuthMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
+    // Read token from HttpOnly cookie
+    const token = req.cookies?.token;
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
+    if (token) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
             req.user = decoded;

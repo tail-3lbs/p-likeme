@@ -5,6 +5,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById, getSubCommunityMemberCounts, isUserInCommunity, getUserSubCommunities } = require('./database');
 const { PORT } = require('./config');
@@ -16,7 +17,11 @@ const repliesRoutes = require('./routes/replies');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: true, // Allow same-origin requests
+    credentials: true // Allow cookies to be sent
+}));
+app.use(cookieParser());
 app.use(express.json());
 
 // Serve static files from parent directory (frontend)
@@ -144,7 +149,7 @@ app.get('/api/communities/:id', (req, res) => {
     try {
         const { id } = req.params;
         const { stage, type } = req.query;
-        const community = getCommunityById(parseInt(id));
+        const community = getCommunityById(parseInt(id, 10));
 
         if (!community) {
             return res.status(404).json({
@@ -164,7 +169,7 @@ app.get('/api/communities/:id', (req, res) => {
         }
 
         // Get sub-community member counts for matrix display
-        const subCommunityMembers = getSubCommunityMemberCounts(parseInt(id));
+        const subCommunityMembers = getSubCommunityMemberCounts(parseInt(id, 10));
 
         // Build response with parsed dimensions and sub-community info
         const response = {
@@ -201,7 +206,7 @@ app.get('/api/communities/:id', (req, res) => {
  */
 app.get('/api/communities/:id/threads', (req, res) => {
     try {
-        const communityId = parseInt(req.params.id);
+        const communityId = parseInt(req.params.id, 10);
         const community = getCommunityById(communityId);
 
         if (!community) {
@@ -211,8 +216,8 @@ app.get('/api/communities/:id/threads', (req, res) => {
             });
         }
 
-        const limit = parseInt(req.query.limit) || 10;
-        const offset = parseInt(req.query.offset) || 0;
+        const limit = parseInt(req.query.limit, 10) || 10;
+        const offset = parseInt(req.query.offset, 10) || 0;
         const stage = req.query.stage || null;
         const type = req.query.type || null;
 
@@ -266,8 +271,8 @@ app.get('/api/user/communities', authMiddleware, (req, res) => {
 
         // If community_id is provided, get sub-community memberships for that community
         if (community_id) {
-            const subCommunities = getUserSubCommunities(req.user.id, parseInt(community_id));
-            const isLevelIMember = isUserInCommunity(req.user.id, parseInt(community_id));
+            const subCommunities = getUserSubCommunities(req.user.id, parseInt(community_id, 10));
+            const isLevelIMember = isUserInCommunity(req.user.id, parseInt(community_id, 10));
             res.json({
                 success: true,
                 data: {
@@ -308,7 +313,7 @@ app.get('/api/user/communities', authMiddleware, (req, res) => {
  */
 app.post('/api/communities/:id/join', authMiddleware, (req, res) => {
     try {
-        const communityId = parseInt(req.params.id);
+        const communityId = parseInt(req.params.id, 10);
         const { stage, type } = req.body || {};
         const community = getCommunityById(communityId);
 
@@ -352,7 +357,7 @@ app.post('/api/communities/:id/join', authMiddleware, (req, res) => {
  */
 app.delete('/api/communities/:id/leave', authMiddleware, (req, res) => {
     try {
-        const communityId = parseInt(req.params.id);
+        const communityId = parseInt(req.params.id, 10);
         const { stage, type } = req.query;
         const isSubCommunity = stage || type;
 

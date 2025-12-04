@@ -1,18 +1,27 @@
 /**
  * Authentication Routes
- * Signup, Login, Get current user
+ * Signup, Login, Logout, Get current user
  *
- * TODO: Consider switching from JWT to cookie-based sessions for better security
+ * Security: Uses HttpOnly cookies for JWT storage (not accessible via JavaScript)
  */
 
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { createUser, findUserByUsername, findUserById, usernameExists, getUserProfile, updateUserProfile, findUserByUsernamePublic, searchUsers } = require('../database');
-const { JWT_SECRET, JWT_EXPIRES_IN, PASSWORD_RULES } = require('../config');
+const { JWT_SECRET, JWT_EXPIRES_IN, PASSWORD_RULES, INPUT_LIMITS } = require('../config');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Cookie configuration
+const COOKIE_OPTIONS = {
+    httpOnly: true, // Not accessible via JavaScript (XSS protection)
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    sameSite: 'strict', // CSRF protection
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    path: '/'
+};
 
 /**
  * Validate password strength
@@ -67,10 +76,10 @@ router.post('/signup', async (req, res) => {
         }
 
         // Validate username
-        if (username.length < 2 || username.length > 20) {
+        if (username.length < INPUT_LIMITS.USERNAME_MIN || username.length > INPUT_LIMITS.USERNAME_MAX) {
             return res.status(400).json({
                 success: false,
-                error: '用户名需要 2-20 个字符'
+                error: `用户名需要 ${INPUT_LIMITS.USERNAME_MIN}-${INPUT_LIMITS.USERNAME_MAX} 个字符`
             });
         }
 
@@ -100,8 +109,9 @@ router.post('/signup', async (req, res) => {
         const userId = createUser({ username, password_hash });
         const user = findUserById(userId);
 
-        // Generate token
+        // Generate token and set as HttpOnly cookie
         const token = generateToken(user);
+        res.cookie('token', token, COOKIE_OPTIONS);
 
         res.status(201).json({
             success: true,
@@ -111,8 +121,7 @@ router.post('/signup', async (req, res) => {
                     id: user.id,
                     username: user.username,
                     created_at: user.created_at
-                },
-                token
+                }
             }
         });
 
@@ -159,8 +168,9 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Generate token
+        // Generate token and set as HttpOnly cookie
         const token = generateToken(user);
+        res.cookie('token', token, COOKIE_OPTIONS);
 
         res.json({
             success: true,
@@ -170,8 +180,7 @@ router.post('/login', async (req, res) => {
                     id: user.id,
                     username: user.username,
                     created_at: user.created_at
-                },
-                token
+                }
             }
         });
 
@@ -182,6 +191,18 @@ router.post('/login', async (req, res) => {
             error: '登录失败，请稍后再试'
         });
     }
+});
+
+/**
+ * POST /api/auth/logout
+ * Clear the authentication cookie
+ */
+router.post('/logout', (req, res) => {
+    res.clearCookie('token', { path: '/' });
+    res.json({
+        success: true,
+        message: '已退出登录'
+    });
 });
 
 /**
@@ -267,7 +288,7 @@ router.put('/profile', authMiddleware, (req, res) => {
 
         // Validate age if provided
         if (age !== undefined && age !== null && age !== '') {
-            const ageNum = parseInt(age);
+            const ageNum = parseInt(age, 10);
             if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
                 return res.status(400).json({
                     success: false,
@@ -276,10 +297,76 @@ router.put('/profile', authMiddleware, (req, res) => {
             }
         }
 
+        // Validate string field lengths
+        const fieldValidations = [
+            { value: profession, name: '职业', max: INPUT_LIMITS.PROFILE_FIELD_MAX },
+            { value: location_from, name: '籍贯', max: INPUT_LIMITS.PROFILE_FIELD_MAX },
+            { value: location_living, name: '现居城市', max: INPUT_LIMITS.PROFILE_FIELD_MAX },
+            { value: location_living_district, name: '区县', max: INPUT_LIMITS.PROFILE_FIELD_MAX },
+            { value: location_living_street, name: '街道', max: INPUT_LIMITS.PROFILE_FIELD_MAX }
+        ];
+
+        for (const field of fieldValidations) {
+            if (field.value && field.value.length > field.max) {
+                return res.status(400).json({
+                    success: false,
+                    error: `${field.name}不能超过${field.max}个字符`
+                });
+            }
+        }
+
+        // Validate disease_tags
+        if (disease_tags) {
+            if (!Array.isArray(disease_tags)) {
+                return res.status(400).json({
+                    success: false,
+                    error: '疾病标签格式错误'
+                });
+            }
+            if (disease_tags.length > INPUT_LIMITS.MAX_DISEASE_TAGS) {
+                return res.status(400).json({
+                    success: false,
+                    error: `疾病标签最多${INPUT_LIMITS.MAX_DISEASE_TAGS}个`
+                });
+            }
+            for (const tag of disease_tags) {
+                if (tag.length > INPUT_LIMITS.DISEASE_TAG_MAX) {
+                    return res.status(400).json({
+                        success: false,
+                        error: `疾病标签不能超过${INPUT_LIMITS.DISEASE_TAG_MAX}个字符`
+                    });
+                }
+            }
+        }
+
+        // Validate hospitals
+        if (hospitals) {
+            if (!Array.isArray(hospitals)) {
+                return res.status(400).json({
+                    success: false,
+                    error: '医院格式错误'
+                });
+            }
+            if (hospitals.length > INPUT_LIMITS.MAX_HOSPITALS) {
+                return res.status(400).json({
+                    success: false,
+                    error: `医院最多${INPUT_LIMITS.MAX_HOSPITALS}个`
+                });
+            }
+            for (const hospital of hospitals) {
+                if (hospital.length > INPUT_LIMITS.HOSPITAL_NAME_MAX) {
+                    return res.status(400).json({
+                        success: false,
+                        error: `医院名称不能超过${INPUT_LIMITS.HOSPITAL_NAME_MAX}个字符`
+                    });
+                }
+            }
+        }
+
         // Update profile
         const updatedProfile = updateUserProfile(req.user.id, {
             gender,
-            age: age ? parseInt(age) : null,
+            age: age ? parseInt(age, 10) : null,
             profession,
             marriage_status,
             location_from,
@@ -288,7 +375,7 @@ router.put('/profile', authMiddleware, (req, res) => {
             location_living_street,
             hukou,
             education,
-            family_size: family_size ? parseInt(family_size) : null,
+            family_size: family_size ? parseInt(family_size, 10) : null,
             income_individual,
             income_family,
             consumption_level,
@@ -319,6 +406,12 @@ router.put('/profile', authMiddleware, (req, res) => {
  * Query params:
  *   - communities: comma-separated community IDs (legacy)
  *   - community_filters: JSON array [{id, stage, type}] for sub-community filtering
+ *
+ * TODO: Response format inconsistency
+ * This endpoint returns: { success, data: { users, total } }
+ * Other list endpoints return: { success, data: [...], count, total }
+ * Consider normalizing to: { success, data: [...], total } for consistency.
+ * This would require updating discover.js to use data.data instead of data.data.users
  */
 router.get('/users/search', (req, res) => {
     try {
@@ -356,7 +449,7 @@ router.get('/users/search', (req, res) => {
         } else if (communities) {
             // Legacy format: comma-separated IDs
             parsedCommunityFilters = communities.split(',')
-                .map(id => parseInt(id.trim()))
+                .map(id => parseInt(id.trim(), 10))
                 .filter(id => !isNaN(id))
                 .map(id => ({ id, stage: '', type: '' }));
         }
@@ -379,8 +472,8 @@ router.get('/users/search', (req, res) => {
             housing_status,
             economic_dependency,
             exclude_user,
-            limit: parseInt(limit) || 50,
-            offset: parseInt(offset) || 0
+            limit: parseInt(limit, 10) || 50,
+            offset: parseInt(offset, 10) || 0
         });
 
         console.log('[DEBUG] searchUsers result:', { total: result.total, usersCount: result.users?.length });

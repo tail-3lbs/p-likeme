@@ -44,23 +44,10 @@ function getThreadIdFromUrl() {
 }
 
 /**
- * Get auth headers
- */
-function getAuthHeaders() {
-    const token = localStorage.getItem('p_likeme_token');
-    if (!token) return { 'Content-Type': 'application/json' };
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-    };
-}
-
-/**
- * Get current user
+ * Get current user (uses global getUser from main.js)
  */
 function getCurrentUser() {
-    const userData = localStorage.getItem('p_likeme_user');
-    return userData ? JSON.parse(userData) : null;
+    return getUser();
 }
 
 /**
@@ -158,14 +145,7 @@ function formatDate(dateStr) {
     });
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is defined in main.js
 
 /**
  * Load user's joined communities for edit form
@@ -173,7 +153,7 @@ function escapeHtml(text) {
 async function loadUserCommunities() {
     try {
         const response = await fetch('/api/user/communities?details=true', {
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
         const data = await response.json();
 
@@ -235,12 +215,15 @@ async function updateThread(e) {
     // Get selected communities
     const selectedCommunities = Array.from(
         document.querySelectorAll('input[name="edit-communities"]:checked')
-    ).map(cb => parseInt(cb.value));
+    ).map(cb => parseInt(cb.value, 10));
 
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
             body: JSON.stringify({
                 title,
                 content,
@@ -276,7 +259,7 @@ async function deleteThread() {
     try {
         const response = await fetch(`${THREADS_API}/${currentThread.id}`, {
             method: 'DELETE',
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -317,7 +300,7 @@ async function loadReplies() {
 
     try {
         const response = await fetch(`${THREADS_API}/${currentThread.id}/replies`, {
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
         const data = await response.json();
 
@@ -452,7 +435,10 @@ async function submitReply(e) {
 
         const response = await fetch(`${THREADS_API}/${currentThread.id}/replies`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
             body: JSON.stringify(body)
         });
 
@@ -515,7 +501,7 @@ async function deleteReplyItem(replyId) {
     try {
         const response = await fetch(`${THREADS_API}/${currentThread.id}/replies/${replyId}`, {
             method: 'DELETE',
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -576,7 +562,7 @@ if (repliesList) {
         // Handle reply button
         const replyBtn = e.target.closest('.reply-to-btn');
         if (replyBtn) {
-            const replyId = parseInt(replyBtn.dataset.replyId);
+            const replyId = parseInt(replyBtn.dataset.replyId, 10);
             const author = replyBtn.dataset.author;
             setReplyTo(replyId, author);
             return;
@@ -585,7 +571,7 @@ if (repliesList) {
         // Handle delete button
         const deleteBtn = e.target.closest('.delete-reply-btn');
         if (deleteBtn) {
-            const replyId = parseInt(deleteBtn.dataset.replyId);
+            const replyId = parseInt(deleteBtn.dataset.replyId, 10);
             deleteReplyItem(replyId);
         }
     });

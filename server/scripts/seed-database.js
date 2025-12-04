@@ -699,7 +699,7 @@ function generateThreads(userCommunities) {
         let threadCount = 0;
 
         for (const [userIdStr, joinedCommunities] of Object.entries(userCommunities)) {
-            const userId = parseInt(userIdStr);
+            const userId = parseInt(userIdStr, 10);
 
             // Each user creates 0-3 threads
             const numThreads = Math.floor(Math.random() * 4);

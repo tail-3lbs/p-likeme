@@ -46,10 +46,9 @@ const COMMUNITIES_API = '/api/communities';
  * Check if user is logged in and update UI
  */
 function checkLoginState() {
-    const token = localStorage.getItem('p_likeme_token');
-    const currentUser = JSON.parse(localStorage.getItem('p_likeme_user') || 'null');
+    const currentUser = getUser();
 
-    if (!token) {
+    if (!currentUser) {
         // Not logged in - show login prompt
         loginRequired.style.display = 'block';
         sharesContent.style.display = 'none';
@@ -92,14 +91,18 @@ function checkLoginState() {
 }
 
 /**
- * Get auth headers
+ * Get fetch options with credentials
  */
-function getAuthHeaders() {
-    const token = localStorage.getItem('p_likeme_token');
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+function getFetchOptions(method = 'GET', body = null) {
+    const options = {
+        method,
+        credentials: 'include'
     };
+    if (body) {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(body);
+    }
+    return options;
 }
 
 /**
@@ -118,7 +121,7 @@ async function loadThreads() {
         }
 
         const response = await fetch(apiUrl, {
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -187,7 +190,7 @@ function renderThreads(threads) {
 async function loadCommunities() {
     try {
         const response = await fetch('/api/user/communities?details=true', {
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
         const data = await response.json();
 
@@ -292,7 +295,7 @@ function getSelectedCommunityLinks(container, prefix) {
     const checkedBoxes = container.querySelectorAll(`input[name="${prefix}"]:checked`);
 
     checkedBoxes.forEach(checkbox => {
-        const communityId = parseInt(checkbox.value);
+        const communityId = parseInt(checkbox.value, 10);
         const stageSelect = document.getElementById(`${prefix}-stage-${communityId}`);
         const typeSelect = document.getElementById(`${prefix}-type-${communityId}`);
 
@@ -337,7 +340,10 @@ async function createThread(e) {
     try {
         const response = await fetch(THREADS_API, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
             body: JSON.stringify({
                 title,
                 content,
@@ -370,7 +376,7 @@ async function deleteThread(id) {
     try {
         const response = await fetch(`${THREADS_API}/${id}`, {
             method: 'DELETE',
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
 
         const data = await response.json();
@@ -393,7 +399,7 @@ async function openEditModal(threadId) {
     try {
         // Fetch thread data (use public endpoint to get full community details)
         const response = await fetch(`${THREADS_API}/${threadId}/public`, {
-            headers: getAuthHeaders()
+            credentials: 'include'
         });
         const data = await response.json();
 
@@ -455,7 +461,10 @@ async function updateThread(e) {
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
             body: JSON.stringify({
                 title,
                 content,
@@ -489,14 +498,7 @@ function formatDate(dateStr) {
     });
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is defined in main.js
 
 // Event Listeners
 if (newShareBtn) {
@@ -569,9 +571,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Re-check login state when localStorage changes (for login/logout)
+// Re-check login state when localStorage changes (cross-tab)
 window.addEventListener('storage', (e) => {
-    if (e.key === 'p_likeme_token') {
+    if (e.key === USER_KEY) {
         checkLoginState();
     }
 });
+
+// Re-check login state on same-tab auth changes
+window.addEventListener('authStateChanged', checkLoginState);

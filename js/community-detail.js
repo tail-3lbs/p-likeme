@@ -106,8 +106,7 @@ async function loadCommunity() {
 
 // Check if current user has joined this community/sub-community
 async function checkJoinStatus() {
-    const token = localStorage.getItem('p_likeme_token');
-    if (!token) {
+    if (!getUser()) {
         isJoined = false;
         userSubCommunities = [];
         updateJoinButton();
@@ -117,9 +116,7 @@ async function checkJoinStatus() {
     try {
         // Get user's memberships for this community
         const response = await fetch(`${API_BASE}/user/communities?community_id=${currentCommunityId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            credentials: 'include'
         });
         const result = await response.json();
 
@@ -463,12 +460,7 @@ function createThreadCard(thread) {
     return div;
 }
 
-// Escape HTML to prevent XSS
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is defined in main.js (available globally)
 
 // Update load more button visibility
 function updateLoadMoreButton() {
@@ -484,8 +476,7 @@ function handleLoadMore() {
 
 // Handle join/leave click
 async function handleJoinClick() {
-    const token = localStorage.getItem('p_likeme_token');
-    if (!token) {
+    if (!getUser()) {
         // Show login modal
         document.getElementById('auth-modal').classList.add('active');
         return;
@@ -509,9 +500,7 @@ async function handleJoinClick() {
             }
             const response = await fetch(leaveUrl, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials: 'include'
             });
             const result = await response.json();
             if (result.success) {
@@ -527,9 +516,9 @@ async function handleJoinClick() {
             const response = await fetch(`${API_BASE}/communities/${currentCommunityId}/join`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify(bodyData)
             });
             const result = await response.json();

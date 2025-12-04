@@ -142,12 +142,7 @@ function renderViewMode() {
         communitiesEl.innerHTML = '<span class="empty-hint">暂未加入任何社区</span>';
     }
 
-    // Helper function for HTML escaping
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+    // escapeHtml is defined in main.js (available globally)
 
     // Disease tags
     const diseaseTagsEl = document.getElementById('display-disease-tags');
@@ -260,7 +255,7 @@ function renderTags() {
     document.querySelectorAll('.tag-remove').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const type = e.target.dataset.type;
-            const index = parseInt(e.target.dataset.index);
+            const index = parseInt(e.target.dataset.index, 10);
             if (type === 'disease') {
                 diseaseTags.splice(index, 1);
             } else {
@@ -297,8 +292,7 @@ function addTagFromInput(input, tagsArray, renderFn) {
 async function handleProfileSubmit(e) {
     e.preventDefault();
 
-    const token = getToken();
-    if (!token) {
+    if (!getUser()) {
         profileError.textContent = '请先登录';
         return;
     }
@@ -332,9 +326,9 @@ async function handleProfileSubmit(e) {
         const response = await fetch('/api/auth/profile', {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify(formData)
         });
 

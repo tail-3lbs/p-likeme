@@ -6,6 +6,7 @@
 const express = require('express');
 const { createReply, getRepliesByThreadId, getReplyById, deleteReply, getThreadById, findUserById } = require('../database');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
+const { INPUT_LIMITS } = require('../config');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ const router = express.Router();
  */
 router.get('/:threadId/replies', optionalAuthMiddleware, (req, res) => {
     try {
-        const threadId = parseInt(req.params.threadId);
+        const threadId = parseInt(req.params.threadId, 10);
 
         // Check if thread exists
         const thread = getThreadById(threadId);
@@ -59,7 +60,7 @@ router.get('/:threadId/replies', optionalAuthMiddleware, (req, res) => {
  */
 router.post('/:threadId/replies', authMiddleware, (req, res) => {
     try {
-        const threadId = parseInt(req.params.threadId);
+        const threadId = parseInt(req.params.threadId, 10);
         const { content, parent_reply_id } = req.body;
 
         // Check if thread exists
@@ -79,10 +80,17 @@ router.post('/:threadId/replies', authMiddleware, (req, res) => {
             });
         }
 
+        if (content.trim().length > INPUT_LIMITS.REPLY_CONTENT_MAX) {
+            return res.status(400).json({
+                success: false,
+                error: `回复内容不能超过${INPUT_LIMITS.REPLY_CONTENT_MAX}个字符`
+            });
+        }
+
         // If replying to another reply, validate it exists
         let parentReplyId = null;
         if (parent_reply_id) {
-            const parentReply = getReplyById(parseInt(parent_reply_id));
+            const parentReply = getReplyById(parseInt(parent_reply_id, 10));
             if (!parentReply || parentReply.thread_id !== threadId) {
                 return res.status(400).json({
                     success: false,
@@ -129,8 +137,8 @@ router.post('/:threadId/replies', authMiddleware, (req, res) => {
  */
 router.delete('/:threadId/replies/:replyId', authMiddleware, (req, res) => {
     try {
-        const threadId = parseInt(req.params.threadId);
-        const replyId = parseInt(req.params.replyId);
+        const threadId = parseInt(req.params.threadId, 10);
+        const replyId = parseInt(req.params.replyId, 10);
 
         // Check if reply exists and belongs to this thread
         const reply = getReplyById(replyId);

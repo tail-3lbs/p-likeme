@@ -6,6 +6,7 @@
 const express = require('express');
 const { createThread, getThreadsByUserId, getThreadById, getThreadCommunityDetails, deleteThread, updateThread, getAllCommunities, getCommunityById, findUserById, findUserByUsernamePublic } = require('../database');
 const { authMiddleware } = require('../middleware/auth');
+const { INPUT_LIMITS } = require('../config');
 
 const router = express.Router();
 
@@ -100,7 +101,7 @@ router.get('/user/:username', authMiddleware, (req, res) => {
  */
 router.get('/:id', authMiddleware, (req, res) => {
     try {
-        const thread = getThreadById(parseInt(req.params.id));
+        const thread = getThreadById(parseInt(req.params.id, 10));
 
         if (!thread) {
             return res.status(404).json({
@@ -148,7 +149,7 @@ router.get('/:id', authMiddleware, (req, res) => {
  */
 router.get('/:id/public', (req, res) => {
     try {
-        const threadId = parseInt(req.params.id);
+        const threadId = parseInt(req.params.id, 10);
         const thread = getThreadById(threadId);
 
         if (!thread) {
@@ -225,10 +226,24 @@ router.post('/', authMiddleware, (req, res) => {
             });
         }
 
+        if (title.trim().length > INPUT_LIMITS.THREAD_TITLE_MAX) {
+            return res.status(400).json({
+                success: false,
+                error: `标题不能超过${INPUT_LIMITS.THREAD_TITLE_MAX}个字符`
+            });
+        }
+
         if (!content || !content.trim()) {
             return res.status(400).json({
                 success: false,
                 error: '内容不能为空'
+            });
+        }
+
+        if (content.trim().length > INPUT_LIMITS.THREAD_CONTENT_MAX) {
+            return res.status(400).json({
+                success: false,
+                error: `内容不能超过${INPUT_LIMITS.THREAD_CONTENT_MAX}个字符`
             });
         }
 
@@ -237,9 +252,9 @@ router.post('/', authMiddleware, (req, res) => {
             user_id: req.user.id,
             title: title.trim(),
             content: content.trim(),
-            community_ids: community_ids.map(id => parseInt(id)),
+            community_ids: community_ids.map(id => parseInt(id, 10)),
             community_links: community_links.map(link => ({
-                id: parseInt(link.id),
+                id: parseInt(link.id, 10),
                 stage: link.stage || '',
                 type: link.type || ''
             }))
@@ -282,6 +297,13 @@ router.put('/:id', authMiddleware, (req, res) => {
             });
         }
 
+        if (title.trim().length > INPUT_LIMITS.THREAD_TITLE_MAX) {
+            return res.status(400).json({
+                success: false,
+                error: `标题不能超过${INPUT_LIMITS.THREAD_TITLE_MAX}个字符`
+            });
+        }
+
         if (!content || !content.trim()) {
             return res.status(400).json({
                 success: false,
@@ -289,15 +311,22 @@ router.put('/:id', authMiddleware, (req, res) => {
             });
         }
 
+        if (content.trim().length > INPUT_LIMITS.THREAD_CONTENT_MAX) {
+            return res.status(400).json({
+                success: false,
+                error: `内容不能超过${INPUT_LIMITS.THREAD_CONTENT_MAX}个字符`
+            });
+        }
+
         // Update thread
         const updated = updateThread({
-            id: parseInt(req.params.id),
+            id: parseInt(req.params.id, 10),
             user_id: req.user.id,
             title: title.trim(),
             content: content.trim(),
-            community_ids: community_ids.map(id => parseInt(id)),
+            community_ids: community_ids.map(id => parseInt(id, 10)),
             community_links: community_links.map(link => ({
-                id: parseInt(link.id),
+                id: parseInt(link.id, 10),
                 stage: link.stage || '',
                 type: link.type || ''
             }))
@@ -310,7 +339,7 @@ router.put('/:id', authMiddleware, (req, res) => {
             });
         }
 
-        const thread = getThreadById(parseInt(req.params.id));
+        const thread = getThreadById(parseInt(req.params.id, 10));
 
         res.json({
             success: true,
@@ -332,7 +361,7 @@ router.put('/:id', authMiddleware, (req, res) => {
  */
 router.delete('/:id', authMiddleware, (req, res) => {
     try {
-        const deleted = deleteThread(parseInt(req.params.id), req.user.id);
+        const deleted = deleteThread(parseInt(req.params.id, 10), req.user.id);
 
         if (!deleted) {
             return res.status(404).json({

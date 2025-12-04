@@ -1,6 +1,9 @@
 /**
  * Frontend Authentication
  * Handles login/signup modal and API calls
+ *
+ * Security: Token is stored in HttpOnly cookie (not accessible via JavaScript)
+ * Only user info (id, username) is stored in localStorage for display purposes
  */
 
 // API base URL
@@ -23,9 +26,7 @@ const signupFormEl = document.getElementById('signup-form-el');
 const loginError = document.getElementById('login-error');
 const signupError = document.getElementById('signup-error');
 
-// Token storage key
-const TOKEN_KEY = 'p_likeme_token';
-const USER_KEY = 'p_likeme_user';
+// USER_KEY, getUser(), saveUser(), clearUser(), checkAuthStatus() are defined in main.js
 
 /**
  * Open modal
@@ -57,41 +58,11 @@ function closeModal() {
 }
 
 /**
- * Save auth data to localStorage
- */
-function saveAuthData(token, user) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-/**
- * Get saved token
- */
-function getToken() {
-    return localStorage.getItem(TOKEN_KEY);
-}
-
-/**
- * Get saved user
- */
-function getUser() {
-    const userData = localStorage.getItem(USER_KEY);
-    return userData ? JSON.parse(userData) : null;
-}
-
-/**
- * Clear auth data
- */
-function clearAuthData() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-}
-
-/**
- * Check if user is logged in
+ * Check if user is logged in (based on cached user data)
+ * Note: For actual auth verification, use checkAuthStatus() which calls the server
  */
 function isLoggedIn() {
-    return !!getToken();
+    return !!getUser();
 }
 
 /**
@@ -132,10 +103,20 @@ function updateNav() {
 }
 
 /**
- * Logout
+ * Logout - calls server to clear HttpOnly cookie
  */
-function logout() {
-    clearAuthData();
+async function logout() {
+    try {
+        await fetch(`${API_BASE}/logout`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+    }
+    // Clear local user data regardless of server response
+    clearUser();
+    dispatchAuthChange();
     window.location.href = 'index.html';
 }
 
@@ -154,13 +135,15 @@ async function handleLogin(e) {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include', // Important: allows server to set cookie
             body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            saveAuthData(data.data.token, data.data.user);
+            saveUser(data.data.user);
+            dispatchAuthChange();
             closeModal();
             updateNav();
         } else {
@@ -194,13 +177,15 @@ async function handleSignup(e) {
             headers: {
                 'Content-Type': 'application/json'
             },
+            credentials: 'include', // Important: allows server to set cookie
             body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            saveAuthData(data.data.token, data.data.user);
+            saveUser(data.data.user);
+            dispatchAuthChange();
             closeModal();
             updateNav();
         } else {

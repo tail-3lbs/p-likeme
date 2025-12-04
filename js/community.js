@@ -5,7 +5,7 @@
 
 (function() {
     const API_BASE = '/api';
-    const TOKEN_KEY = 'p_likeme_token';
+    // getUser() is defined in main.js
 
     const searchInput = document.getElementById('community-search');
     const communitiesContainer = document.getElementById('communities');
@@ -14,14 +14,9 @@
 
     let joinedCommunityIds = new Set();
 
-    // Get auth token
-    function getToken() {
-        return localStorage.getItem(TOKEN_KEY);
-    }
-
-    // Check if logged in
+    // Check if logged in (uses cached user data from localStorage)
     function isLoggedIn() {
-        return !!getToken();
+        return !!getUser();
     }
 
     // Fetch user's joined communities
@@ -33,9 +28,7 @@
 
         try {
             const response = await fetch(`${API_BASE}/user/communities`, {
-                headers: {
-                    'Authorization': `Bearer ${getToken()}`
-                }
+                credentials: 'include'
             });
             const result = await response.json();
             if (result.success) {
@@ -70,9 +63,7 @@
         try {
             const response = await fetch(url, {
                 method: method,
-                headers: {
-                    'Authorization': `Bearer ${getToken()}`
-                }
+                credentials: 'include'
             });
             const result = await response.json();
 
@@ -105,7 +96,7 @@
             const memberCountEl = card.querySelector('.member-count');
             if (memberCountEl) {
                 const currentText = memberCountEl.textContent;
-                const currentCount = parseInt(currentText.replace(/,/g, ''));
+                const currentCount = parseInt(currentText.replace(/,/g, ''), 10);
                 const newCount = currentCount + delta;
                 memberCountEl.textContent = `${formatNumber(newCount)} 位成员`;
             }
@@ -218,7 +209,7 @@
             // Handle join button click
             const button = e.target.closest('button[data-community-id]');
             if (button) {
-                const communityId = parseInt(button.dataset.communityId);
+                const communityId = parseInt(button.dataset.communityId, 10);
                 handleJoinClick(communityId, button);
                 return;
             }

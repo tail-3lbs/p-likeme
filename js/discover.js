@@ -31,21 +31,9 @@ const autoFindLoginLink = document.getElementById('auto-find-login-link');
 /**
  * Get current user from localStorage
  */
+// getCurrentUser uses the global getUser() from main.js
 function getCurrentUser() {
-    const userData = localStorage.getItem('p_likeme_user');
-    return userData ? JSON.parse(userData) : null;
-}
-
-/**
- * Get auth headers
- */
-function getAuthHeaders() {
-    const token = localStorage.getItem('p_likeme_token');
-    if (!token) return { 'Content-Type': 'application/json' };
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-    };
+    return getUser();
 }
 
 /**
@@ -121,12 +109,12 @@ function renderCommunityDropdown() {
  * Handle community checkbox change
  */
 function handleCommunityChange(e) {
-    const id = parseInt(e.target.value);
+    const id = parseInt(e.target.value, 10);
     const name = e.target.dataset.name;
 
     if (e.target.checked) {
         // Find the full community object to get dimensions
-        const community = communities.find(c => parseInt(c.id) === id);
+        const community = communities.find(c => parseInt(c.id, 10) === id);
         if (community && !selectedCommunities.find(sc => sc.id === id)) {
             selectedCommunities.push({
                 id,
@@ -205,7 +193,7 @@ function renderSelectedCommunities() {
     // Add remove listeners
     selectedCommunitiesWrapper.querySelectorAll('.tag-remove-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id);
+            const id = parseInt(e.target.dataset.id, 10);
             selectedCommunities = selectedCommunities.filter(sc => sc.id !== id);
 
             // Uncheck in dropdown
@@ -220,7 +208,7 @@ function renderSelectedCommunities() {
     // Add dimension select listeners
     selectedCommunitiesWrapper.querySelectorAll('.community-dimension-filter select').forEach(select => {
         select.addEventListener('change', (e) => {
-            const communityId = parseInt(e.target.dataset.communityId);
+            const communityId = parseInt(e.target.dataset.communityId, 10);
             const dimension = e.target.dataset.dimension;
             const value = e.target.value;
 
@@ -232,14 +220,7 @@ function renderSelectedCommunities() {
     });
 }
 
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is defined in main.js
 
 /**
  * Update trigger text
@@ -305,15 +286,15 @@ function setupEventListeners() {
         document.getElementById('login-btn')?.click();
     });
 
-    // Listen for login state changes
+    // Listen for login state changes (cross-tab via storage event)
     window.addEventListener('storage', (e) => {
-        if (e.key === 'p_likeme_user' || e.key === 'p_likeme_token') {
+        if (e.key === USER_KEY) {
             updateAutoFindState();
         }
     });
 
-    // Also check login state periodically (for same-tab login)
-    setInterval(updateAutoFindState, 1000);
+    // Listen for login state changes (same-tab via custom event)
+    window.addEventListener('authStateChanged', updateAutoFindState);
 }
 
 /**
@@ -460,11 +441,11 @@ function updateFiltersFromProfile(profile) {
     if (profile.communities && profile.communities.length > 0) {
         // For auto-find, deduplicate by community ID and use Level I only
         // This avoids showing multiple panels for the same community when user has joined multiple sub-communities
-        const uniqueCommunityIds = [...new Set(profile.communities.map(c => parseInt(c.id)))];
+        const uniqueCommunityIds = [...new Set(profile.communities.map(c => parseInt(c.id, 10)))];
 
         selectedCommunities = uniqueCommunityIds.map(id => {
-            const fullCommunity = communities.find(fc => parseInt(fc.id) === id);
-            const profileCommunity = profile.communities.find(c => parseInt(c.id) === id);
+            const fullCommunity = communities.find(fc => parseInt(fc.id, 10) === id);
+            const profileCommunity = profile.communities.find(c => parseInt(c.id, 10) === id);
             return {
                 id,
                 name: profileCommunity?.name || (fullCommunity ? fullCommunity.name : ''),
@@ -476,7 +457,7 @@ function updateFiltersFromProfile(profile) {
 
         // Check the checkboxes
         communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.checked = selectedCommunities.some(sc => sc.id === parseInt(cb.value));
+            cb.checked = selectedCommunities.some(sc => sc.id === parseInt(cb.value, 10));
         });
 
         renderSelectedCommunities();
