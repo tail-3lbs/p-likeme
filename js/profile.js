@@ -276,10 +276,18 @@ function renderTags() {
     });
 }
 
+// Tag limits (should match server config)
+const TAG_LIMITS = {
+    DISEASE_TAG_MAX: 50,
+    HOSPITAL_NAME_MAX: 100,
+    MAX_DISEASE_TAGS: 20,
+    MAX_HOSPITALS: 10
+};
+
 /**
  * Add tag from input
  */
-function addTagFromInput(input, tagsArray, renderFn) {
+function addTagFromInput(input, tagsArray, renderFn, maxLength, maxCount) {
     const value = input.value.trim();
     if (!value) return;
 
@@ -287,6 +295,16 @@ function addTagFromInput(input, tagsArray, renderFn) {
     const newTags = value.split(/[,，]/).map(t => t.trim()).filter(t => t);
 
     for (const tag of newTags) {
+        // Check max count
+        if (tagsArray.length >= maxCount) {
+            alert(`最多只能添加${maxCount}个标签`);
+            break;
+        }
+        // Check max length
+        if (tag.length > maxLength) {
+            alert(`标签"${tag.substring(0, 10)}..."超过${maxLength}个字符限制`);
+            continue;
+        }
         if (!tagsArray.includes(tag)) {
             tagsArray.push(tag);
         }
@@ -383,11 +401,11 @@ if (diseaseTagsInput) {
     diseaseTagsInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            addTagFromInput(diseaseTagsInput, diseaseTags, renderTags);
+            addTagFromInput(diseaseTagsInput, diseaseTags, renderTags, TAG_LIMITS.DISEASE_TAG_MAX, TAG_LIMITS.MAX_DISEASE_TAGS);
         }
     });
     diseaseTagsInput.addEventListener('blur', () => {
-        addTagFromInput(diseaseTagsInput, diseaseTags, renderTags);
+        addTagFromInput(diseaseTagsInput, diseaseTags, renderTags, TAG_LIMITS.DISEASE_TAG_MAX, TAG_LIMITS.MAX_DISEASE_TAGS);
     });
 }
 
@@ -397,10 +415,10 @@ if (hospitalsInput) {
     hospitalsInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            addTagFromInput(hospitalsInput, hospitalTags, renderTags);
+            addTagFromInput(hospitalsInput, hospitalTags, renderTags, TAG_LIMITS.HOSPITAL_NAME_MAX, TAG_LIMITS.MAX_HOSPITALS);
         }
     });
     hospitalsInput.addEventListener('blur', () => {
-        addTagFromInput(hospitalsInput, hospitalTags, renderTags);
+        addTagFromInput(hospitalsInput, hospitalTags, renderTags, TAG_LIMITS.HOSPITAL_NAME_MAX, TAG_LIMITS.MAX_HOSPITALS);
     });
 }

@@ -583,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initReplySection();
 
     // Community tag clicks - redirect to community detail page (with stage/type if present)
-    document.getElementById('thread-communities').addEventListener('click', (e) => {
+    document.getElementById('thread-communities')?.addEventListener('click', (e) => {
         const tag = e.target.closest('.community-tag[data-href]');
         if (tag) {
             window.location.href = tag.dataset.href;

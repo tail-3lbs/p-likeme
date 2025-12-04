@@ -11,22 +11,11 @@ let currentOffset = 0;
 let currentTotal = 0;
 const LIMIT = 20;
 
-// DOM Elements
-const searchForm = document.getElementById('search-form');
-const communityTrigger = document.getElementById('community-trigger');
-const communityDropdown = document.getElementById('community-dropdown');
-const selectedCommunitiesWrapper = document.getElementById('selected-communities-wrapper');
-const resultsTitle = document.getElementById('results-title');
-const searchHint = document.getElementById('search-hint');
-const resultsLoading = document.getElementById('results-loading');
-const noResults = document.getElementById('no-results');
-const userCards = document.getElementById('user-cards');
-const resultsPagination = document.getElementById('results-pagination');
-const loadMoreBtn = document.getElementById('load-more-btn');
-const clearFiltersBtn = document.getElementById('clear-filters-btn');
-const autoFindBtn = document.getElementById('auto-find-btn');
-const autoFindLoginHint = document.getElementById('auto-find-login-hint');
-const autoFindLoginLink = document.getElementById('auto-find-login-link');
+// DOM Elements (initialized in initDiscover after DOMContentLoaded)
+let searchForm, communityTrigger, communityDropdown, selectedCommunitiesWrapper;
+let resultsTitle, searchHint, resultsLoading, noResults, userCards;
+let resultsPagination, loadMoreBtn, clearFiltersBtn;
+let autoFindBtn, autoFindLoginHint, autoFindLoginLink;
 
 /**
  * Get current user from localStorage
@@ -40,6 +29,23 @@ function getCurrentUser() {
  * Initialize page
  */
 async function initDiscover() {
+    // Initialize DOM elements
+    searchForm = document.getElementById('search-form');
+    communityTrigger = document.getElementById('community-trigger');
+    communityDropdown = document.getElementById('community-dropdown');
+    selectedCommunitiesWrapper = document.getElementById('selected-communities-wrapper');
+    resultsTitle = document.getElementById('results-title');
+    searchHint = document.getElementById('search-hint');
+    resultsLoading = document.getElementById('results-loading');
+    noResults = document.getElementById('no-results');
+    userCards = document.getElementById('user-cards');
+    resultsPagination = document.getElementById('results-pagination');
+    loadMoreBtn = document.getElementById('load-more-btn');
+    clearFiltersBtn = document.getElementById('clear-filters-btn');
+    autoFindBtn = document.getElementById('auto-find-btn');
+    autoFindLoginHint = document.getElementById('auto-find-login-hint');
+    autoFindLoginLink = document.getElementById('auto-find-login-link');
+
     await loadCommunities();
     setupEventListeners();
     updateAutoFindState();
@@ -64,15 +70,11 @@ function updateAutoFindState() {
  */
 async function loadCommunities() {
     try {
-        console.log('[DEBUG] Loading communities...');
         const response = await fetch('/api/communities');
         const data = await response.json();
-        console.log('[DEBUG] Communities API response:', data);
 
         if (data.success) {
             communities = data.data;
-            console.log('[DEBUG] Communities loaded:', communities.length, 'communities');
-            console.log('[DEBUG] Communities list:', communities.map(c => `${c.id}: ${c.name}`));
             renderCommunityDropdown();
         }
     } catch (error) {
@@ -84,7 +86,6 @@ async function loadCommunities() {
  * Render community dropdown options
  */
 function renderCommunityDropdown() {
-    console.log('[DEBUG] renderCommunityDropdown called with', communities.length, 'communities');
     const html = communities.map(c => `
         <label class="dropdown-item">
             <input type="checkbox" value="${c.id}" data-name="${c.name}">
@@ -92,12 +93,7 @@ function renderCommunityDropdown() {
         </label>
     `).join('');
 
-    console.log('[DEBUG] Dropdown HTML length:', html.length);
     communityDropdown.innerHTML = html;
-    console.log('[DEBUG] Dropdown children count:', communityDropdown.children.length);
-    console.log('[DEBUG] Dropdown element:', communityDropdown);
-    console.log('[DEBUG] Dropdown scrollHeight:', communityDropdown.scrollHeight);
-    console.log('[DEBUG] Dropdown clientHeight:', communityDropdown.clientHeight);
 
     // Add change listeners
     communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
@@ -239,16 +235,6 @@ function updateTriggerText() {
  */
 function toggleDropdown() {
     communityDropdown.classList.toggle('active');
-    if (communityDropdown.classList.contains('active')) {
-        console.log('[DEBUG] Dropdown opened');
-        console.log('[DEBUG] Dropdown scrollHeight:', communityDropdown.scrollHeight);
-        console.log('[DEBUG] Dropdown clientHeight:', communityDropdown.clientHeight);
-        console.log('[DEBUG] Dropdown offsetHeight:', communityDropdown.offsetHeight);
-        const styles = window.getComputedStyle(communityDropdown);
-        console.log('[DEBUG] Dropdown computed maxHeight:', styles.maxHeight);
-        console.log('[DEBUG] Dropdown computed overflow:', styles.overflow, styles.overflowY);
-        console.log('[DEBUG] Dropdown children count:', communityDropdown.children.length);
-    }
 }
 
 /**
@@ -411,12 +397,10 @@ async function handleAutoFind() {
         // Perform search
         const searchResponse = await fetch(`/api/auth/users/search?${params.toString()}`);
         const searchData = await searchResponse.json();
-        console.log('[DEBUG] Auto-find API response:', searchData);
 
         if (searchData.success) {
             currentOffset = 0;
             currentTotal = searchData.data.total;
-            console.log('[DEBUG] Auto-find Total:', searchData.data.total, 'Users:', searchData.data.users?.length);
 
             // Update filters UI to show what was searched
             updateFiltersFromProfile(profile);
@@ -598,11 +582,9 @@ async function performSearch(append = false) {
     try {
         const response = await fetch(`/api/auth/users/search?${params.toString()}`);
         const data = await response.json();
-        console.log('[DEBUG] Search API response:', data);
 
         if (data.success) {
             currentTotal = data.data.total;
-            console.log('[DEBUG] Total:', data.data.total, 'Users:', data.data.users?.length);
 
             if (append) {
                 appendResults(data.data.users);

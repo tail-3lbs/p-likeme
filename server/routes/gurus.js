@@ -104,10 +104,18 @@ router.put('/intro', authMiddleware, (req, res) => {
 
         // Check if user is a guru
         const user = findUserById(userId);
-        if (!user || !user.is_guru) {
+        if (!user || user.is_guru !== 1) {
             return res.status(403).json({
                 success: false,
                 error: '只有明星可以编辑简介'
+            });
+        }
+
+        // Validate intro type
+        if (intro !== undefined && intro !== null && typeof intro !== 'string') {
+            return res.status(400).json({
+                success: false,
+                error: '简介必须是文本'
             });
         }
 
@@ -198,6 +206,14 @@ router.post('/:username/questions', authMiddleware, (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: '明星不存在'
+            });
+        }
+
+        // Prevent self-questioning
+        if (guru.id === askerId) {
+            return res.status(400).json({
+                success: false,
+                error: '不能向自己提问'
             });
         }
 

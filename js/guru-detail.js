@@ -501,8 +501,8 @@
     });
 
     // Question modal close
-    document.getElementById('question-modal-close').addEventListener('click', closeQuestionModal);
-    document.getElementById('question-modal').addEventListener('click', (e) => {
+    document.getElementById('question-modal-close')?.addEventListener('click', closeQuestionModal);
+    document.getElementById('question-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'question-modal') {
             closeQuestionModal();
         }
