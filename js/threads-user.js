@@ -71,7 +71,7 @@ function checkLoginState() {
         pageTitle.textContent = '我的分享';
         document.title = '我的分享 - 像我一样';
     } else {
-        pageTitle.textContent = `${viewingUser} 的分享`;
+        pageTitle.innerHTML = `<a href="profile.html?user=${encodeURIComponent(viewingUser)}" class="username-link">${escapeHtml(viewingUser)}</a> 的分享`;
         document.title = `${viewingUser} 的分享 - 像我一样`;
     }
 

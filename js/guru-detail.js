@@ -113,6 +113,9 @@
         // View profile link
         document.getElementById('view-profile-btn').href = `profile.html?user=${encodeURIComponent(guruData.username)}`;
 
+        // TA的分享 link
+        document.getElementById('guru-threads-link').href = `threads-user.html?user=${encodeURIComponent(guruData.username)}`;
+
         // Show edit button if own page
         if (isOwnGuruPage) {
             document.getElementById('edit-intro-btn').style.display = 'inline-block';

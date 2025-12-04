@@ -652,6 +652,16 @@ ul {
     margin-bottom: 0.5rem;
 }
 
+.page-header h1 .username-link {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.page-header h1 .username-link:hover {
+    opacity: 0.85;
+}
+
 .page-header p {
     font-size: 1rem;
     opacity: 0.9;
@@ -3048,6 +3058,16 @@ ul {
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
     border-bottom: 2px solid #e8f5f5;
+}
+
+.guru-threads-section h2 .section-title-link {
+    color: #333;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.guru-threads-section h2 .section-title-link:hover {
+    color: #5cbcb3;
 }
 
 .guru-threads-section .thread-card {

@@ -54,9 +54,6 @@
                             ${guru.communities.map(c => `<span class="community-tag-small">${escapeHtml(c.name)}</span>`).join('')}
                         </div>
                         ` : ''}
-                        <div class="guru-card-meta">
-                            加入于 ${formatDate(guru.created_at)}
-                        </div>
                     </div>
                 </a>
             </div>
@@ -81,13 +78,6 @@
         const singleLine = text.replace(/\n+/g, ' ');
         if (singleLine.length <= maxLength) return singleLine;
         return singleLine.substring(0, maxLength) + '...';
-    }
-
-    /**
-     * Format date - uses shared CST formatting from main.js
-     */
-    function formatDate(dateString) {
-        return formatCSTDateSimple(dateString);
     }
 
     // Initialize on page load
