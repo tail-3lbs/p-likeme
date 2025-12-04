@@ -9,21 +9,10 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { createUser, findUserByUsername, findUserById, usernameExists, getUserProfile, updateUserProfile, findUserByUsernamePublic, searchUsers } = require('../database');
+const { JWT_SECRET, JWT_EXPIRES_IN, PASSWORD_RULES } = require('../config');
+const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
-
-// JWT Secret (in production, use environment variable)
-const JWT_SECRET = 'p-likeme-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '7d';
-
-// Password validation rules
-const PASSWORD_RULES = {
-    minLength: 8,
-    requireUppercase: true,
-    requireLowercase: true,
-    requireNumber: true,
-    requireSpecial: true
-};
 
 /**
  * Validate password strength
@@ -59,27 +48,6 @@ function generateToken(user) {
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
     );
-}
-
-/**
- * Middleware: Verify JWT token
- */
-function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: '未登录' });
-    }
-
-    const token = authHeader.substring(7);
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({ success: false, error: '登录已过期，请重新登录' });
-    }
 }
 
 /**
@@ -432,4 +400,6 @@ router.get('/users/search', (req, res) => {
 });
 
 module.exports = router;
+// Re-export middleware for backward compatibility
 module.exports.authMiddleware = authMiddleware;
+module.exports.optionalAuthMiddleware = optionalAuthMiddleware;

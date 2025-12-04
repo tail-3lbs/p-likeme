@@ -4,52 +4,10 @@
  */
 
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const { createReply, getRepliesByThreadId, getReplyById, deleteReply, getThreadById, findUserById } = require('../database');
+const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
-
-// JWT Secret (same as auth.js)
-const JWT_SECRET = 'p-likeme-secret-key-change-in-production';
-
-/**
- * Middleware: Verify JWT token
- */
-function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: '未登录' });
-    }
-
-    const token = authHeader.substring(7);
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({ success: false, error: '登录已过期，请重新登录' });
-    }
-}
-
-/**
- * Optional auth middleware - doesn't fail if no token, just sets req.user if valid
- */
-function optionalAuthMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            req.user = decoded;
-        } catch (error) {
-            // Invalid token, but we continue without user
-        }
-    }
-    next();
-}
 
 /**
  * GET /api/threads/:threadId/replies

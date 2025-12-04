@@ -7,13 +7,13 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById, getSubCommunityMemberCounts, isUserInCommunity, getUserSubCommunities } = require('./database');
+const { PORT } = require('./config');
+const { authMiddleware } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
-const { authMiddleware } = require('./routes/auth');
 const threadsRoutes = require('./routes/threads');
 const repliesRoutes = require('./routes/replies');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());

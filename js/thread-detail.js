@@ -31,6 +31,7 @@ const THREADS_API = '/api/threads';
 
 // Current thread data
 let currentThread = null;
+let currentReplies = [];
 let userCommunities = [];
 let replyingTo = null; // Track which reply we're responding to
 

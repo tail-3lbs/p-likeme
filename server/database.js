@@ -1019,14 +1019,18 @@ function getThreadCommunityDetails(threadId) {
     `).all(threadId);
 }
 
-// Delete a thread (and its community links)
+// Delete a thread (and its community links and replies)
 function deleteThread(id, user_id) {
     const deleteLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
-    const deleteThread = threadsDb.prepare('DELETE FROM threads WHERE id = ? AND user_id = ?');
+    const deleteThreadStmt = threadsDb.prepare('DELETE FROM threads WHERE id = ? AND user_id = ?');
 
     const deleteWithLinks = threadsDb.transaction((id, user_id) => {
         deleteLinks.run(id);
-        const result = deleteThread.run(id, user_id);
+        const result = deleteThreadStmt.run(id, user_id);
+        if (result.changes > 0) {
+            // Also delete all replies for this thread
+            deleteRepliesByThreadId(id);
+        }
         return result.changes > 0;
     });
 
