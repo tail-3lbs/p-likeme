@@ -108,6 +108,9 @@
         const joinDate = new Date(guruData.created_at);
         document.getElementById('guru-join-date').textContent = `加入于 ${joinDate.toLocaleDateString('zh-CN')}`;
 
+        // Communities
+        renderCommunities();
+
         // View profile link
         document.getElementById('view-profile-btn').href = `profile.html?user=${encodeURIComponent(guruData.username)}`;
 
@@ -135,6 +138,30 @@
         } else {
             introEl.innerHTML = '<p class="empty-hint">暂无简介</p>';
         }
+    }
+
+    /**
+     * Render communities section
+     */
+    function renderCommunities() {
+        const communitiesEl = document.getElementById('guru-communities');
+        const communities = guruData.communities || [];
+
+        if (communities.length === 0) {
+            communitiesEl.innerHTML = '';
+            return;
+        }
+
+        communitiesEl.innerHTML = communities.map(c => {
+            // Build URL with stage/type parameters
+            let href = `community-detail.html?id=${c.id}`;
+            if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
+            if (c.type) href += `&type=${encodeURIComponent(c.type)}`;
+
+            // Use displayPath if available, otherwise just the name
+            const displayText = c.displayPath || c.name;
+            return `<a href="${href}" class="community-tag-link">${escapeHtml(displayText)}</a>`;
+        }).join('');
     }
 
     /**
@@ -196,7 +223,7 @@
                     <h3 class="question-title">${escapeHtml(q.title)}</h3>
                     <p class="question-preview">${escapeHtml(truncateText(q.content, 100))}</p>
                     <div class="question-meta">
-                        <span class="question-asker">${escapeHtml(q.asker_username)} 提问</span>
+                        <span class="question-asker"><a href="profile.html?user=${encodeURIComponent(q.asker_username)}" class="asker-link">${escapeHtml(q.asker_username)}</a> 提问</span>
                         <span>${formatDate(q.created_at)}</span>
                         <span>${q.reply_count || 0} 回复</span>
                     </div>

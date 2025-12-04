@@ -10,6 +10,8 @@ const {
     updateGuruIntro,
     getThreadsByUserId,
     getAllCommunities,
+    getUserLevel1CommunityIds,
+    getUserAllCommunities,
     findUserByUsernamePublic,
     createGuruQuestion,
     getGuruQuestions,
@@ -33,10 +35,27 @@ const router = express.Router();
 router.get('/', (req, res) => {
     try {
         const gurus = getAllGurus();
+        const allCommunities = getAllCommunities();
+        const communityMap = {};
+        allCommunities.forEach(c => { communityMap[c.id] = c.name; });
+
+        // Add Level 1 communities to each guru
+        const gurusWithCommunities = gurus.map(guru => {
+            const level1Ids = getUserLevel1CommunityIds(guru.id);
+            const communities = level1Ids.map(id => ({
+                id,
+                name: communityMap[id] || '未知社区'
+            }));
+            return {
+                ...guru,
+                communities
+            };
+        });
+
         res.json({
             success: true,
-            data: gurus,
-            count: gurus.length
+            data: gurusWithCommunities,
+            count: gurusWithCommunities.length
         });
     } catch (error) {
         console.error('Error fetching gurus:', error);
@@ -65,9 +84,9 @@ router.get('/:username', (req, res) => {
 
         // Get guru's threads
         const threads = getThreadsByUserId(guru.id);
-        const communities = getAllCommunities();
+        const allCommunities = getAllCommunities();
         const communityMap = {};
-        communities.forEach(c => { communityMap[c.id] = c.name; });
+        allCommunities.forEach(c => { communityMap[c.id] = c.name; });
 
         const threadsWithNames = threads.map(thread => ({
             ...thread,
@@ -77,10 +96,14 @@ router.get('/:username', (req, res) => {
             }))
         }));
 
+        // Get guru's joined communities (all memberships)
+        const guruCommunities = getUserAllCommunities(guru.id);
+
         res.json({
             success: true,
             data: {
                 ...guru,
+                communities: guruCommunities,
                 threads: threadsWithNames
             }
         });

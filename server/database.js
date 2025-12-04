@@ -1353,6 +1353,53 @@ function getGuruByUsername(username) {
     `).get(username);
 }
 
+// Get user's Level 1 communities (unique community_ids where stage and type are empty)
+function getUserLevel1CommunityIds(userId) {
+    return usersDb.prepare(`
+        SELECT DISTINCT community_id
+        FROM user_communities
+        WHERE user_id = ? AND (stage = '' OR stage IS NULL) AND (type = '' OR type IS NULL)
+    `).all(userId).map(row => row.community_id);
+}
+
+// Get all community memberships for a user (with full details)
+function getUserAllCommunities(userId) {
+    const memberships = usersDb.prepare(`
+        SELECT community_id, stage, type
+        FROM user_communities
+        WHERE user_id = ?
+    `).all(userId);
+
+    // Get unique community IDs
+    const communityIds = [...new Set(memberships.map(m => m.community_id))];
+    if (communityIds.length === 0) return [];
+
+    // Get community names from communities database
+    const placeholders = communityIds.map(() => '?').join(',');
+    const communities = communitiesDb.prepare(`
+        SELECT id, name FROM communities WHERE id IN (${placeholders})
+    `).all(...communityIds);
+
+    const communityMap = {};
+    communities.forEach(c => { communityMap[c.id] = c.name; });
+
+    // Build result with community names and sub-community info
+    return memberships.map(m => {
+        const communityName = communityMap[m.community_id] || '未知社区';
+        let displayPath = communityName;
+        if (m.stage) displayPath += ` > ${m.stage}`;
+        if (m.type) displayPath += ` > ${m.type}`;
+
+        return {
+            id: m.community_id,
+            name: communityName,
+            stage: m.stage || null,
+            type: m.type || null,
+            displayPath
+        };
+    });
+}
+
 // Update guru intro (guru can edit their own intro)
 function updateGuruIntro(userId, intro) {
     const stmt = usersDb.prepare('UPDATE users SET guru_intro = ? WHERE id = ? AND is_guru = 1');
@@ -1497,6 +1544,8 @@ module.exports = {
     getAllGurus,
     isUserGuru,
     getGuruByUsername,
+    getUserLevel1CommunityIds,
+    getUserAllCommunities,
     updateGuruIntro,
     createGuruQuestion,
     getGuruQuestions,

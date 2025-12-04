@@ -451,8 +451,10 @@ function createThreadCard(thread) {
             <p>${escapeHtml(thread.content.substring(0, 150))}${thread.content.length > 150 ? '...' : ''}</p>
         </div>
         <div class="thread-card-footer">
-            <span class="thread-author">作者：${escapeHtml(thread.author)}</span>
-            <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
+            <div class="thread-card-info-left">
+                <span class="thread-author">作者：<a href="profile.html?user=${encodeURIComponent(thread.author)}" class="author-link">${escapeHtml(thread.author)}</a></span>
+                <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
+            </div>
             <div class="thread-communities">
                 ${communityTags}
             </div>
