@@ -12,6 +12,29 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
+// ============ CST Timestamp Helper ============
+
+/**
+ * Get current time in China Standard Time (UTC+8)
+ * @returns {string} - SQLite datetime string in format 'YYYY-MM-DD HH:MM:SS'
+ */
+function getCSTTimestamp() {
+    const now = new Date();
+    // Get UTC time, then add 8 hours for CST
+    const cstOffset = 8 * 60 * 60 * 1000;
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    const cstTime = new Date(utcTime + cstOffset);
+
+    const year = cstTime.getFullYear();
+    const month = String(cstTime.getMonth() + 1).padStart(2, '0');
+    const day = String(cstTime.getDate()).padStart(2, '0');
+    const hours = String(cstTime.getHours()).padStart(2, '0');
+    const minutes = String(cstTime.getMinutes()).padStart(2, '0');
+    const seconds = String(cstTime.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 // Database file paths
 const communitiesDbPath = path.join(__dirname, 'db', 'communities.db');
 const usersDbPath = path.join(__dirname, 'db', 'users.db');
@@ -265,10 +288,10 @@ function initUsersDb() {
 
 function createUser({ username, password_hash }) {
     const stmt = usersDb.prepare(`
-        INSERT INTO users (username, password_hash)
-        VALUES (@username, @password_hash)
+        INSERT INTO users (username, password_hash, created_at)
+        VALUES (@username, @password_hash, @created_at)
     `);
-    const result = stmt.run({ username, password_hash });
+    const result = stmt.run({ username, password_hash, created_at: getCSTTimestamp() });
     return result.lastInsertRowid;
 }
 
@@ -301,9 +324,10 @@ function joinCommunity(user_id, community_id, stage = null, type = null) {
 
     // Prepare statements
     const insertMembership = usersDb.prepare(`
-        INSERT OR IGNORE INTO user_communities (user_id, community_id, stage, type)
-        VALUES (?, ?, ?, ?)
+        INSERT OR IGNORE INTO user_communities (user_id, community_id, stage, type, joined_at)
+        VALUES (?, ?, ?, ?, ?)
     `);
+    const cstNow = getCSTTimestamp();
 
     const updateMainCount = communitiesDb.prepare(`
         UPDATE communities SET member_count = member_count + 1 WHERE id = ?
@@ -322,7 +346,7 @@ function joinCommunity(user_id, community_id, stage = null, type = null) {
     // Atomic transaction for all membership inserts in usersDb
     const insertMemberships = usersDb.transaction(() => {
         // Always ensure Level I membership exists
-        const levelIResult = insertMembership.run(user_id, community_id, '', '');
+        const levelIResult = insertMembership.run(user_id, community_id, '', '', cstNow);
         if (levelIResult.changes > 0) {
             addedMemberships.push({ stage: '', type: '', isLevelI: true });
         }
@@ -330,13 +354,13 @@ function joinCommunity(user_id, community_id, stage = null, type = null) {
         // If joining Level III, also join both Level II communities
         if (isLevelIII) {
             // Join Level II (stage-only)
-            const stageOnlyResult = insertMembership.run(user_id, community_id, stageValue, '');
+            const stageOnlyResult = insertMembership.run(user_id, community_id, stageValue, '', cstNow);
             if (stageOnlyResult.changes > 0) {
                 addedMemberships.push({ stage: stageValue, type: '' });
             }
 
             // Join Level II (type-only)
-            const typeOnlyResult = insertMembership.run(user_id, community_id, '', typeValue);
+            const typeOnlyResult = insertMembership.run(user_id, community_id, '', typeValue, cstNow);
             if (typeOnlyResult.changes > 0) {
                 addedMemberships.push({ stage: '', type: typeValue });
             }
@@ -344,7 +368,7 @@ function joinCommunity(user_id, community_id, stage = null, type = null) {
 
         // Join the target sub-community (Level II or Level III)
         if (isSubCommunity) {
-            const result = insertMembership.run(user_id, community_id, stageValue, typeValue);
+            const result = insertMembership.run(user_id, community_id, stageValue, typeValue, cstNow);
             if (result.changes > 0) {
                 addedMemberships.push({ stage: stageValue, type: typeValue });
             }
@@ -1011,8 +1035,8 @@ function initThreadsDb() {
 //   - Array of objects: [{id: 1, stage: '', type: ''}, {id: 1, stage: '0期', type: '三阴性'}]
 function createThread({ user_id, title, content, community_ids = [], community_links = [] }) {
     const insertThread = threadsDb.prepare(`
-        INSERT INTO threads (user_id, title, content)
-        VALUES (@user_id, @title, @content)
+        INSERT INTO threads (user_id, title, content, created_at)
+        VALUES (@user_id, @title, @content, @created_at)
     `);
 
     const insertCommunityLink = threadsDb.prepare(`
@@ -1021,7 +1045,7 @@ function createThread({ user_id, title, content, community_ids = [], community_l
     `);
 
     const createWithCommunities = threadsDb.transaction(({ user_id, title, content, community_ids, community_links }) => {
-        const result = insertThread.run({ user_id, title, content });
+        const result = insertThread.run({ user_id, title, content, created_at: getCSTTimestamp() });
         const threadId = result.lastInsertRowid;
 
         // Handle legacy format (array of IDs)
@@ -1241,10 +1265,10 @@ function initRepliesDb() {
 // Create a new reply
 function createReply({ thread_id, user_id, content, parent_reply_id = null }) {
     const stmt = repliesDb.prepare(`
-        INSERT INTO replies (thread_id, user_id, parent_reply_id, content)
-        VALUES (@thread_id, @user_id, @parent_reply_id, @content)
+        INSERT INTO replies (thread_id, user_id, parent_reply_id, content, created_at)
+        VALUES (@thread_id, @user_id, @parent_reply_id, @content, @created_at)
     `);
-    const result = stmt.run({ thread_id, user_id, parent_reply_id, content });
+    const result = stmt.run({ thread_id, user_id, parent_reply_id, content, created_at: getCSTTimestamp() });
     return result.lastInsertRowid;
 }
 
@@ -1410,10 +1434,10 @@ function updateGuruIntro(userId, intro) {
 // Create a guru question
 function createGuruQuestion({ guru_user_id, asker_user_id, title, content }) {
     const stmt = usersDb.prepare(`
-        INSERT INTO guru_questions (guru_user_id, asker_user_id, title, content)
-        VALUES (@guru_user_id, @asker_user_id, @title, @content)
+        INSERT INTO guru_questions (guru_user_id, asker_user_id, title, content, created_at)
+        VALUES (@guru_user_id, @asker_user_id, @title, @content, @created_at)
     `);
-    const result = stmt.run({ guru_user_id, asker_user_id, title, content });
+    const result = stmt.run({ guru_user_id, asker_user_id, title, content, created_at: getCSTTimestamp() });
     return result.lastInsertRowid;
 }
 
@@ -1432,23 +1456,23 @@ function getGuruQuestionById(questionId) {
     return usersDb.prepare('SELECT * FROM guru_questions WHERE id = ?').get(questionId);
 }
 
-// Delete a guru question (only asker can delete)
-function deleteGuruQuestion(questionId, userId) {
+// Delete a guru question (permission check done in route - allows asker or guru to delete)
+function deleteGuruQuestion(questionId) {
     // First delete all replies
     usersDb.prepare('DELETE FROM guru_question_replies WHERE question_id = ?').run(questionId);
     // Then delete the question
-    const stmt = usersDb.prepare('DELETE FROM guru_questions WHERE id = ? AND asker_user_id = ?');
-    const result = stmt.run(questionId, userId);
+    const stmt = usersDb.prepare('DELETE FROM guru_questions WHERE id = ?');
+    const result = stmt.run(questionId);
     return result.changes > 0;
 }
 
 // Create a reply to a guru question
 function createGuruQuestionReply({ question_id, user_id, content, parent_reply_id = null }) {
     const stmt = usersDb.prepare(`
-        INSERT INTO guru_question_replies (question_id, user_id, content, parent_reply_id)
-        VALUES (@question_id, @user_id, @content, @parent_reply_id)
+        INSERT INTO guru_question_replies (question_id, user_id, content, parent_reply_id, created_at)
+        VALUES (@question_id, @user_id, @content, @parent_reply_id, @created_at)
     `);
-    const result = stmt.run({ question_id, user_id, content, parent_reply_id });
+    const result = stmt.run({ question_id, user_id, content, parent_reply_id, created_at: getCSTTimestamp() });
 
     // Update reply count on the question
     usersDb.prepare('UPDATE guru_questions SET reply_count = reply_count + 1 WHERE id = ?').run(question_id);
@@ -1470,14 +1494,14 @@ function getGuruQuestionReplyById(replyId) {
     return usersDb.prepare('SELECT * FROM guru_question_replies WHERE id = ?').get(replyId);
 }
 
-// Delete a guru question reply (only owner can delete)
-function deleteGuruQuestionReply(replyId, userId) {
+// Delete a guru question reply (permission check done in route)
+function deleteGuruQuestionReply(replyId) {
     // Get the reply first to update question's reply_count
-    const reply = usersDb.prepare('SELECT question_id FROM guru_question_replies WHERE id = ? AND user_id = ?').get(replyId, userId);
+    const reply = usersDb.prepare('SELECT question_id FROM guru_question_replies WHERE id = ?').get(replyId);
     if (!reply) return false;
 
-    const stmt = usersDb.prepare('DELETE FROM guru_question_replies WHERE id = ? AND user_id = ?');
-    const result = stmt.run(replyId, userId);
+    const stmt = usersDb.prepare('DELETE FROM guru_question_replies WHERE id = ?');
+    const result = stmt.run(replyId);
 
     if (result.changes > 0) {
         // Update reply count

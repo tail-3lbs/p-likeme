@@ -490,15 +490,10 @@ async function updateThread(e) {
 }
 
 /**
- * Format date string
+ * Format date string - uses shared CST formatting from main.js
  */
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    return formatCSTDateFull(dateStr);
 }
 
 // escapeHtml is defined in main.js

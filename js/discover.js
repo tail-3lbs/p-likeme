@@ -18,14 +18,6 @@ let resultsPagination, loadMoreBtn, clearFiltersBtn;
 let autoFindBtn, autoFindLoginHint, autoFindLoginLink;
 
 /**
- * Get current user from localStorage
- */
-// getCurrentUser uses the global getUser() from main.js
-function getCurrentUser() {
-    return getUser();
-}
-
-/**
  * Initialize page
  */
 async function initDiscover() {
@@ -55,7 +47,7 @@ async function initDiscover() {
  * Update auto-find button state based on login status
  */
 function updateAutoFindState() {
-    const user = getCurrentUser();
+    const user = getUser();
     if (user) {
         autoFindBtn.disabled = false;
         autoFindLoginHint.classList.add('hidden');
@@ -287,7 +279,7 @@ function setupEventListeners() {
  * Handle auto-find button click
  */
 async function handleAutoFind() {
-    const user = getCurrentUser();
+    const user = getUser();
     if (!user) return;
 
     // Show loading
@@ -571,7 +563,7 @@ async function performSearch(append = false) {
     if (economicDependency) params.set('economic_dependency', economicDependency);
 
     // Exclude current user from results
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     if (currentUser) {
         params.set('exclude_user', currentUser.username);
     }

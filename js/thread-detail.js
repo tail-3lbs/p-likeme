@@ -44,13 +44,6 @@ function getThreadIdFromUrl() {
 }
 
 /**
- * Get current user (uses global getUser from main.js)
- */
-function getCurrentUser() {
-    return getUser();
-}
-
-/**
  * Load thread data
  */
 async function loadThread() {
@@ -108,7 +101,7 @@ function renderThread(thread) {
     }
 
     // Show edit/delete buttons if user is the author
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     if (currentUser && thread.user_id === currentUser.id) {
         threadActionsBar.style.display = 'flex';
         loadUserCommunities();
@@ -132,17 +125,10 @@ function showError(message) {
 }
 
 /**
- * Format date string
+ * Format date string - uses shared CST formatting from main.js
  */
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    return formatCSTDateFull(dateStr);
 }
 
 // escapeHtml is defined in main.js
@@ -282,7 +268,7 @@ async function deleteThread() {
  * Initialize reply section based on login status
  */
 function initReplySection() {
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     if (currentUser) {
         replyFormContainer.style.display = 'block';
         replyLoginHint.style.display = 'none';
@@ -384,7 +370,7 @@ function renderReplyCard(topReply, children, replyMap) {
  * Render a single reply item (used for both top-level and stacked replies)
  */
 function renderSingleReply(reply, parentReplyId, replyMap) {
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     const isOwner = currentUser && reply.user_id === currentUser.id;
     const isThreadAuthor = currentThread && reply.user_id === currentThread.user_id;
 

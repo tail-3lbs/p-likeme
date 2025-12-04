@@ -67,17 +67,29 @@ async function loadProfile() {
         // Show appropriate button based on profile ownership
         if (isOwnProfile) {
             editProfileBtn.style.display = 'block';
-            viewThreadsBtn.style.display = 'none';
-            viewGuruBtn.style.display = 'none';
-        } else {
-            editProfileBtn.style.display = 'none';
             viewThreadsBtn.style.display = 'block';
             viewThreadsBtn.href = `threads-user.html?user=${encodeURIComponent(profileUsername)}`;
+            viewThreadsBtn.textContent = '我的分享';
 
             // Show guru link if user is a guru
             if (profileData.is_guru) {
                 viewGuruBtn.style.display = 'block';
                 viewGuruBtn.href = `guru-detail.html?user=${encodeURIComponent(profileUsername)}`;
+                viewGuruBtn.textContent = '明星主页';
+            } else {
+                viewGuruBtn.style.display = 'none';
+            }
+        } else {
+            editProfileBtn.style.display = 'none';
+            viewThreadsBtn.style.display = 'block';
+            viewThreadsBtn.href = `threads-user.html?user=${encodeURIComponent(profileUsername)}`;
+            viewThreadsBtn.textContent = 'TA的分享';
+
+            // Show guru link if user is a guru
+            if (profileData.is_guru) {
+                viewGuruBtn.style.display = 'block';
+                viewGuruBtn.href = `guru-detail.html?user=${encodeURIComponent(profileUsername)}`;
+                viewGuruBtn.textContent = '明星主页';
             } else {
                 viewGuruBtn.style.display = 'none';
             }
@@ -131,9 +143,8 @@ function renderViewMode() {
     document.getElementById('display-username').textContent = profileData.username;
     document.getElementById('edit-username').textContent = profileData.username;
 
-    // Join date
-    const joinDate = new Date(profileData.created_at);
-    document.getElementById('display-join-date').textContent = `加入于 ${joinDate.toLocaleDateString('zh-CN')}`;
+    // Join date - uses shared CST formatting from main.js
+    document.getElementById('display-join-date').textContent = `加入于 ${formatCSTDateSimple(profileData.created_at)}`;
 
     // Communities (with sub-community info)
     const communitiesEl = document.getElementById('display-communities');

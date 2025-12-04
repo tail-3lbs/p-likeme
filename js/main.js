@@ -24,6 +24,93 @@ function escapeHtml(text) {
 }
 
 /**
+ * Parse a CST date string (from database) correctly
+ * Database stores dates in 'YYYY-MM-DD HH:MM:SS' format in China Standard Time
+ * @param {string} dateString - Date string from database
+ * @returns {Date} - Date object representing the CST time
+ */
+function parseCSTDate(dateString) {
+    // If already contains timezone info or is ISO format, parse directly
+    if (dateString.includes('T') || dateString.includes('Z')) {
+        return new Date(dateString);
+    }
+    // Parse as CST (UTC+8) by appending timezone offset
+    // The date string is in format 'YYYY-MM-DD HH:MM:SS' and represents CST time
+    return new Date(dateString.replace(' ', 'T') + '+08:00');
+}
+
+/**
+ * Get current time in CST for comparison
+ * @returns {Date} - Current time adjusted to CST
+ */
+function getCSTNow() {
+    const now = new Date();
+    // Get UTC time, then add 8 hours for CST
+    const cstOffset = 8 * 60 * 60 * 1000;
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    return new Date(utcTime + cstOffset);
+}
+
+/**
+ * Format a CST date string for display (relative time)
+ * @param {string} dateString - Date string from database
+ * @returns {string} - Formatted date string
+ */
+function formatCSTDateRelative(dateString) {
+    const date = parseCSTDate(dateString);
+    const now = getCSTNow();
+    const diff = now - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        if (hours === 0) {
+            const minutes = Math.floor(diff / (1000 * 60));
+            return minutes <= 1 ? '刚刚' : `${minutes}分钟前`;
+        }
+        return `${hours}小时前`;
+    } else if (days === 1) {
+        return '昨天';
+    } else if (days < 7) {
+        return `${days}天前`;
+    } else {
+        // Format as date only
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${year}/${month}/${day}`;
+    }
+}
+
+/**
+ * Format a CST date string for display (absolute, simple date)
+ * @param {string} dateString - Date string from database
+ * @returns {string} - Formatted date string (YYYY/M/D)
+ */
+function formatCSTDateSimple(dateString) {
+    const date = parseCSTDate(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${year}/${month}/${day}`;
+}
+
+/**
+ * Format a CST date string for display (with time)
+ * @param {string} dateString - Date string from database
+ * @returns {string} - Formatted date string (YYYY年M月D日 HH:MM)
+ */
+function formatCSTDateFull(dateString) {
+    const date = parseCSTDate(dateString);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}年${month}月${day}日 ${hours}:${minutes}`;
+}
+
+/**
  * Get current user from localStorage
  * Note: Token is stored in HttpOnly cookie (not accessible via JS)
  * @returns {object|null}

@@ -84,11 +84,10 @@
     }
 
     /**
-     * Format date
+     * Format date - uses shared CST formatting from main.js
      */
     function formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('zh-CN');
+        return formatCSTDateSimple(dateString);
     }
 
     // Initialize on page load

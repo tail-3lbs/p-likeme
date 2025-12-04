@@ -27,13 +27,6 @@ function getQuestionIdFromUrl() {
 }
 
 /**
- * Get current user (uses global getUser from main.js)
- */
-function getCurrentUser() {
-    return getUser();
-}
-
-/**
  * Load question data
  */
 async function loadQuestion() {
@@ -89,7 +82,7 @@ function renderQuestion(question) {
     bodyEl.innerHTML = question.content.split('\n').map(p => `<p>${escapeHtml(p)}</p>`).join('');
 
     // Show delete button if user is asker or guru
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     if (currentUser && (currentUser.id === question.asker_user_id || currentUser.username === question.guru_username)) {
         questionActionsBar.style.display = 'flex';
     }
@@ -112,24 +105,17 @@ function showError(message) {
 }
 
 /**
- * Format date string
+ * Format date string - uses shared CST formatting from main.js
  */
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    return formatCSTDateFull(dateStr);
 }
 
 /**
  * Initialize reply section based on login status
  */
 function initReplySection() {
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     if (currentUser) {
         replyFormContainer.style.display = 'block';
         replyLoginHint.style.display = 'none';
@@ -207,7 +193,7 @@ function renderReplyCard(topReply, children, replyMap) {
  * Render a single reply item
  */
 function renderSingleReply(reply, parentReplyId, replyMap) {
-    const currentUser = getCurrentUser();
+    const currentUser = getUser();
     const isOwner = currentUser && reply.user_id === currentUser.id;
     const isGuru = reply.username === guruUsername;
 
@@ -223,7 +209,7 @@ function renderSingleReply(reply, parentReplyId, replyMap) {
             <div class="reply-header">
                 <span class="reply-author ${isGuru ? 'is-thread-author' : ''}">
                     <a href="profile.html?user=${encodeURIComponent(reply.username)}" class="username-link">${escapeHtml(reply.username)}</a>
-                    ${isGuru ? '<span class="author-badge">明星</span>' : ''}
+                    ${isGuru ? '<span class="author-badge">版主</span>' : ''}
                 </span>
                 <span class="reply-date">${formatDate(reply.created_at)}</span>
             </div>

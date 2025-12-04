@@ -270,7 +270,12 @@ router.post('/:username/questions', authMiddleware, (req, res) => {
             });
         }
 
-        const questionId = createGuruQuestion(guru.id, askerId, title.trim(), content.trim());
+        const questionId = createGuruQuestion({
+            guru_user_id: guru.id,
+            asker_user_id: askerId,
+            title: title.trim(),
+            content: content.trim()
+        });
 
         res.status(201).json({
             success: true,
@@ -460,7 +465,12 @@ router.post('/questions/:questionId/replies', authMiddleware, (req, res) => {
             }
         }
 
-        const replyId = createGuruQuestionReply(questionId, userId, content.trim(), parentId);
+        const replyId = createGuruQuestionReply({
+            question_id: questionId,
+            user_id: userId,
+            content: content.trim(),
+            parent_reply_id: parentId
+        });
 
         res.status(201).json({
             success: true,

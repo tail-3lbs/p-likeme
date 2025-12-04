@@ -2979,13 +2979,20 @@ ul {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.guru-intro-section h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #333;
+.guru-intro-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
     border-bottom: 2px solid #e8f5f5;
+}
+
+.guru-intro-section .section-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
 }
 
 .guru-intro {
@@ -3155,14 +3162,12 @@ ul {
 }
 
 /* Questions List */
-.question-card-link {
-    text-decoration: none;
-    color: inherit;
-    display: block;
+.question-card-clickable {
     margin-bottom: 1rem;
+    cursor: pointer;
 }
 
-.question-card-link:last-child {
+.question-card-clickable:last-child {
     margin-bottom: 0;
 }
 

@@ -105,8 +105,7 @@
         document.getElementById('guru-username').textContent = guruData.username;
 
         // Join date
-        const joinDate = new Date(guruData.created_at);
-        document.getElementById('guru-join-date').textContent = `加入于 ${joinDate.toLocaleDateString('zh-CN')}`;
+        document.getElementById('guru-join-date').textContent = `加入于 ${formatCSTDateSimple(guruData.created_at)}`;
 
         // Communities
         renderCommunities();
@@ -218,18 +217,25 @@
         }
 
         questionsEl.innerHTML = questions.map(q => `
-            <a href="guru-question.html?id=${q.id}" class="question-card-link">
-                <div class="question-card">
-                    <h3 class="question-title">${escapeHtml(q.title)}</h3>
-                    <p class="question-preview">${escapeHtml(truncateText(q.content, 100))}</p>
-                    <div class="question-meta">
-                        <span class="question-asker"><a href="profile.html?user=${encodeURIComponent(q.asker_username)}" class="asker-link">${escapeHtml(q.asker_username)}</a> 提问</span>
-                        <span>${formatDate(q.created_at)}</span>
-                        <span>${q.reply_count || 0} 回复</span>
-                    </div>
+            <div class="question-card question-card-clickable" data-href="guru-question.html?id=${q.id}">
+                <h3 class="question-title">${escapeHtml(q.title)}</h3>
+                <p class="question-preview">${escapeHtml(truncateText(q.content, 100))}</p>
+                <div class="question-meta">
+                    <span class="thread-author">提问者：<a href="profile.html?user=${encodeURIComponent(q.asker_username)}" class="author-link">${escapeHtml(q.asker_username)}</a></span>
+                    <span>${formatDate(q.created_at)}</span>
+                    <span>${q.reply_count || 0} 回复</span>
                 </div>
-            </a>
+            </div>
         `).join('');
+
+        // Add click handler for question cards
+        questionsEl.querySelectorAll('.question-card-clickable').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // Don't navigate if clicking on a link
+                if (e.target.closest('a')) return;
+                window.location.href = card.dataset.href;
+            });
+        });
     }
 
     /**
@@ -365,7 +371,7 @@
                 <div class="reply-item ${depth > 0 ? 'reply-nested' : ''}" style="margin-left: ${depth * 20}px;">
                     <div class="reply-header">
                         <a href="profile.html?user=${encodeURIComponent(reply.username)}" class="reply-author ${isGuru ? 'is-guru' : ''}">
-                            ${escapeHtml(reply.username)}${isGuru ? ' <span class="guru-badge">明星</span>' : ''}
+                            ${escapeHtml(reply.username)}${isGuru ? ' <span class="guru-badge">版主</span>' : ''}
                         </a>
                         <span class="reply-date">${formatDate(reply.created_at)}</span>
                     </div>
@@ -515,11 +521,10 @@
     }
 
     /**
-     * Format date
+     * Format date - uses shared CST formatting from main.js
      */
     function formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('zh-CN');
+        return formatCSTDateSimple(dateString);
     }
 
     // Event Listeners

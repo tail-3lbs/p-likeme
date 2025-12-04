@@ -20,6 +20,61 @@ const usersDb = new Database(usersDbPath);
 const threadsDb = new Database(threadsDbPath);
 const repliesDb = new Database(repliesDbPath);
 
+// ============ TIME HELPERS ============
+
+/**
+ * Get current time in China Standard Time (UTC+8)
+ * Returns a Date object adjusted to CST
+ */
+function getCSTNow() {
+    const now = new Date();
+    // Convert to CST (UTC+8)
+    const cstOffset = 8 * 60 * 60 * 1000; // 8 hours in milliseconds
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    return new Date(utcTime + cstOffset);
+}
+
+/**
+ * Format a Date object to SQLite datetime string in CST
+ * @param {Date} date - Date object (assumed to be in CST or will be converted)
+ * @returns {string} - Format: 'YYYY-MM-DD HH:MM:SS'
+ */
+function formatCSTTimestamp(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Get a CST timestamp for a time in the past
+ * @param {number} daysAgo - Days before now
+ * @param {number} hoursAgo - Additional hours before now
+ * @returns {string} - SQLite datetime string
+ */
+function getCSTTimestampPast(daysAgo = 0, hoursAgo = 0) {
+    const cstNow = getCSTNow();
+    const pastTime = new Date(cstNow.getTime() - (daysAgo * 24 + hoursAgo) * 60 * 60 * 1000);
+    return formatCSTTimestamp(pastTime);
+}
+
+/**
+ * Get a CST timestamp for a time after a base time
+ * @param {Date} baseTime - Base time
+ * @param {number} hoursAfter - Hours after base time
+ * @returns {object} - { timestamp: string, date: Date }
+ */
+function getCSTTimestampAfter(baseTime, hoursAfter) {
+    const laterTime = new Date(baseTime.getTime() + hoursAfter * 60 * 60 * 1000);
+    return {
+        timestamp: formatCSTTimestamp(laterTime),
+        date: laterTime
+    };
+}
+
 // ============ SEED DATA ============
 
 // 15 female-focused health communities with optional dimension metadata
@@ -799,12 +854,10 @@ function generateThreads(userCommunities) {
                 const title = sampleTitles[Math.floor(Math.random() * sampleTitles.length)];
                 const content = sampleContents[Math.floor(Math.random() * sampleContents.length)];
 
-                // Random time offset (0-30 days ago)
-                const now = new Date();
+                // Random time offset (0-30 days ago) in CST
                 const daysAgo = Math.floor(Math.random() * 30);
                 const hoursAgo = Math.floor(Math.random() * 24);
-                const pastDate = new Date(now.getTime() - (daysAgo * 24 + hoursAgo) * 60 * 60 * 1000);
-                const timestamp = pastDate.toISOString().replace('T', ' ').substring(0, 19);
+                const timestamp = getCSTTimestampPast(daysAgo, hoursAgo);
 
                 const result = insertThread.run(userId, title, content, timestamp);
                 const threadId = Number(result.lastInsertRowid);
@@ -864,7 +917,7 @@ function generateReplies() {
 
             const topLevelReplyIds = [];
 
-            // Parse thread creation time
+            // Parse thread creation time (already in CST format from database)
             const threadTime = new Date(thread.created_at);
 
             // Generate top-level replies (starting new cards)
@@ -872,10 +925,9 @@ function generateReplies() {
                 const userId = repliers[i % repliers.length];
                 const content = sampleReplies[Math.floor(Math.random() * sampleReplies.length)];
 
-                // Random time AFTER thread creation (1 hour to 5 days later)
+                // Random time AFTER thread creation (1 hour to 5 days later) in CST
                 const hoursAfterThread = Math.floor(Math.random() * 119) + 1; // 1-120 hours (5 days)
-                const baseTime = new Date(threadTime.getTime() + hoursAfterThread * 60 * 60 * 1000);
-                const timestamp = baseTime.toISOString().replace('T', ' ').substring(0, 19);
+                const { timestamp, date: baseTime } = getCSTTimestampAfter(threadTime, hoursAfterThread);
 
                 const result = insertReply.run(thread.id, userId, null, content, timestamp);
                 topLevelReplyIds.push({ id: Number(result.lastInsertRowid), userId, timestamp: baseTime });
@@ -898,10 +950,9 @@ function generateReplies() {
                     const userId = availableUsers[Math.floor(Math.random() * availableUsers.length)];
                     const content = sampleReplyToReplies[Math.floor(Math.random() * sampleReplyToReplies.length)];
 
-                    // Timestamp AFTER the parent reply (1-48 hours later)
+                    // Timestamp AFTER the parent reply (1-48 hours later) in CST
                     const hoursLater = Math.floor(Math.random() * 47) + 1;
-                    const replyTime = new Date(lastReplyTime.getTime() + hoursLater * 60 * 60 * 1000);
-                    const timestamp = replyTime.toISOString().replace('T', ' ').substring(0, 19);
+                    const { timestamp, date: replyTime } = getCSTTimestampAfter(lastReplyTime, hoursLater);
 
                     const result = insertReply.run(thread.id, userId, lastReplyId, content, timestamp);
                     lastReplyId = Number(result.lastInsertRowid);
@@ -915,6 +966,14 @@ function generateReplies() {
     });
 
     generateAllReplies();
+
+    // Update reply_count for each thread
+    console.log('   Updating thread reply counts...');
+    const threadIds = threads.map(t => t.id);
+    for (const threadId of threadIds) {
+        const count = repliesDb.prepare('SELECT COUNT(*) as count FROM replies WHERE thread_id = ?').get(threadId);
+        threadsDb.prepare('UPDATE threads SET reply_count = ? WHERE id = ?').run(count.count, threadId);
+    }
 
     console.log(`   ${totalReplies} replies created.`);
     console.log(`   ${totalReplies - stackedReplies} top-level replies (new cards).`);
@@ -958,11 +1017,10 @@ function generateGuruQuestions() {
                 const title = pickRandom(sampleGuruQuestionTitles);
                 const content = pickRandom(sampleGuruQuestionContents);
 
-                // Random time (1-20 days ago)
-                const now = new Date();
+                // Random time (1-20 days ago) in CST
                 const daysAgo = Math.floor(Math.random() * 20) + 1;
-                const questionTime = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-                const questionTimestamp = questionTime.toISOString().replace('T', ' ').substring(0, 19);
+                const questionTimestamp = getCSTTimestampPast(daysAgo, 0);
+                const questionTime = new Date(questionTimestamp.replace(' ', 'T'));
 
                 // Insert question with 0 reply_count initially
                 const result = insertQuestion.run(guru.id, asker.id, title, content, 0, questionTimestamp);
@@ -974,8 +1032,7 @@ function generateGuruQuestions() {
                 if (Math.random() < 0.7) {
                     const replyContent = pickRandom(sampleGuruQuestionReplies);
                     const hoursLater = Math.floor(Math.random() * 48) + 1;
-                    const replyTime = new Date(questionTime.getTime() + hoursLater * 60 * 60 * 1000);
-                    const replyTimestamp = replyTime.toISOString().replace('T', ' ').substring(0, 19);
+                    const { timestamp: replyTimestamp, date: replyTime } = getCSTTimestampAfter(questionTime, hoursLater);
 
                     insertReply.run(questionId, guru.id, null, replyContent, replyTimestamp);
                     totalReplies++;
@@ -984,8 +1041,8 @@ function generateGuruQuestions() {
                     // 40% chance of follow-up from asker
                     if (Math.random() < 0.4) {
                         const followUpContent = pickRandom(sampleReplyToReplies);
-                        const followUpTime = new Date(replyTime.getTime() + Math.floor(Math.random() * 24) * 60 * 60 * 1000);
-                        const followUpTimestamp = followUpTime.toISOString().replace('T', ' ').substring(0, 19);
+                        const followUpHours = Math.floor(Math.random() * 24);
+                        const { timestamp: followUpTimestamp } = getCSTTimestampAfter(replyTime, followUpHours);
 
                         insertReply.run(questionId, asker.id, null, followUpContent, followUpTimestamp);
                         totalReplies++;
