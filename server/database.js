@@ -226,6 +226,9 @@ function initUsersDb() {
     if (!columns.includes('economic_dependency')) {
         usersDb.exec(`ALTER TABLE users ADD COLUMN economic_dependency TEXT`);
     }
+    if (!columns.includes('fertility_status')) {
+        usersDb.exec(`ALTER TABLE users ADD COLUMN fertility_status TEXT`);
+    }
     if (!columns.includes('location_living_district')) {
         usersDb.exec(`ALTER TABLE users ADD COLUMN location_living_district TEXT`);
     }
@@ -772,7 +775,8 @@ function findUserByUsernamePublic(username) {
 // community_filters: [{id, stage, type}] - filters by community with optional stage/type
 function searchUsers({
     username, community_filters, disease_tag, gender, age_min, age_max, location, location_district, location_street, hospital,
-    hukou, education, income_individual, income_family, consumption_level,
+    profession, marriage_status, fertility_status, location_from,
+    hukou, education, family_size, income_individual, income_family, consumption_level,
     housing_status, economic_dependency,
     exclude_user, limit = 50, offset = 0
 }) {
@@ -925,6 +929,32 @@ function searchUsers({
         params.push(searchTerm);
     }
 
+    if (profession && profession.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${profession.trim()}%`;
+        conditions.push('profession LIKE ?');
+        params.push(searchTerm);
+    }
+
+    if (marriage_status && marriage_status.trim()) {
+        hasFilter = true;
+        conditions.push('marriage_status = ?');
+        params.push(marriage_status.trim());
+    }
+
+    if (fertility_status && fertility_status.trim()) {
+        hasFilter = true;
+        conditions.push('fertility_status = ?');
+        params.push(fertility_status.trim());
+    }
+
+    if (location_from && location_from.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${location_from.trim()}%`;
+        conditions.push('location_from LIKE ?');
+        params.push(searchTerm);
+    }
+
     if (hukou && hukou.trim()) {
         hasFilter = true;
         conditions.push('hukou = ?');
@@ -935,6 +965,12 @@ function searchUsers({
         hasFilter = true;
         conditions.push('education = ?');
         params.push(education.trim());
+    }
+
+    if (family_size && family_size.trim()) {
+        hasFilter = true;
+        conditions.push('family_size = ?');
+        params.push(family_size.trim());
     }
 
     if (income_individual && income_individual.trim()) {
@@ -979,7 +1015,7 @@ function searchUsers({
     }
 
     // Build final query
-    let sql = `SELECT id, username, gender, age, profession, marriage_status,
+    let sql = `SELECT id, username, gender, age, profession, marriage_status, fertility_status,
                location_from, location_living, location_living_district, location_living_street,
                hukou, education, income_individual, income_family, family_size,
                consumption_level, housing_status, economic_dependency, created_at FROM users WHERE 1=1`;

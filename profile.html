@@ -123,6 +123,14 @@
                                             <span id="display-marriage">未设置</span>
                                         </div>
                                         <div class="info-item">
+                                            <label>生育状况</label>
+                                            <span id="display-fertility-status">未设置</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <label>家乡</label>
+                                            <span id="display-location-from">未设置</span>
+                                        </div>
+                                        <div class="info-item">
                                             <label>户籍</label>
                                             <span id="display-hukou">未设置</span>
                                         </div>
@@ -139,10 +147,6 @@
                                 <h3 class="section-group-title">地区信息</h3>
                                 <div class="section-group-content">
                                     <div class="profile-info-grid">
-                                        <div class="info-item">
-                                            <label>家乡</label>
-                                            <span id="display-location-from">未设置</span>
-                                        </div>
                                         <div class="info-item">
                                             <label>现居城市</label>
                                             <span id="display-location-living">未设置</span>
@@ -280,6 +284,22 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
+                                        <label for="edit-fertility-status">生育状况</label>
+                                        <select id="edit-fertility-status">
+                                            <option value="">请选择</option>
+                                            <option value="未育">未育</option>
+                                            <option value="已育一孩">已育一孩</option>
+                                            <option value="已育两孩">已育两孩</option>
+                                            <option value="已育三孩及以上">已育三孩及以上</option>
+                                            <option value="不打算生育">不打算生育</option>
+                                            <option value="正在备孕">正在备孕</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="edit-location-from">家乡</label>
+                                        <input type="text" id="edit-location-from" placeholder="如：湖南省长沙市">
+                                    </div>
+                                    <div class="form-group">
                                         <label for="edit-hukou">户籍</label>
                                         <select id="edit-hukou">
                                             <option value="">请选择</option>
@@ -307,10 +327,6 @@
                             <div class="form-section-group">
                                 <h3 class="section-group-title">地区信息</h3>
                                 <div class="form-grid">
-                                    <div class="form-group">
-                                        <label for="edit-location-from">家乡</label>
-                                        <input type="text" id="edit-location-from" placeholder="如：湖南省长沙市">
-                                    </div>
                                     <div class="form-group">
                                         <label for="edit-location-living">现居城市</label>
                                         <input type="text" id="edit-location-living" placeholder="如：上海市">

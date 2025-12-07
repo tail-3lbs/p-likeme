@@ -192,9 +192,10 @@ function renderViewMode() {
     document.getElementById('display-age').textContent = profileData.age ? `${profileData.age}岁` : '未设置';
     document.getElementById('display-profession').textContent = profileData.profession || '未设置';
     document.getElementById('display-marriage').textContent = profileData.marriage_status || '未设置';
+    document.getElementById('display-fertility-status').textContent = profileData.fertility_status || '未设置';
+    document.getElementById('display-location-from').textContent = profileData.location_from || '未设置';
 
     // Location info
-    document.getElementById('display-location-from').textContent = profileData.location_from || '未设置';
     document.getElementById('display-location-living').textContent = profileData.location_living || '未设置';
     document.getElementById('display-location-district').textContent = profileData.location_living_district || '未设置';
     document.getElementById('display-location-street').textContent = profileData.location_living_street || '未设置';
@@ -261,9 +262,10 @@ async function enterEditMode() {
     document.getElementById('edit-age').value = profileData.age || '';
     document.getElementById('edit-profession').value = profileData.profession || '';
     document.getElementById('edit-marriage').value = profileData.marriage_status || '';
+    document.getElementById('edit-fertility-status').value = profileData.fertility_status || '';
+    document.getElementById('edit-location-from').value = profileData.location_from || '';
 
     // Location info
-    document.getElementById('edit-location-from').value = profileData.location_from || '';
     document.getElementById('edit-location-living').value = profileData.location_living || '';
     document.getElementById('edit-location-district').value = profileData.location_living_district || '';
     document.getElementById('edit-location-street').value = profileData.location_living_street || '';
@@ -917,8 +919,9 @@ async function handleProfileSubmit(e) {
         age: document.getElementById('edit-age').value,
         profession: document.getElementById('edit-profession').value,
         marriage_status: document.getElementById('edit-marriage').value,
-        // Location info
+        fertility_status: document.getElementById('edit-fertility-status').value,
         location_from: document.getElementById('edit-location-from').value,
+        // Location info
         location_living: document.getElementById('edit-location-living').value,
         location_living_district: document.getElementById('edit-location-district').value,
         location_living_street: document.getElementById('edit-location-street').value,

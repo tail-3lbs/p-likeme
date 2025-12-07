@@ -1049,8 +1049,13 @@ async function performSearch(append = false) {
     const locationDistrict = document.getElementById('filter-district').value.trim();
     const locationStreet = document.getElementById('filter-street').value.trim();
     const hospital = document.getElementById('filter-hospital').value.trim();
+    const profession = document.getElementById('filter-profession').value.trim();
+    const marriageStatus = document.getElementById('filter-marriage').value;
+    const fertilityStatus = document.getElementById('filter-fertility-status').value;
+    const locationFrom = document.getElementById('filter-location-from').value.trim();
     const hukou = document.getElementById('filter-hukou').value;
     const education = document.getElementById('filter-education').value;
+    const familySize = document.getElementById('filter-family-size').value;
     const incomeIndividual = document.getElementById('filter-income-individual').value;
     const incomeFamily = document.getElementById('filter-income-family').value;
     const consumptionLevel = document.getElementById('filter-consumption-level').value;
@@ -1059,7 +1064,8 @@ async function performSearch(append = false) {
 
     // Check if any filter is set
     const hasAnyFilter = selectedCommunities.length > 0 || selectedDiseases.length > 0 || gender || ageMin || ageMax ||
-        location || locationDistrict || locationStreet || hospital || hukou || education || incomeIndividual || incomeFamily ||
+        location || locationDistrict || locationStreet || hospital || profession || marriageStatus || fertilityStatus ||
+        locationFrom || hukou || education || familySize || incomeIndividual || incomeFamily ||
         consumptionLevel || housingStatus || economicDependency;
 
     if (!hasAnyFilter) {
@@ -1094,8 +1100,13 @@ async function performSearch(append = false) {
     if (locationDistrict) params.set('location_district', locationDistrict);
     if (locationStreet) params.set('location_street', locationStreet);
     if (hospital) params.set('hospital', hospital);
+    if (profession) params.set('profession', profession);
+    if (marriageStatus) params.set('marriage_status', marriageStatus);
+    if (fertilityStatus) params.set('fertility_status', fertilityStatus);
+    if (locationFrom) params.set('location_from', locationFrom);
     if (hukou) params.set('hukou', hukou);
     if (education) params.set('education', education);
+    if (familySize) params.set('family_size', familySize);
     if (incomeIndividual) params.set('income_individual', incomeIndividual);
     if (incomeFamily) params.set('income_family', incomeFamily);
     if (consumptionLevel) params.set('consumption_level', consumptionLevel);

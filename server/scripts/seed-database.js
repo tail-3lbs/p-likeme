@@ -355,6 +355,11 @@ const economicDependencyLevels = [
     '完全独立', '完全独立', '基本独立', '基本独立', '主要依赖家人'
 ];
 
+const fertilityStatuses = [
+    '未育', '未育', '未育', '已育一孩', '已育一孩', '已育一孩',
+    '已育两孩', '已育两孩', '已育三孩及以上', '不打算生育', '正在备孕'
+]; // Weighted distribution
+
 // Districts by city (for location_living_district)
 const districtsByCity = {
     '北京市': ['朝阳区', '海淀区', '东城区', '西城区', '丰台区', '通州区', '大兴区', '顺义区'],
@@ -431,6 +436,7 @@ function initDb() {
             consumption_level TEXT,
             housing_status TEXT,
             economic_dependency TEXT,
+            fertility_status TEXT,
             is_guru INTEGER DEFAULT 0,
             guru_intro TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -575,8 +581,8 @@ function seedUsers() {
         INSERT INTO users (username, password_hash, gender, age, profession, marriage_status,
             location_from, location_living, location_living_district, location_living_street,
             income_individual, income_family, family_size, hukou, education,
-            consumption_level, housing_status, economic_dependency, is_guru, guru_intro)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            consumption_level, housing_status, economic_dependency, fertility_status, is_guru, guru_intro)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Randomly select 8 users to be gurus (user IDs 5, 12, 23, 34, 45, 56, 67, 78)
@@ -641,6 +647,7 @@ function seedUsers() {
             const consumption_level = Math.random() < 0.5 ? pickRandom(consumptionLevels) : null;
             const housing_status = Math.random() < 0.6 ? pickRandom(housingStatuses) : null;
             const economic_dependency = Math.random() < 0.55 ? pickRandom(economicDependencyLevels) : null;
+            const fertility_status = Math.random() < 0.6 ? pickRandom(fertilityStatuses) : null;
 
             // Determine if this user is a guru
             const isGuru = guruUserNumbers.includes(i) ? 1 : 0;
@@ -650,7 +657,7 @@ function seedUsers() {
                 username, password_hash, gender, age, profession, marriage_status,
                 location_from, location_living, location_living_district, location_living_street,
                 income_individual, income_family, family_size, hukou, education,
-                consumption_level, housing_status, economic_dependency, isGuru, guruIntro
+                consumption_level, housing_status, economic_dependency, fertility_status, isGuru, guruIntro
             );
             const userId = Number(result.lastInsertRowid);
 
