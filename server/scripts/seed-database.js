@@ -540,41 +540,8 @@ function initDb() {
     console.log('   All tables initialized.');
 }
 
-function clearAllData() {
-    console.log('Step 1: Clearing all data...');
-
-    // Clear replies database
-    repliesDb.exec('DELETE FROM replies');
-    repliesDb.exec("DELETE FROM sqlite_sequence WHERE name='replies'");
-
-    // Clear threads database
-    threadsDb.exec('DELETE FROM thread_communities');
-    threadsDb.exec('DELETE FROM threads');
-    threadsDb.exec("DELETE FROM sqlite_sequence WHERE name='threads'");
-
-    // Clear users database
-    usersDb.exec('DELETE FROM guru_question_replies');
-    usersDb.exec('DELETE FROM guru_questions');
-    usersDb.exec('DELETE FROM user_communities');
-    usersDb.exec('DELETE FROM user_disease_history');
-    usersDb.exec('DELETE FROM user_hospitals');
-    usersDb.exec('DELETE FROM users');
-    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='users'");
-    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_disease_history'");
-    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_hospitals'");
-    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='guru_questions'");
-    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='guru_question_replies'");
-
-    // Clear communities database
-    communitiesDb.exec('DELETE FROM sub_community_members');
-    communitiesDb.exec('DELETE FROM communities');
-    communitiesDb.exec("DELETE FROM sqlite_sequence WHERE name='communities'");
-
-    console.log('   All tables cleared.');
-}
-
 function seedCommunities() {
-    console.log('Step 2: Seeding 15 communities...');
+    console.log('Step 1: Seeding 15 communities...');
 
     const insert = communitiesDb.prepare(`
         INSERT INTO communities (name, description, member_count, dimensions)
@@ -599,7 +566,7 @@ function seedCommunities() {
 }
 
 function seedUsers() {
-    console.log('Step 3: Seeding 100 test users with profile data...');
+    console.log('Step 2: Seeding 100 test users with profile data...');
 
     // Get communities from DB with IDs
     const dbCommunities = communitiesDb.prepare('SELECT id, name FROM communities').all();
@@ -772,7 +739,7 @@ function seedUsers() {
 }
 
 function linkUsersToCommunities() {
-    console.log('Step 4: Linking users to communities (independent from disease history)...');
+    console.log('Step 3: Linking users to communities (independent from disease history)...');
 
     // Get all user IDs and communities (with dimensions)
     const users = usersDb.prepare('SELECT id FROM users').all();
@@ -892,7 +859,7 @@ function linkUsersToCommunities() {
 }
 
 function generateThreads() {
-    console.log('Step 5: Generating threads (independent from user profiles)...');
+    console.log('Step 4: Generating threads (independent from user profiles)...');
 
     // Get all communities with their dimensions
     const allCommunities = communitiesDb.prepare('SELECT id, name, dimensions FROM communities').all();
@@ -1002,7 +969,7 @@ function generateThreads() {
 }
 
 function generateReplies() {
-    console.log('Step 6: Generating replies...');
+    console.log('Step 5: Generating replies...');
 
     // Get all threads (with created_at) and users
     const threads = threadsDb.prepare('SELECT id, user_id, created_at FROM threads').all();
@@ -1094,7 +1061,7 @@ function generateReplies() {
 }
 
 function generateGuruQuestions() {
-    console.log('Step 7: Generating guru questions and replies...');
+    console.log('Step 6: Generating guru questions and replies...');
 
     // Get all gurus and non-guru users
     const gurus = usersDb.prepare('SELECT id, username FROM users WHERE is_guru = 1').all();
@@ -1230,11 +1197,10 @@ function main() {
     console.log('====================================\n');
 
     initDb();
-    // clearAllData() - not needed since we recreate db folder
     seedCommunities();
-    seedUsers();  // Disease history is independent from communities
-    linkUsersToCommunities();  // Community membership is independent from diseases
-    generateThreads();  // Threads are independent from user profiles
+    seedUsers();
+    linkUsersToCommunities();
+    generateThreads();
     generateReplies();
     generateGuruQuestions();
     printSummary();
