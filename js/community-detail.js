@@ -397,19 +397,6 @@ function createThreadCard(thread) {
     div.className = 'thread-card thread-card-clickable';
     div.dataset.href = `thread-detail.html?id=${thread.id}`;
 
-    // Build disease tags (from author's disease history)
-    // If community_id exists, make the tag clickable
-    let diseaseTags = '';
-    if (thread.author_disease_history && thread.author_disease_history.length > 0) {
-        thread.author_disease_history.forEach(item => {
-            if (item.community_id) {
-                diseaseTags += `<a href="community-detail.html?id=${item.community_id}" class="disease-tag">${escapeHtml(item.disease)}</a>`;
-            } else {
-                diseaseTags += `<span class="disease-tag">${escapeHtml(item.disease)}</span>`;
-            }
-        });
-    }
-
     // Build community tags with sub-community info
     let communityTags = '';
     if (thread.communityDetails && thread.communityDetails.length > 0) {
@@ -444,7 +431,6 @@ function createThreadCard(thread) {
                 <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
             </div>
             <div class="thread-communities">
-                ${diseaseTags}
                 ${communityTags}
             </div>
         </div>

@@ -51,7 +51,7 @@
                         <p class="guru-card-intro">${guru.guru_intro ? escapeHtml(truncateText(guru.guru_intro, 100)) : '暂无简介'}</p>
                         ${guru.disease_history && guru.disease_history.length > 0 ? `
                         <div class="guru-card-communities">
-                            ${guru.disease_history.map(d => `<span class="disease-tag-small">${escapeHtml(d.disease)}</span>`).join('')}
+                            ${guru.disease_history.map(d => `<span class="disease-tag-small">${escapeHtml(formatDiseaseWithDuration(d.disease, d.onset_date))}</span>`).join('')}
                         </div>
                         ` : ''}
                     </div>

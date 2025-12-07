@@ -11,11 +11,8 @@ const viewUsername = urlParams.get('user');
 // State
 let isOwnPage = false;
 let viewingUser = null;
-let userCommunities = []; // User's joined communities for selectors
-let userDiseases = []; // User's disease history for selectors
-let threadSelectedDiseases = []; // Selected diseases for new thread
+let allCommunities = []; // All available communities for selectors
 let threadSelectedCommunities = []; // Selected communities for new thread
-let editSelectedDiseases = []; // Selected diseases for edit
 let editSelectedCommunities = []; // Selected communities for edit
 
 // DOM Elements
@@ -92,221 +89,23 @@ function checkLoginState() {
 }
 
 /**
- * Load user's joined communities and disease history for the selectors
+ * Load all communities for the selectors (threads are independent from user profile)
  */
 async function loadUserData() {
     try {
-        // Load user's joined communities and disease history in parallel
-        const [communitiesRes, diseasesRes] = await Promise.all([
-            fetch('/api/user/communities?details=true', { credentials: 'include' }),
-            fetch('/api/user/diseases', { credentials: 'include' })
-        ]);
+        // Load ALL communities (not just user's joined ones)
+        const response = await fetch('/api/communities', { credentials: 'include' });
+        const data = await response.json();
 
-        const communitiesData = await communitiesRes.json();
-        const diseasesData = await diseasesRes.json();
-
-        if (communitiesData.success) {
-            userCommunities = communitiesData.data;
+        if (data.success) {
+            allCommunities = data.data;
         }
 
-        if (diseasesData.success) {
-            userDiseases = diseasesData.data;
-        }
-
-        // Initialize the selectors
-        initDiseaseSelector('thread');
+        // Initialize the community selectors
         initCommunitySelector('thread');
-        initDiseaseSelector('edit');
         initCommunitySelector('edit');
     } catch (error) {
-        console.error('Error loading user data:', error);
-    }
-}
-
-/**
- * Initialize disease selector for a form (thread or edit)
- */
-function initDiseaseSelector(prefix) {
-    const listEl = document.getElementById(`${prefix}-disease-list`);
-    const triggerEl = document.getElementById(`${prefix}-disease-trigger`);
-    const selectorEl = document.getElementById(`${prefix}-disease-selector`);
-
-    if (!listEl) return;
-
-    // Render disease list from user's disease history
-    renderDiseaseList(listEl, prefix);
-
-    // Toggle dropdown
-    triggerEl.addEventListener('click', () => {
-        selectorEl.classList.toggle('open');
-    });
-}
-
-/**
- * Generate unique checkbox ID for disease in threads
- */
-function generateThreadDiseaseCheckboxId(prefix, index) {
-    return `${prefix}-disease-cb-${index}`;
-}
-
-/**
- * Check if a disease is already selected in threads
- */
-function isDiseaseSelectedInThreads(prefix, communityId, stage, type, disease) {
-    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
-    return selectedList.some(d =>
-        d.community_id === communityId &&
-        (d.stage || '') === (stage || '') &&
-        (d.type || '') === (type || '') &&
-        d.disease === disease
-    );
-}
-
-/**
- * Render disease list from user's disease history
- */
-function renderDiseaseList(listEl, prefix) {
-    if (userDiseases.length === 0) {
-        listEl.innerHTML = `
-            <div class="empty-list-hint">
-                <p>你还没有添加任何疾病</p>
-                <p><a href="profile.html">去个人资料页添加</a></p>
-            </div>
-        `;
-        return;
-    }
-
-    // Render user's diseases as checkboxes
-    listEl.innerHTML = userDiseases.map((d, index) => {
-        const checkboxId = generateThreadDiseaseCheckboxId(prefix, index);
-        const isChecked = isDiseaseSelectedInThreads(prefix, d.community_id, d.stage, d.type, d.disease);
-        return `
-            <div class="filter-checkbox-row">
-                <input type="checkbox" id="${checkboxId}"
-                       data-prefix="${prefix}"
-                       data-index="${index}"
-                       data-community-id="${d.community_id || ''}"
-                       data-stage="${d.stage || ''}"
-                       data-type="${d.type || ''}"
-                       data-disease="${escapeHtml(d.disease)}"
-                       ${isChecked ? 'checked' : ''}>
-                <label for="${checkboxId}">${escapeHtml(d.disease)}</label>
-            </div>
-        `;
-    }).join('');
-
-    // Add change listeners for checkboxes
-    listEl.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', handleThreadDiseaseCheckboxChange);
-    });
-}
-
-/**
- * Handle disease checkbox change in threads
- */
-function handleThreadDiseaseCheckboxChange(e) {
-    const checkbox = e.target;
-    const prefix = checkbox.dataset.prefix;
-    const communityId = checkbox.dataset.communityId ? parseInt(checkbox.dataset.communityId, 10) : null;
-    const stage = checkbox.dataset.stage || '';
-    const type = checkbox.dataset.type || '';
-    const disease = checkbox.dataset.disease;
-
-    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
-
-    if (checkbox.checked) {
-        // Add to selected diseases
-        if (!isDiseaseSelectedInThreads(prefix, communityId, stage, type, disease)) {
-            selectedList.push({
-                community_id: communityId,
-                stage: stage,
-                type: type,
-                disease: disease
-            });
-        }
-    } else {
-        // Remove from selected diseases
-        const idx = selectedList.findIndex(d =>
-            d.community_id === communityId &&
-            (d.stage || '') === stage &&
-            (d.type || '') === type &&
-            d.disease === disease
-        );
-        if (idx !== -1) {
-            selectedList.splice(idx, 1);
-        }
-    }
-
-    renderSelectedDiseases(prefix);
-    updateDiseaseTriggerText(prefix);
-}
-
-/**
- * Render selected disease tags
- */
-function renderSelectedDiseases(prefix) {
-    const selectedEl = document.getElementById(`${prefix}-disease-selected`);
-    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
-
-    if (!selectedEl) return;
-
-    if (selectedList.length === 0) {
-        selectedEl.innerHTML = '';
-        return;
-    }
-
-    selectedEl.innerHTML = selectedList.map((d, index) =>
-        `<span class="disease-filter-tag">
-            ${escapeHtml(d.disease)}
-            <span class="remove-tag" data-prefix="${prefix}" data-index="${index}">&times;</span>
-        </span>`
-    ).join('');
-
-    // Add remove listeners
-    selectedEl.querySelectorAll('.remove-tag').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const pf = e.target.dataset.prefix;
-            const index = parseInt(e.target.dataset.index, 10);
-            const removed = pf === 'thread' ? threadSelectedDiseases[index] : editSelectedDiseases[index];
-
-            if (pf === 'thread') {
-                threadSelectedDiseases.splice(index, 1);
-            } else {
-                editSelectedDiseases.splice(index, 1);
-            }
-
-            // Find and uncheck the corresponding checkbox
-            const diseaseIndex = userDiseases.findIndex(d =>
-                d.community_id === removed.community_id &&
-                (d.stage || '') === (removed.stage || '') &&
-                (d.type || '') === (removed.type || '') &&
-                d.disease === removed.disease
-            );
-            if (diseaseIndex !== -1) {
-                const checkboxId = generateThreadDiseaseCheckboxId(pf, diseaseIndex);
-                const checkbox = document.getElementById(checkboxId);
-                if (checkbox) checkbox.checked = false;
-            }
-
-            renderSelectedDiseases(pf);
-            updateDiseaseTriggerText(pf);
-        });
-    });
-}
-
-/**
- * Update disease trigger text
- */
-function updateDiseaseTriggerText(prefix) {
-    const triggerEl = document.getElementById(`${prefix}-disease-trigger`);
-    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
-
-    if (!triggerEl) return;
-    const span = triggerEl.querySelector('.trigger-text');
-    if (selectedList.length === 0) {
-        span.textContent = '选择疾病...';
-    } else {
-        span.textContent = `已选择 ${selectedList.length} 个疾病`;
+        console.error('Error loading communities:', error);
     }
 }
 
@@ -349,21 +148,20 @@ function isCommunitySelectedInThreads(prefix, communityId, stage, type) {
 }
 
 /**
- * Render community list from user's joined communities
+ * Render community list from all communities (threads are independent from user profile)
  */
 function renderCommunityList(listEl, prefix) {
-    if (userCommunities.length === 0) {
+    if (allCommunities.length === 0) {
         listEl.innerHTML = `
             <div class="empty-list-hint">
-                <p>你还没有加入任何社区</p>
-                <p><a href="community.html">去社区页面加入</a></p>
+                <p>暂无可选社区</p>
             </div>
         `;
         return;
     }
 
-    // Render user's joined communities with accordion for dimensions
-    listEl.innerHTML = userCommunities.map(c => {
+    // Render all communities with accordion for dimensions
+    listEl.innerHTML = allCommunities.map(c => {
         const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
         const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
 
@@ -691,22 +489,15 @@ function renderThreads(threads) {
     noThreads.style.display = 'none';
 
     threadsList.innerHTML = threads.map(thread => {
-        // Build disease tags (clickable if linked to a community)
-        let diseaseTags = '';
-        if (thread.author_disease_history && thread.author_disease_history.length > 0) {
-            diseaseTags = thread.author_disease_history.map(item => {
-                if (item.community_id) {
-                    return `<a href="community-detail.html?id=${item.community_id}" class="disease-tag">${escapeHtml(item.disease)}</a>`;
-                } else {
-                    return `<span class="disease-tag">${escapeHtml(item.disease)}</span>`;
-                }
-            }).join('');
-        }
-
-        // Build community tags
-        const communityTags = thread.communities.map(c =>
-            `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`
-        ).join('');
+        // Build community tags with full displayPath
+        const communityTags = thread.communities.map(c => {
+            // Build URL with stage/type parameters
+            let href = `community-detail.html?id=${c.id}`;
+            if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
+            if (c.type) href += `&type=${encodeURIComponent(c.type)}`;
+            const displayText = c.displayPath || c.name;
+            return `<a href="${href}" class="community-tag">${escapeHtml(displayText)}</a>`;
+        }).join('');
 
         return `
             <div class="thread-card" data-id="${thread.id}">
@@ -720,7 +511,6 @@ function renderThreads(threads) {
                 <div class="thread-card-info">
                     <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
                     <div class="thread-communities">
-                        ${diseaseTags}
                         ${communityTags}
                     </div>
                 </div>
@@ -744,12 +534,9 @@ function openThreadModal() {
     threadModal.classList.add('active');
     threadForm.reset();
     threadError.textContent = '';
-    // Clear selected diseases and communities
-    threadSelectedDiseases = [];
+    // Clear selected communities
     threadSelectedCommunities = [];
-    renderSelectedDiseases('thread');
     renderSelectedCommunities('thread');
-    updateDiseaseTriggerText('thread');
     updateCommunityTriggerText('thread');
 }
 
@@ -776,14 +563,6 @@ async function createThread(e) {
         type: c.type || ''
     }));
 
-    // Get selected diseases
-    const diseases = threadSelectedDiseases.map(d => ({
-        community_id: d.community_id,
-        stage: d.stage || '',
-        type: d.type || '',
-        disease: d.disease
-    }));
-
     try {
         const response = await fetch(THREADS_API, {
             method: 'POST',
@@ -794,8 +573,7 @@ async function createThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_links: communityLinks,
-                diseases: diseases
+                community_links: communityLinks
             })
         });
 
@@ -845,8 +623,8 @@ async function deleteThread(id) {
  */
 async function openEditModal(threadId) {
     try {
-        // Fetch thread data (use public endpoint to get full community details)
-        const response = await fetch(`${THREADS_API}/${threadId}/public`, {
+        // Fetch thread data (use private endpoint to get thread's own diseases and communities)
+        const response = await fetch(`${THREADS_API}/${threadId}`, {
             credentials: 'include'
         });
         const data = await response.json();
@@ -863,25 +641,19 @@ async function openEditModal(threadId) {
         document.getElementById('edit-title').value = thread.title;
         document.getElementById('edit-content').value = thread.content;
 
-        // Load diseases (from thread.diseases or thread.author_disease_history)
-        editSelectedDiseases = (thread.diseases || []).map(d => ({
-            community_id: d.community_id || null,
-            stage: d.stage || '',
-            type: d.type || '',
-            disease: d.disease
-        }));
-
         // Load communities
         editSelectedCommunities = (thread.communities || []).map(c => ({
             id: c.id,
-            name: c.name,
+            name: c.displayPath || c.name,
             stage: c.stage || '',
             type: c.type || ''
         }));
 
-        renderSelectedDiseases('edit');
+        // Re-render the community list to update checkbox states
+        const editCommunityListEl = document.getElementById('edit-community-list');
+        if (editCommunityListEl) renderCommunityList(editCommunityListEl, 'edit');
+
         renderSelectedCommunities('edit');
-        updateDiseaseTriggerText('edit');
         updateCommunityTriggerText('edit');
 
         editError.textContent = '';
@@ -916,14 +688,6 @@ async function updateThread(e) {
         type: c.type || ''
     }));
 
-    // Get selected diseases
-    const diseases = editSelectedDiseases.map(d => ({
-        community_id: d.community_id,
-        stage: d.stage || '',
-        type: d.type || '',
-        disease: d.disease
-    }));
-
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
             method: 'PUT',
@@ -934,8 +698,7 @@ async function updateThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_links: communityLinks,
-                diseases: diseases
+                community_links: communityLinks
             })
         });
 
@@ -964,12 +727,6 @@ function formatDate(dateStr) {
  * Handle click outside to close dropdowns
  */
 function handleClickOutside(e) {
-    // Close disease selector dropdowns
-    document.querySelectorAll('.disease-filter-selector.open').forEach(sel => {
-        if (!sel.contains(e.target)) {
-            sel.classList.remove('open');
-        }
-    });
     // Close community selector dropdowns
     document.querySelectorAll('.community-filter-selector.open').forEach(sel => {
         if (!sel.contains(e.target)) {

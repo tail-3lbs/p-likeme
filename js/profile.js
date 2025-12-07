@@ -10,10 +10,11 @@ const profileUsername = urlParams.get('user');
 // State
 let profileData = null;
 let isOwnProfile = false;
-let diseaseHistory = []; // Array of {community_id, stage, type, disease}
+let diseaseHistory = []; // Array of {community_id, stage, type, disease, onset_date}
 let hospitalTags = [];
 let allCommunities = []; // All available communities for disease selection
 let userCommunityIds = new Set(); // Community IDs user has joined (Level I)
+let pendingDiseaseCheckbox = null; // Currently pending disease checkbox waiting for date input
 
 // DOM Elements
 const profileLoading = document.getElementById('profile-loading');
@@ -165,19 +166,21 @@ function renderViewMode() {
         communitiesEl.innerHTML = '<span class="empty-hint">暂未加入任何社区</span>';
     }
 
-    // Disease history - make community-based items clickable
+    // Disease history - make community-based items clickable, show duration
     const diseaseTagsEl = document.getElementById('display-disease-tags');
     if (profileData.disease_history && profileData.disease_history.length > 0) {
         diseaseTagsEl.innerHTML = profileData.disease_history.map(item => {
+            const duration = calculateDuration(item.onset_date);
+            const durationText = duration ? `（${duration}）` : '';
             if (item.community_id) {
                 // Community-based - make it a link
                 let href = `community-detail.html?id=${item.community_id}`;
                 if (item.stage) href += `&stage=${encodeURIComponent(item.stage)}`;
                 if (item.type) href += `&type=${encodeURIComponent(item.type)}`;
-                return `<a href="${href}" class="profile-tag disease-tag">${escapeHtml(item.disease)}</a>`;
+                return `<a href="${href}" class="profile-tag disease-tag">${escapeHtml(item.disease)}${durationText}</a>`;
             } else {
                 // Free-text - just a span
-                return `<span class="profile-tag disease-tag">${escapeHtml(item.disease)}</span>`;
+                return `<span class="profile-tag disease-tag">${escapeHtml(item.disease)}${durationText}</span>`;
             }
         }).join('');
     } else {
@@ -280,7 +283,8 @@ async function enterEditMode() {
         community_id: item.community_id,
         stage: item.stage || '',
         type: item.type || '',
-        disease: item.disease
+        disease: item.disease,
+        onset_date: item.onset_date || null
     })) : [];
     hospitalTags = profileData.hospitals ? [...profileData.hospitals] : [];
 
@@ -532,6 +536,147 @@ function renderDiseaseSelector() {
 }
 
 /**
+ * Calculate duration string from onset_date
+ * Returns format like "3年" or "2月" or "1年3月"
+ */
+function calculateDuration(onsetDate) {
+    if (!onsetDate) return null;
+
+    const [year, month] = onsetDate.split('-').map(Number);
+    if (!year || !month) return null;
+
+    const onset = new Date(year, month - 1, 1);
+    const now = new Date();
+
+    let months = (now.getFullYear() - onset.getFullYear()) * 12 + (now.getMonth() - onset.getMonth());
+    if (months < 0) months = 0;
+
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+
+    if (years >= 1) {
+        if (remainingMonths === 0) {
+            return `${years}年`;
+        } else {
+            return `${years}年${remainingMonths}月`;
+        }
+    } else if (months === 0) {
+        return '刚确诊';
+    } else {
+        return `${months}月`;
+    }
+}
+
+/**
+ * Generate year options for onset date (last 30 years)
+ */
+function generateYearOptions() {
+    const currentYear = new Date().getFullYear();
+    let options = '<option value="">年</option>';
+    for (let year = currentYear; year >= currentYear - 30; year--) {
+        options += `<option value="${year}">${year}</option>`;
+    }
+    return options;
+}
+
+/**
+ * Generate month options
+ */
+function generateMonthOptions() {
+    let options = '<option value="">月</option>';
+    for (let month = 1; month <= 12; month++) {
+        options += `<option value="${String(month).padStart(2, '0')}">${month}</option>`;
+    }
+    return options;
+}
+
+/**
+ * Show inline onset date picker below checkbox
+ */
+function showOnsetDatePicker(checkbox) {
+    // Remove any existing picker
+    hideOnsetDatePicker();
+
+    pendingDiseaseCheckbox = checkbox;
+    const row = checkbox.closest('.disease-checkbox-row');
+
+    const picker = document.createElement('div');
+    picker.className = 'onset-date-picker';
+    picker.innerHTML = `
+        <span class="onset-date-label">确诊时间:</span>
+        <select class="onset-year">${generateYearOptions()}</select>
+        <span>年</span>
+        <select class="onset-month">${generateMonthOptions()}</select>
+        <span>月</span>
+        <button type="button" class="onset-confirm-btn">确认</button>
+        <button type="button" class="onset-cancel-btn">取消</button>
+    `;
+
+    row.insertAdjacentElement('afterend', picker);
+
+    // Add event listeners
+    picker.querySelector('.onset-confirm-btn').addEventListener('click', confirmOnsetDate);
+    picker.querySelector('.onset-cancel-btn').addEventListener('click', cancelOnsetDate);
+}
+
+/**
+ * Hide onset date picker
+ */
+function hideOnsetDatePicker() {
+    const existingPicker = document.querySelector('.onset-date-picker');
+    if (existingPicker) {
+        existingPicker.remove();
+    }
+    pendingDiseaseCheckbox = null;
+}
+
+/**
+ * Confirm onset date and add disease
+ */
+function confirmOnsetDate() {
+    if (!pendingDiseaseCheckbox) return;
+
+    const picker = document.querySelector('.onset-date-picker');
+    const year = picker.querySelector('.onset-year').value;
+    const month = picker.querySelector('.onset-month').value;
+
+    let onsetDate = null;
+    if (year && month) {
+        onsetDate = `${year}-${month}`;
+    }
+
+    const checkbox = pendingDiseaseCheckbox;
+    const communityId = parseInt(checkbox.dataset.communityId, 10);
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const disease = checkbox.dataset.disease;
+
+    // Add to disease history
+    if (!isDiseaseSelected(communityId, stage, type, disease)) {
+        diseaseHistory.push({
+            community_id: communityId,
+            stage: stage,
+            type: type,
+            disease: disease,
+            onset_date: onsetDate
+        });
+    }
+
+    hideOnsetDatePicker();
+    renderSelectedDiseases();
+}
+
+/**
+ * Cancel onset date input
+ */
+function cancelOnsetDate() {
+    if (pendingDiseaseCheckbox) {
+        pendingDiseaseCheckbox.checked = false;
+    }
+    hideOnsetDatePicker();
+}
+
+/**
  * Handle disease checkbox change
  */
 function handleDiseaseCheckboxChange(e) {
@@ -542,14 +687,9 @@ function handleDiseaseCheckboxChange(e) {
     const disease = checkbox.dataset.disease;
 
     if (checkbox.checked) {
-        // Add to disease history
+        // Show onset date picker instead of immediately adding
         if (!isDiseaseSelected(communityId, stage, type, disease)) {
-            diseaseHistory.push({
-                community_id: communityId,
-                stage: stage,
-                type: type,
-                disease: disease
-            });
+            showOnsetDatePicker(checkbox);
         }
     } else {
         // Remove from disease history
@@ -559,9 +699,8 @@ function handleDiseaseCheckboxChange(e) {
               (item.type || '') === type &&
               item.disease === disease)
         );
+        renderSelectedDiseases();
     }
-
-    renderSelectedDiseases();
 }
 
 /**
@@ -576,12 +715,16 @@ function renderSelectedDiseases() {
         return;
     }
 
-    container.innerHTML = diseaseHistory.map((item, index) => `
-        <span class="disease-selected-tag">
-            <span class="tag-path">${escapeHtml(item.disease)}</span>
-            <button type="button" class="tag-remove" data-index="${index}">&times;</button>
-        </span>
-    `).join('');
+    container.innerHTML = diseaseHistory.map((item, index) => {
+        const duration = calculateDuration(item.onset_date);
+        const durationText = duration ? `（${duration}）` : '';
+        return `
+            <span class="disease-selected-tag">
+                <span class="tag-path">${escapeHtml(item.disease)}${durationText}</span>
+                <button type="button" class="tag-remove" data-index="${index}">&times;</button>
+            </span>
+        `;
+    }).join('');
 
     // Add remove handlers
     container.querySelectorAll('.tag-remove').forEach(btn => {
@@ -603,7 +746,7 @@ function renderSelectedDiseases() {
 }
 
 /**
- * Add free-text disease
+ * Add free-text disease - shows onset date picker first
  */
 function addFreetextDisease() {
     const input = document.getElementById('disease-freetext-input');
@@ -617,17 +760,85 @@ function addFreetextDisease() {
         !item.community_id && item.disease === value
     );
 
-    if (!exists) {
-        diseaseHistory.push({
-            community_id: null,
-            stage: '',
-            type: '',
-            disease: value
-        });
-        renderSelectedDiseases();
+    if (exists) {
+        input.value = '';
+        return;
     }
 
-    input.value = '';
+    // Store the pending free-text disease and show the picker
+    pendingFreetextDisease = value;
+    showFreetextOnsetDatePicker();
+}
+
+// Variable to store pending free-text disease
+let pendingFreetextDisease = null;
+
+/**
+ * Show onset date picker for free-text disease
+ */
+function showFreetextOnsetDatePicker() {
+    // Remove any existing picker
+    hideOnsetDatePicker();
+
+    const freetextContainer = document.querySelector('.disease-freetext');
+
+    const picker = document.createElement('div');
+    picker.className = 'onset-date-picker';
+    picker.innerHTML = `
+        <span class="onset-date-label">确诊时间:</span>
+        <select class="onset-year">${generateYearOptions()}</select>
+        <span>年</span>
+        <select class="onset-month">${generateMonthOptions()}</select>
+        <span>月</span>
+        <button type="button" class="onset-confirm-btn">确认</button>
+        <button type="button" class="onset-cancel-btn">取消</button>
+    `;
+
+    freetextContainer.appendChild(picker);
+
+    // Add event listeners
+    picker.querySelector('.onset-confirm-btn').addEventListener('click', confirmFreetextOnsetDate);
+    picker.querySelector('.onset-cancel-btn').addEventListener('click', cancelFreetextOnsetDate);
+}
+
+/**
+ * Confirm onset date for free-text disease
+ */
+function confirmFreetextOnsetDate() {
+    if (!pendingFreetextDisease) return;
+
+    const picker = document.querySelector('.onset-date-picker');
+    const year = picker.querySelector('.onset-year').value;
+    const month = picker.querySelector('.onset-month').value;
+
+    let onsetDate = null;
+    if (year && month) {
+        onsetDate = `${year}-${month}`;
+    }
+
+    // Add to disease history
+    diseaseHistory.push({
+        community_id: null,
+        stage: '',
+        type: '',
+        disease: pendingFreetextDisease,
+        onset_date: onsetDate
+    });
+
+    // Clear input and picker
+    const input = document.getElementById('disease-freetext-input');
+    if (input) input.value = '';
+    pendingFreetextDisease = null;
+    hideOnsetDatePicker();
+    renderSelectedDiseases();
+}
+
+/**
+ * Cancel free-text onset date input
+ */
+function cancelFreetextOnsetDate() {
+    pendingFreetextDisease = null;
+    hideOnsetDatePicker();
 }
 
 /**

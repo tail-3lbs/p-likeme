@@ -1223,12 +1223,15 @@ function createUserCard(user) {
         ? user.communities.map(c => `<span class="user-card-tag community-tag">${c.name}</span>`).join('')
         : '';
 
-    // Disease history (show up to 3, with "+N" indicator if more)
+    // Disease history (show up to 3, with "+N" indicator if more, with duration)
     let diseaseTagsHtml = '';
     if (user.disease_history && user.disease_history.length > 0) {
         const shown = user.disease_history.slice(0, 3);
         const remaining = user.disease_history.length - shown.length;
-        diseaseTagsHtml = shown.map(d => `<span class="user-card-tag disease-tag">${d}</span>`).join('');
+        diseaseTagsHtml = shown.map(d => {
+            const displayText = typeof d === 'object' ? formatDiseaseWithDuration(d.disease, d.onset_date) : d;
+            return `<span class="user-card-tag disease-tag">${escapeHtml(displayText)}</span>`;
+        }).join('');
         if (remaining > 0) {
             diseaseTagsHtml += `<span class="user-card-tag disease-tag more-tag">+${remaining}</span>`;
         }

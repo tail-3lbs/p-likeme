@@ -10,6 +10,8 @@ const {
     updateGuruIntro,
     getThreadsByUserId,
     getAllCommunities,
+    getCommunityById,
+    getThreadCommunityDetails,
     getUserLevel1CommunityIds,
     getUserAllCommunities,
     getUserDiseaseHistory,
@@ -76,25 +78,47 @@ router.get('/:username', (req, res) => {
             });
         }
 
-        // Get guru's threads
-        const threads = getThreadsByUserId(guru.id);
-        const allCommunities = getAllCommunities();
-        const communityMap = {};
-        allCommunities.forEach(c => { communityMap[c.id] = c.name; });
-
-        const threadsWithNames = threads.map(thread => ({
-            ...thread,
-            communities: thread.community_ids.map(id => ({
-                id,
-                name: communityMap[id] || '未知社区'
-            }))
-        }));
+        // Get guru's disease history first (needed for threads)
+        const diseaseHistory = getUserDiseaseHistory(guru.id);
 
         // Get guru's joined communities (all memberships)
         const guruCommunities = getUserAllCommunities(guru.id);
 
-        // Get guru's disease history
-        const diseaseHistory = getUserDiseaseHistory(guru.id);
+        // Get guru's threads with full details (similar to thread-detail API)
+        const threads = getThreadsByUserId(guru.id);
+
+        const threadsWithDetails = threads.map(thread => {
+            // Get community details with stage/type
+            const communityDetails = getThreadCommunityDetails(thread.id);
+
+            // Build community info with names and full path
+            const communities = communityDetails.map(detail => {
+                const community = getCommunityById(detail.community_id);
+                const communityName = community ? community.name : '未知社区';
+
+                // Build display path based on stage/type
+                let displayPath = communityName;
+                const parts = [];
+                if (detail.stage) parts.push(detail.stage);
+                if (detail.type) parts.push(detail.type);
+                if (parts.length > 0) {
+                    displayPath = `${communityName} > ${parts.join(' · ')}`;
+                }
+
+                return {
+                    id: detail.community_id,
+                    name: communityName,
+                    stage: detail.stage || null,
+                    type: detail.type || null,
+                    displayPath
+                };
+            });
+
+            return {
+                ...thread,
+                communities
+            };
+        });
 
         res.json({
             success: true,
@@ -102,7 +126,7 @@ router.get('/:username', (req, res) => {
                 ...guru,
                 communities: guruCommunities,
                 disease_history: diseaseHistory,
-                threads: threadsWithNames
+                threads: threadsWithDetails
             }
         });
     } catch (error) {

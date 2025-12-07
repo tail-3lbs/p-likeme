@@ -24,6 +24,51 @@ function escapeHtml(text) {
 }
 
 /**
+ * Calculate duration string from onset_date (YYYY-MM format)
+ * Returns format like "3年" or "2月" or "1年3月"
+ * @param {string} onsetDate - Date in YYYY-MM format
+ * @returns {string|null} - Duration string or null if no date
+ */
+function calculateDuration(onsetDate) {
+    if (!onsetDate) return null;
+
+    const [year, month] = onsetDate.split('-').map(Number);
+    if (!year || !month) return null;
+
+    const onset = new Date(year, month - 1, 1);
+    const now = new Date();
+
+    let months = (now.getFullYear() - onset.getFullYear()) * 12 + (now.getMonth() - onset.getMonth());
+    if (months < 0) months = 0;
+
+    const years = Math.floor(months / 12);
+    const remainingMonths = months % 12;
+
+    if (years >= 1) {
+        if (remainingMonths === 0) {
+            return `${years}年`;
+        } else {
+            return `${years}年${remainingMonths}月`;
+        }
+    } else if (months === 0) {
+        return '刚确诊';
+    } else {
+        return `${months}月`;
+    }
+}
+
+/**
+ * Format disease display with duration
+ * @param {string} disease - Disease name
+ * @param {string} onsetDate - Date in YYYY-MM format
+ * @returns {string} - Disease name with duration suffix
+ */
+function formatDiseaseWithDuration(disease, onsetDate) {
+    const duration = calculateDuration(onsetDate);
+    return duration ? `${disease}（${duration}）` : disease;
+}
+
+/**
  * Parse a CST date string (from database) correctly
  * Database stores dates in 'YYYY-MM-DD HH:MM:SS' format in China Standard Time
  * @param {string} dateString - Date string from database

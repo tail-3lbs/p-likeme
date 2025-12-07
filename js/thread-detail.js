@@ -85,20 +85,9 @@ function renderThread(thread) {
     document.getElementById('thread-date').textContent = formatDate(thread.created_at);
     document.getElementById('thread-body').textContent = thread.content;
 
-    // Render disease tags first, then communities
+    // Render community tags
     const communitiesEl = document.getElementById('thread-communities');
     let tagsHtml = '';
-
-    // Disease tags from author's disease history (clickable if linked to a community)
-    if (thread.author_disease_history && thread.author_disease_history.length > 0) {
-        tagsHtml += thread.author_disease_history.map(item => {
-            if (item.community_id) {
-                return `<a href="community-detail.html?id=${item.community_id}" class="disease-tag">${escapeHtml(item.disease)}</a>`;
-            } else {
-                return `<span class="disease-tag">${escapeHtml(item.disease)}</span>`;
-            }
-        }).join('');
-    }
 
     // Community tags with full path (including stage/type)
     if (thread.communities && thread.communities.length > 0) {

@@ -18,18 +18,38 @@ router.get('/', authMiddleware, (req, res) => {
     try {
         const threads = getThreadsByUserId(req.user.id);
 
-        // Get community names for each thread
-        const communities = getAllCommunities();
-        const communityMap = {};
-        communities.forEach(c => { communityMap[c.id] = c.name; });
+        const threadsWithNames = threads.map(thread => {
+            // Get community details with stage/type
+            const communityDetails = getThreadCommunityDetails(thread.id);
 
-        const threadsWithNames = threads.map(thread => ({
-            ...thread,
-            communities: thread.community_ids.map(id => ({
-                id,
-                name: communityMap[id] || '未知社区'
-            }))
-        }));
+            // Build community info with names and full path
+            const communities = communityDetails.map(detail => {
+                const community = getCommunityById(detail.community_id);
+                const communityName = community ? community.name : '未知社区';
+
+                // Build display path based on stage/type
+                let displayPath = communityName;
+                const parts = [];
+                if (detail.stage) parts.push(detail.stage);
+                if (detail.type) parts.push(detail.type);
+                if (parts.length > 0) {
+                    displayPath = `${communityName} > ${parts.join(' · ')}`;
+                }
+
+                return {
+                    id: detail.community_id,
+                    name: communityName,
+                    stage: detail.stage || null,
+                    type: detail.type || null,
+                    displayPath
+                };
+            });
+
+            return {
+                ...thread,
+                communities
+            };
+        });
 
         res.json({
             success: true,
@@ -64,18 +84,38 @@ router.get('/user/:username', authMiddleware, (req, res) => {
 
         const threads = getThreadsByUserId(user.id);
 
-        // Get community names for each thread
-        const communities = getAllCommunities();
-        const communityMap = {};
-        communities.forEach(c => { communityMap[c.id] = c.name; });
+        const threadsWithNames = threads.map(thread => {
+            // Get community details with stage/type
+            const communityDetails = getThreadCommunityDetails(thread.id);
 
-        const threadsWithNames = threads.map(thread => ({
-            ...thread,
-            communities: thread.community_ids.map(id => ({
-                id,
-                name: communityMap[id] || '未知社区'
-            }))
-        }));
+            // Build community info with names and full path
+            const communities = communityDetails.map(detail => {
+                const community = getCommunityById(detail.community_id);
+                const communityName = community ? community.name : '未知社区';
+
+                // Build display path based on stage/type
+                let displayPath = communityName;
+                const parts = [];
+                if (detail.stage) parts.push(detail.stage);
+                if (detail.type) parts.push(detail.type);
+                if (parts.length > 0) {
+                    displayPath = `${communityName} > ${parts.join(' · ')}`;
+                }
+
+                return {
+                    id: detail.community_id,
+                    name: communityName,
+                    stage: detail.stage || null,
+                    type: detail.type || null,
+                    displayPath
+                };
+            });
+
+            return {
+                ...thread,
+                communities
+            };
+        });
 
         res.json({
             success: true,
@@ -101,7 +141,8 @@ router.get('/user/:username', authMiddleware, (req, res) => {
  */
 router.get('/:id', authMiddleware, (req, res) => {
     try {
-        const thread = getThreadById(parseInt(req.params.id, 10));
+        const threadId = parseInt(req.params.id, 10);
+        const thread = getThreadById(threadId);
 
         if (!thread) {
             return res.status(404).json({
@@ -118,19 +159,37 @@ router.get('/:id', authMiddleware, (req, res) => {
             });
         }
 
-        // Get community names
-        const communities = getAllCommunities();
-        const communityMap = {};
-        communities.forEach(c => { communityMap[c.id] = c.name; });
+        // Get community details with stage/type
+        const communityDetails = getThreadCommunityDetails(threadId);
+
+        // Build community info with names and full path
+        const communities = communityDetails.map(detail => {
+            const community = getCommunityById(detail.community_id);
+            const communityName = community ? community.name : '未知社区';
+
+            // Build display path based on stage/type
+            let displayPath = communityName;
+            const parts = [];
+            if (detail.stage) parts.push(detail.stage);
+            if (detail.type) parts.push(detail.type);
+            if (parts.length > 0) {
+                displayPath = `${communityName} > ${parts.join(' · ')}`;
+            }
+
+            return {
+                id: detail.community_id,
+                name: communityName,
+                stage: detail.stage || null,
+                type: detail.type || null,
+                displayPath
+            };
+        });
 
         res.json({
             success: true,
             data: {
                 ...thread,
-                communities: thread.community_ids.map(id => ({
-                    id,
-                    name: communityMap[id] || '未知社区'
-                }))
+                communities
             }
         });
     } catch (error) {
@@ -213,11 +272,10 @@ router.get('/:id/public', (req, res) => {
  *   - content: string (required)
  *   - community_ids: number[] (legacy format, Level I only)
  *   - community_links: {id: number, stage?: string, type?: string}[] (new format with sub-community support)
- *   - diseases: {community_id?: number, stage?: string, type?: string, disease: string}[] (disease tags)
  */
 router.post('/', authMiddleware, (req, res) => {
     try {
-        const { title, content, community_ids = [], community_links = [], diseases = [] } = req.body;
+        const { title, content, community_ids = [], community_links = [] } = req.body;
 
         // Validate input
         if (!title || !title.trim()) {
@@ -258,12 +316,6 @@ router.post('/', authMiddleware, (req, res) => {
                 id: parseInt(link.id, 10),
                 stage: link.stage || '',
                 type: link.type || ''
-            })),
-            diseases: diseases.map(d => ({
-                community_id: d.community_id ? parseInt(d.community_id, 10) : null,
-                stage: d.stage || '',
-                type: d.type || '',
-                disease: d.disease
             }))
         });
 
@@ -291,11 +343,10 @@ router.post('/', authMiddleware, (req, res) => {
  *   - content: string (required)
  *   - community_ids: number[] (legacy format, Level I only)
  *   - community_links: {id: number, stage?: string, type?: string}[] (new format with sub-community support)
- *   - diseases: {community_id?: number, stage?: string, type?: string, disease: string}[] (disease tags)
  */
 router.put('/:id', authMiddleware, (req, res) => {
     try {
-        const { title, content, community_ids = [], community_links = [], diseases = [] } = req.body;
+        const { title, content, community_ids = [], community_links = [] } = req.body;
 
         // Validate input
         if (!title || !title.trim()) {
@@ -337,12 +388,6 @@ router.put('/:id', authMiddleware, (req, res) => {
                 id: parseInt(link.id, 10),
                 stage: link.stage || '',
                 type: link.type || ''
-            })),
-            diseases: diseases.map(d => ({
-                community_id: d.community_id ? parseInt(d.community_id, 10) : null,
-                stage: d.stage || '',
-                type: d.type || '',
-                disease: d.disease
             }))
         });
 

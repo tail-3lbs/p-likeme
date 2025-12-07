@@ -2064,6 +2064,66 @@ a.profile-tag.disease-tag:hover {
     display: block;
 }
 
+/* Onset date picker (inline) */
+.onset-date-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    margin-left: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.onset-date-label {
+    color: #666;
+    margin-right: 0.25rem;
+}
+
+.onset-date-picker select {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background: #fff;
+}
+
+.onset-date-picker select:focus {
+    outline: none;
+    border-color: #2AB3B1;
+}
+
+.onset-confirm-btn {
+    padding: 0.3rem 0.75rem;
+    background: #2AB3B1;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+}
+
+.onset-confirm-btn:hover {
+    background: #239997;
+}
+
+.onset-cancel-btn {
+    padding: 0.3rem 0.75rem;
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.onset-cancel-btn:hover {
+    background: #eee;
+}
+
 /* Free-text input section */
 .disease-freetext {
     margin-bottom: 1rem;
@@ -2760,12 +2820,8 @@ a.profile-tag.disease-tag:hover {
     display: block;
 }
 
-/* Disease filter item (for user's disease list) */
+/* Disease filter item (accordion style like community filter) */
 .disease-filter-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.8rem;
     border-bottom: 1px solid #eee;
 }
 
@@ -2773,9 +2829,43 @@ a.profile-tag.disease-tag:hover {
     border-bottom: none;
 }
 
+.disease-filter-item-header {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    cursor: pointer;
+    background: #f9f9f9;
+}
+
+.disease-filter-item-header:hover {
+    background: #f0f0f0;
+}
+
+.disease-filter-item-header .filter-expand-icon {
+    margin-right: 0.5rem;
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+    color: #888;
+}
+
+.disease-filter-item.expanded > .disease-filter-item-header .filter-expand-icon {
+    transform: rotate(90deg);
+}
+
 .disease-filter-item-name {
     font-size: 0.9rem;
     color: #333;
+    font-weight: 500;
+}
+
+.disease-filter-item-content {
+    display: none;
+    padding-left: 1.2rem;
+    background: #fff;
+}
+
+.disease-filter-item.expanded > .disease-filter-item-content {
+    display: block;
 }
 
 /* Empty list hint (when user has no diseases or communities) */
@@ -3901,6 +3991,22 @@ a.profile-tag.disease-tag:hover {
     color: #999;
     display: flex;
     gap: 1rem;
+}
+
+.guru-threads-section .thread-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.5rem 0;
+}
+
+.guru-threads-section .thread-tags .disease-tag,
+.guru-threads-section .thread-tags .community-tag {
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    text-decoration: none;
+    display: inline-block;
 }
 
 /* Guru Q&A Section */

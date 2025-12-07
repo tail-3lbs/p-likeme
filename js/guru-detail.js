@@ -160,15 +160,16 @@
         }
 
         diseaseEl.innerHTML = diseaseHistory.map(d => {
+            const displayText = formatDiseaseWithDuration(d.disease, d.onset_date);
             if (d.community_id) {
                 // Community-based - make it a link
                 let href = `community-detail.html?id=${d.community_id}`;
                 if (d.stage) href += `&stage=${encodeURIComponent(d.stage)}`;
                 if (d.type) href += `&type=${encodeURIComponent(d.type)}`;
-                return `<a href="${href}" class="profile-tag disease-tag">${escapeHtml(d.disease)}</a>`;
+                return `<a href="${href}" class="profile-tag disease-tag">${escapeHtml(displayText)}</a>`;
             } else {
                 // Free-text - use same styling (no link)
-                return `<span class="profile-tag disease-tag">${escapeHtml(d.disease)}</span>`;
+                return `<span class="profile-tag disease-tag">${escapeHtml(displayText)}</span>`;
             }
         }).join('');
 
@@ -215,18 +216,32 @@
             return;
         }
 
-        threadsEl.innerHTML = threads.map(thread => `
-            <div class="thread-card">
-                <a href="thread-detail.html?id=${thread.id}" class="thread-link">
-                    <h3 class="thread-title">${escapeHtml(thread.title)}</h3>
-                    <p class="thread-preview">${escapeHtml(truncateText(thread.content, 150))}</p>
-                    <div class="thread-meta">
-                        <span>${formatDate(thread.created_at)}</span>
-                        <span>${thread.reply_count || 0} 回复</span>
-                    </div>
-                </a>
-            </div>
-        `).join('');
+        threadsEl.innerHTML = threads.map(thread => {
+            // Build community tags HTML
+            let tagsHtml = '';
+            if (thread.communities && thread.communities.length > 0) {
+                tagsHtml = thread.communities.map(c => {
+                    let href = `community-detail.html?id=${c.id}`;
+                    if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
+                    if (c.type) href += `&type=${encodeURIComponent(c.type)}`;
+                    return `<a href="${href}" class="community-tag">${escapeHtml(c.displayPath || c.name)}</a>`;
+                }).join('');
+            }
+
+            return `
+                <div class="thread-card">
+                    <a href="thread-detail.html?id=${thread.id}" class="thread-link">
+                        <h3 class="thread-title">${escapeHtml(thread.title)}</h3>
+                        <p class="thread-preview">${escapeHtml(truncateText(thread.content, 150))}</p>
+                        ${tagsHtml ? `<div class="thread-tags">${tagsHtml}</div>` : ''}
+                        <div class="thread-meta">
+                            <span>${formatDate(thread.created_at)}</span>
+                            <span>${thread.reply_count || 0} 回复</span>
+                        </div>
+                    </a>
+                </div>
+            `;
+        }).join('');
     }
 
     /**
