@@ -12,6 +12,7 @@ const {
     getAllCommunities,
     getUserLevel1CommunityIds,
     getUserAllCommunities,
+    getUserDiseaseHistory,
     findUserByUsernamePublic,
     createGuruQuestion,
     getGuruQuestions,
@@ -35,27 +36,20 @@ const router = express.Router();
 router.get('/', (req, res) => {
     try {
         const gurus = getAllGurus();
-        const allCommunities = getAllCommunities();
-        const communityMap = {};
-        allCommunities.forEach(c => { communityMap[c.id] = c.name; });
 
-        // Add Level 1 communities to each guru
-        const gurusWithCommunities = gurus.map(guru => {
-            const level1Ids = getUserLevel1CommunityIds(guru.id);
-            const communities = level1Ids.map(id => ({
-                id,
-                name: communityMap[id] || '未知社区'
-            }));
+        // Add disease_history to each guru (for guru list page)
+        const gurusWithDiseaseHistory = gurus.map(guru => {
+            const diseaseHistory = getUserDiseaseHistory(guru.id);
             return {
                 ...guru,
-                communities
+                disease_history: diseaseHistory
             };
         });
 
         res.json({
             success: true,
-            data: gurusWithCommunities,
-            count: gurusWithCommunities.length
+            data: gurusWithDiseaseHistory,
+            count: gurusWithDiseaseHistory.length
         });
     } catch (error) {
         console.error('Error fetching gurus:', error);
@@ -99,11 +93,15 @@ router.get('/:username', (req, res) => {
         // Get guru's joined communities (all memberships)
         const guruCommunities = getUserAllCommunities(guru.id);
 
+        // Get guru's disease history
+        const diseaseHistory = getUserDiseaseHistory(guru.id);
+
         res.json({
             success: true,
             data: {
                 ...guru,
                 communities: guruCommunities,
+                disease_history: diseaseHistory,
                 threads: threadsWithNames
             }
         });

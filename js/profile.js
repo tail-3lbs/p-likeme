@@ -10,8 +10,10 @@ const profileUsername = urlParams.get('user');
 // State
 let profileData = null;
 let isOwnProfile = false;
-let diseaseTags = [];
+let diseaseHistory = []; // Array of {community_id, stage, type, disease}
 let hospitalTags = [];
+let allCommunities = []; // All available communities for disease selection
+let userCommunityIds = new Set(); // Community IDs user has joined (Level I)
 
 // DOM Elements
 const profileLoading = document.getElementById('profile-loading');
@@ -163,14 +165,21 @@ function renderViewMode() {
         communitiesEl.innerHTML = '<span class="empty-hint">暂未加入任何社区</span>';
     }
 
-    // escapeHtml is defined in main.js (available globally)
-
-    // Disease tags
+    // Disease history - make community-based items clickable
     const diseaseTagsEl = document.getElementById('display-disease-tags');
-    if (profileData.disease_tags && profileData.disease_tags.length > 0) {
-        diseaseTagsEl.innerHTML = profileData.disease_tags.map(tag =>
-            `<span class="profile-tag disease-tag">${tag}</span>`
-        ).join('');
+    if (profileData.disease_history && profileData.disease_history.length > 0) {
+        diseaseTagsEl.innerHTML = profileData.disease_history.map(item => {
+            if (item.community_id) {
+                // Community-based - make it a link
+                let href = `community-detail.html?id=${item.community_id}`;
+                if (item.stage) href += `&stage=${encodeURIComponent(item.stage)}`;
+                if (item.type) href += `&type=${encodeURIComponent(item.type)}`;
+                return `<a href="${href}" class="profile-tag disease-tag">${escapeHtml(item.disease)}</a>`;
+            } else {
+                // Free-text - just a span
+                return `<span class="profile-tag disease-tag">${escapeHtml(item.disease)}</span>`;
+            }
+        }).join('');
     } else {
         diseaseTagsEl.innerHTML = '<span class="empty-hint">暂未添加</span>';
     }
@@ -201,7 +210,7 @@ function renderViewMode() {
     const hospitalsEl = document.getElementById('display-hospitals');
     if (profileData.hospitals && profileData.hospitals.length > 0) {
         hospitalsEl.innerHTML = profileData.hospitals.map(h =>
-            `<span class="profile-tag hospital-tag">${h}</span>`
+            `<span class="profile-tag hospital-tag">${escapeHtml(h)}</span>`
         ).join('');
     } else {
         hospitalsEl.innerHTML = '<span class="empty-hint">暂未添加</span>';
@@ -209,10 +218,40 @@ function renderViewMode() {
 }
 
 /**
+ * Load all communities for disease selector
+ */
+async function loadAllCommunities() {
+    try {
+        const response = await fetch('/api/communities');
+        const data = await response.json();
+        if (data.success) {
+            allCommunities = data.data;
+        }
+    } catch (error) {
+        console.error('Error loading communities:', error);
+    }
+}
+
+/**
  * Enter edit mode
  */
-function enterEditMode() {
+async function enterEditMode() {
     if (!isOwnProfile || !profileData) return;
+
+    // Load communities if not already loaded
+    if (allCommunities.length === 0) {
+        await loadAllCommunities();
+    }
+
+    // Build set of user's Level I community IDs
+    userCommunityIds = new Set();
+    if (profileData.communities) {
+        profileData.communities.forEach(c => {
+            if (!c.stage && !c.type) {
+                userCommunityIds.add(c.id);
+            }
+        });
+    }
 
     // Populate form fields - Personal info
     document.getElementById('edit-gender').value = profileData.gender || '';
@@ -236,10 +275,19 @@ function enterEditMode() {
     document.getElementById('edit-housing-status').value = profileData.housing_status || '';
     document.getElementById('edit-economic-dependency').value = profileData.economic_dependency || '';
 
-    // Initialize tags
-    diseaseTags = profileData.disease_tags ? [...profileData.disease_tags] : [];
+    // Initialize disease history and hospital tags
+    diseaseHistory = profileData.disease_history ? profileData.disease_history.map(item => ({
+        community_id: item.community_id,
+        stage: item.stage || '',
+        type: item.type || '',
+        disease: item.disease
+    })) : [];
     hospitalTags = profileData.hospitals ? [...profileData.hospitals] : [];
-    renderTags();
+
+    // Render disease selector and hospital tags
+    renderDiseaseSelector();
+    renderSelectedDiseases();
+    renderHospitalTags();
 
     // Switch to edit mode
     viewMode.style.display = 'none';
@@ -257,32 +305,348 @@ function exitEditMode() {
 }
 
 /**
- * Render tags in edit mode
+ * Build display path for disease item
  */
-function renderTags() {
-    // Disease tags
-    const diseaseDisplay = document.getElementById('disease-tags-display');
-    diseaseDisplay.innerHTML = diseaseTags.map((tag, index) =>
-        `<span class="edit-tag">${tag}<button type="button" class="tag-remove" data-type="disease" data-index="${index}">&times;</button></span>`
-    ).join('');
+function buildDiseaseDisplayPath(communityName, stage, type) {
+    let path = communityName;
+    if (stage && type) {
+        path += ` > ${stage} · ${type}`;
+    } else if (stage) {
+        path += ` > ${stage}`;
+    } else if (type) {
+        path += ` > ${type}`;
+    }
+    return path;
+}
 
-    // Hospital tags
-    const hospitalsDisplay = document.getElementById('hospitals-tags-display');
-    hospitalsDisplay.innerHTML = hospitalTags.map((tag, index) =>
-        `<span class="edit-tag">${tag}<button type="button" class="tag-remove" data-type="hospital" data-index="${index}">&times;</button></span>`
+/**
+ * Check if a disease is already selected
+ */
+function isDiseaseSelected(communityId, stage, type, disease) {
+    return diseaseHistory.some(item =>
+        item.community_id === communityId &&
+        (item.stage || '') === (stage || '') &&
+        (item.type || '') === (type || '') &&
+        item.disease === disease
+    );
+}
+
+/**
+ * Generate unique ID for checkbox
+ */
+function generateCheckboxId(communityId, stage, type) {
+    return `disease-cb-${communityId}-${stage || 'none'}-${type || 'none'}`;
+}
+
+/**
+ * Render disease selector with communities
+ */
+function renderDiseaseSelector() {
+    const container = document.getElementById('disease-community-list');
+    if (!container) return;
+
+    // Sort communities: joined first, then by name
+    const sortedCommunities = [...allCommunities].sort((a, b) => {
+        const aJoined = userCommunityIds.has(a.id);
+        const bJoined = userCommunityIds.has(b.id);
+        if (aJoined && !bJoined) return -1;
+        if (!aJoined && bJoined) return 1;
+        return a.name.localeCompare(b.name, 'zh');
+    });
+
+    let html = '';
+
+    for (const community of sortedCommunities) {
+        const isJoined = userCommunityIds.has(community.id);
+        const joinedBadge = isJoined ? '<span class="disease-joined-badge">已加入</span>' : '';
+        const dimensions = community.dimensions ? JSON.parse(community.dimensions) : null;
+
+        if (!dimensions || (!dimensions.stage && !dimensions.type)) {
+            // No dimensions - simple checkbox
+            const checkboxId = generateCheckboxId(community.id, '', '');
+            const isChecked = isDiseaseSelected(community.id, '', '', community.name);
+            html += `
+                <div class="disease-community-item">
+                    <div class="disease-checkbox-row">
+                        <input type="checkbox" id="${checkboxId}"
+                               data-community-id="${community.id}"
+                               data-stage="" data-type=""
+                               data-disease="${escapeHtml(community.name)}"
+                               ${isChecked ? 'checked' : ''}>
+                        <label for="${checkboxId}">${escapeHtml(community.name)}</label>
+                        ${joinedBadge}
+                    </div>
+                </div>
+            `;
+        } else {
+            // Has dimensions - expandable
+            html += `
+                <div class="disease-community-expandable" data-community-id="${community.id}">
+                    <div class="disease-community-header">
+                        <span class="disease-expand-icon">▶</span>
+                        <span class="disease-community-name">${escapeHtml(community.name)}</span>
+                        ${joinedBadge}
+                    </div>
+                    <div class="disease-community-content">
+            `;
+
+            // Level I option (base community only)
+            const levelIId = generateCheckboxId(community.id, '', '');
+            const levelIChecked = isDiseaseSelected(community.id, '', '', community.name);
+            html += `
+                <div class="disease-checkbox-row">
+                    <input type="checkbox" id="${levelIId}"
+                           data-community-id="${community.id}"
+                           data-stage="" data-type=""
+                           data-disease="${escapeHtml(community.name)}"
+                           ${levelIChecked ? 'checked' : ''}>
+                    <label for="${levelIId}">${escapeHtml(community.name)} (仅大类)</label>
+                </div>
+            `;
+
+            // Get stage and type values
+            const stages = dimensions.stage?.values || [];
+            const types = dimensions.type?.values || [];
+
+            // Stage dimension section (if available)
+            if (stages.length > 0) {
+                html += `
+                    <div class="disease-dimension-group">
+                        <div class="disease-dimension-header">
+                            <span class="disease-expand-icon">▶</span>
+                            <span class="disease-dimension-label">${escapeHtml(dimensions.stage?.label || '阶段')}</span>
+                        </div>
+                        <div class="disease-dimension-content">
+                `;
+                for (const stage of stages) {
+                    const stageId = generateCheckboxId(community.id, stage, '');
+                    const stageDisease = `${community.name} > ${stage}`;
+                    const stageChecked = isDiseaseSelected(community.id, stage, '', stageDisease);
+                    html += `
+                        <div class="disease-checkbox-row">
+                            <input type="checkbox" id="${stageId}"
+                                   data-community-id="${community.id}"
+                                   data-stage="${escapeHtml(stage)}" data-type=""
+                                   data-disease="${escapeHtml(stageDisease)}"
+                                   ${stageChecked ? 'checked' : ''}>
+                            <label for="${stageId}">${escapeHtml(stage)}</label>
+                        </div>
+                    `;
+                }
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Type dimension section (if available)
+            if (types.length > 0) {
+                html += `
+                    <div class="disease-dimension-group">
+                        <div class="disease-dimension-header">
+                            <span class="disease-expand-icon">▶</span>
+                            <span class="disease-dimension-label">${escapeHtml(dimensions.type?.label || '类型')}</span>
+                        </div>
+                        <div class="disease-dimension-content">
+                `;
+                for (const type of types) {
+                    const typeId = generateCheckboxId(community.id, '', type);
+                    const typeDisease = `${community.name} > ${type}`;
+                    const typeChecked = isDiseaseSelected(community.id, '', type, typeDisease);
+                    html += `
+                        <div class="disease-checkbox-row">
+                            <input type="checkbox" id="${typeId}"
+                                   data-community-id="${community.id}"
+                                   data-stage="" data-type="${escapeHtml(type)}"
+                                   data-disease="${escapeHtml(typeDisease)}"
+                                   ${typeChecked ? 'checked' : ''}>
+                            <label for="${typeId}">${escapeHtml(type)}</label>
+                        </div>
+                    `;
+                }
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Combined section (if both dimensions exist)
+            if (stages.length > 0 && types.length > 0) {
+                html += `
+                    <div class="disease-dimension-group">
+                        <div class="disease-dimension-header">
+                            <span class="disease-expand-icon">▶</span>
+                            <span class="disease-dimension-label">组合选择</span>
+                        </div>
+                        <div class="disease-dimension-content">
+                `;
+                for (const stage of stages) {
+                    for (const type of types) {
+                        const comboId = generateCheckboxId(community.id, stage, type);
+                        const comboDisease = `${community.name} > ${stage} · ${type}`;
+                        const comboChecked = isDiseaseSelected(community.id, stage, type, comboDisease);
+                        html += `
+                            <div class="disease-checkbox-row">
+                                <input type="checkbox" id="${comboId}"
+                                       data-community-id="${community.id}"
+                                       data-stage="${escapeHtml(stage)}" data-type="${escapeHtml(type)}"
+                                       data-disease="${escapeHtml(comboDisease)}"
+                                       ${comboChecked ? 'checked' : ''}>
+                                <label for="${comboId}">${escapeHtml(stage)} · ${escapeHtml(type)}</label>
+                            </div>
+                        `;
+                    }
+                }
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    container.innerHTML = html;
+
+    // Add event listeners for expandable headers
+    container.querySelectorAll('.disease-community-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    container.querySelectorAll('.disease-dimension-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add event listeners for checkboxes
+    container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleDiseaseCheckboxChange);
+    });
+}
+
+/**
+ * Handle disease checkbox change
+ */
+function handleDiseaseCheckboxChange(e) {
+    const checkbox = e.target;
+    const communityId = parseInt(checkbox.dataset.communityId, 10);
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const disease = checkbox.dataset.disease;
+
+    if (checkbox.checked) {
+        // Add to disease history
+        if (!isDiseaseSelected(communityId, stage, type, disease)) {
+            diseaseHistory.push({
+                community_id: communityId,
+                stage: stage,
+                type: type,
+                disease: disease
+            });
+        }
+    } else {
+        // Remove from disease history
+        diseaseHistory = diseaseHistory.filter(item =>
+            !(item.community_id === communityId &&
+              (item.stage || '') === stage &&
+              (item.type || '') === type &&
+              item.disease === disease)
+        );
+    }
+
+    renderSelectedDiseases();
+}
+
+/**
+ * Render selected diseases
+ */
+function renderSelectedDiseases() {
+    const container = document.getElementById('disease-selected-tags');
+    if (!container) return;
+
+    if (diseaseHistory.length === 0) {
+        container.innerHTML = '<span class="empty-hint">暂未选择</span>';
+        return;
+    }
+
+    container.innerHTML = diseaseHistory.map((item, index) => `
+        <span class="disease-selected-tag">
+            <span class="tag-path">${escapeHtml(item.disease)}</span>
+            <button type="button" class="tag-remove" data-index="${index}">&times;</button>
+        </span>
+    `).join('');
+
+    // Add remove handlers
+    container.querySelectorAll('.tag-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index, 10);
+            const removed = diseaseHistory[index];
+            diseaseHistory.splice(index, 1);
+
+            // Uncheck the corresponding checkbox if it exists
+            if (removed.community_id) {
+                const checkboxId = generateCheckboxId(removed.community_id, removed.stage, removed.type);
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox) checkbox.checked = false;
+            }
+
+            renderSelectedDiseases();
+        });
+    });
+}
+
+/**
+ * Add free-text disease
+ */
+function addFreetextDisease() {
+    const input = document.getElementById('disease-freetext-input');
+    if (!input) return;
+
+    const value = input.value.trim();
+    if (!value) return;
+
+    // Check if already exists (as free-text)
+    const exists = diseaseHistory.some(item =>
+        !item.community_id && item.disease === value
+    );
+
+    if (!exists) {
+        diseaseHistory.push({
+            community_id: null,
+            stage: '',
+            type: '',
+            disease: value
+        });
+        renderSelectedDiseases();
+    }
+
+    input.value = '';
+}
+
+/**
+ * Render hospital tags in edit mode
+ */
+function renderHospitalTags() {
+    const container = document.getElementById('hospitals-tags-display');
+    if (!container) return;
+
+    container.innerHTML = hospitalTags.map((tag, index) =>
+        `<span class="edit-tag">${escapeHtml(tag)}<button type="button" class="tag-remove" data-index="${index}">&times;</button></span>`
     ).join('');
 
     // Add click handlers for remove buttons
-    document.querySelectorAll('.tag-remove').forEach(btn => {
+    container.querySelectorAll('.tag-remove').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const type = e.target.dataset.type;
             const index = parseInt(e.target.dataset.index, 10);
-            if (type === 'disease') {
-                diseaseTags.splice(index, 1);
-            } else {
-                hospitalTags.splice(index, 1);
-            }
-            renderTags();
+            hospitalTags.splice(index, 1);
+            renderHospitalTags();
         });
     });
 }
@@ -296,9 +660,9 @@ const TAG_LIMITS = {
 };
 
 /**
- * Add tag from input
+ * Add hospital tag from input
  */
-function addTagFromInput(input, tagsArray, renderFn, maxLength, maxCount) {
+function addHospitalFromInput(input) {
     const value = input.value.trim();
     if (!value) return;
 
@@ -307,22 +671,22 @@ function addTagFromInput(input, tagsArray, renderFn, maxLength, maxCount) {
 
     for (const tag of newTags) {
         // Check max count
-        if (tagsArray.length >= maxCount) {
-            alert(`最多只能添加${maxCount}个标签`);
+        if (hospitalTags.length >= TAG_LIMITS.MAX_HOSPITALS) {
+            alert(`最多只能添加${TAG_LIMITS.MAX_HOSPITALS}个医院`);
             break;
         }
         // Check max length
-        if (tag.length > maxLength) {
-            alert(`标签"${tag.substring(0, 10)}..."超过${maxLength}个字符限制`);
+        if (tag.length > TAG_LIMITS.HOSPITAL_NAME_MAX) {
+            alert(`医院名称"${tag.substring(0, 10)}..."超过${TAG_LIMITS.HOSPITAL_NAME_MAX}个字符限制`);
             continue;
         }
-        if (!tagsArray.includes(tag)) {
-            tagsArray.push(tag);
+        if (!hospitalTags.includes(tag)) {
+            hospitalTags.push(tag);
         }
     }
 
     input.value = '';
-    renderFn();
+    renderHospitalTags();
 }
 
 /**
@@ -357,7 +721,7 @@ async function handleProfileSubmit(e) {
         housing_status: document.getElementById('edit-housing-status').value,
         economic_dependency: document.getElementById('edit-economic-dependency').value,
         // Health info
-        disease_tags: diseaseTags,
+        disease_history: diseaseHistory,
         hospitals: hospitalTags
     };
 
@@ -406,18 +770,21 @@ if (profileForm) {
     profileForm.addEventListener('submit', handleProfileSubmit);
 }
 
-// Disease tags input
-const diseaseTagsInput = document.getElementById('disease-tags-input');
-if (diseaseTagsInput) {
-    diseaseTagsInput.addEventListener('keydown', (e) => {
+// Free-text disease input
+const diseaseFreetextInput = document.getElementById('disease-freetext-input');
+const diseaseFreetextAdd = document.getElementById('disease-freetext-add');
+
+if (diseaseFreetextInput) {
+    diseaseFreetextInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            addTagFromInput(diseaseTagsInput, diseaseTags, renderTags, TAG_LIMITS.DISEASE_TAG_MAX, TAG_LIMITS.MAX_DISEASE_TAGS);
+            addFreetextDisease();
         }
     });
-    diseaseTagsInput.addEventListener('blur', () => {
-        addTagFromInput(diseaseTagsInput, diseaseTags, renderTags, TAG_LIMITS.DISEASE_TAG_MAX, TAG_LIMITS.MAX_DISEASE_TAGS);
-    });
+}
+
+if (diseaseFreetextAdd) {
+    diseaseFreetextAdd.addEventListener('click', addFreetextDisease);
 }
 
 // Hospitals input
@@ -426,10 +793,10 @@ if (hospitalsInput) {
     hospitalsInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            addTagFromInput(hospitalsInput, hospitalTags, renderTags, TAG_LIMITS.HOSPITAL_NAME_MAX, TAG_LIMITS.MAX_HOSPITALS);
+            addHospitalFromInput(hospitalsInput);
         }
     });
     hospitalsInput.addEventListener('blur', () => {
-        addTagFromInput(hospitalsInput, hospitalTags, renderTags, TAG_LIMITS.HOSPITAL_NAME_MAX, TAG_LIMITS.MAX_HOSPITALS);
+        addHospitalFromInput(hospitalsInput);
     });
 }

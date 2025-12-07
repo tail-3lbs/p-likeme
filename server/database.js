@@ -11,6 +11,14 @@
 
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
+
+// ============ Ensure db directory exists ============
+const dbFolder = path.join(__dirname, 'db');
+if (!fs.existsSync(dbFolder)) {
+    fs.mkdirSync(dbFolder, { recursive: true });
+    console.log('Created db folder');
+}
 
 // ============ CST Timestamp Helper ============
 
@@ -61,7 +69,6 @@ function initCommunitiesDb() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             description TEXT NOT NULL,
-            keywords TEXT NOT NULL,
             member_count INTEGER DEFAULT 0,
             dimensions TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -101,44 +108,38 @@ function seedCommunities() {
         {
             name: '糖尿病',
             description: '分享血糖管理经验，交流饮食和运动心得，互相鼓励共同面对糖尿病。',
-            keywords: '糖尿病 血糖 胰岛素 糖尿',
             member_count: 12580
         },
         {
             name: '高血压',
             description: '讨论血压控制方法，分享健康生活方式，一起守护心血管健康。',
-            keywords: '高血压 血压 心血管 心脏',
             member_count: 9320
         },
         {
             name: '抑郁症',
             description: '在这里你不孤单。分享心路历程，获得理解与支持，一起走向阳光。',
-            keywords: '抑郁症 抑郁 心理 情绪 焦虑 心理健康',
             member_count: 15890
         },
         {
             name: '乳腺癌',
             description: '抗癌路上，我们同行。分享治疗经验，传递希望与力量。',
-            keywords: '乳腺癌 乳腺 癌症 肿瘤 化疗',
             member_count: 7450
         },
         {
             name: '关节炎',
             description: '交流关节养护知识，分享缓解疼痛的方法，提高生活质量。',
-            keywords: '关节炎 关节 风湿 类风湿 骨骼',
             member_count: 6120
         },
         {
             name: '失眠症',
             description: '分享改善睡眠的方法，交流助眠技巧，一起找回安稳的夜晚。',
-            keywords: '失眠症 失眠 睡眠 睡不着 入睡困难',
             member_count: 11200
         }
     ];
 
     const insert = communitiesDb.prepare(`
-        INSERT INTO communities (name, description, keywords, member_count)
-        VALUES (@name, @description, @keywords, @member_count)
+        INSERT INTO communities (name, description, member_count)
+        VALUES (@name, @description, @member_count)
     `);
 
     const insertMany = communitiesDb.transaction((items) => {
@@ -159,9 +160,9 @@ function searchCommunities(query) {
     const searchTerm = `%${query}%`;
     return communitiesDb.prepare(`
         SELECT * FROM communities
-        WHERE name LIKE ? OR description LIKE ? OR keywords LIKE ?
+        WHERE name LIKE ? OR description LIKE ?
         ORDER BY member_count DESC
-    `).all(searchTerm, searchTerm, searchTerm);
+    `).all(searchTerm, searchTerm);
 }
 
 function getCommunityById(id) {
@@ -260,14 +261,20 @@ function initUsersDb() {
         usersDb.exec(`ALTER TABLE user_communities ADD COLUMN type TEXT`);
     }
 
-    // Table for user disease tags (conditions they care about)
+    // Table for user disease history (actual diseases they have/had)
+    // community_id: links to community if selected from community list, NULL if free-text
+    // stage/type: sub-community level (empty string if Level I or free-text)
+    // disease: display name for community-based, or free-text entry
     usersDb.exec(`
-        CREATE TABLE IF NOT EXISTS user_disease_tags (
+        CREATE TABLE IF NOT EXISTS user_disease_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            tag TEXT NOT NULL,
+            community_id INTEGER,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            disease TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, tag)
+            UNIQUE(user_id, community_id, stage, type, disease)
         )
     `);
 
@@ -580,10 +587,18 @@ function getUserProfile(user_id) {
 
     if (!user) return null;
 
-    // Get disease tags
-    const diseaseTags = usersDb.prepare(`
-        SELECT tag FROM user_disease_tags WHERE user_id = ?
-    `).all(user_id).map(row => row.tag);
+    // Get disease history (with community info)
+    const diseaseHistory = usersDb.prepare(`
+        SELECT id, community_id, stage, type, disease FROM user_disease_history WHERE user_id = ?
+    `).all(user_id).map(row => ({
+        id: row.id,
+        community_id: row.community_id,
+        stage: row.stage || null,
+        type: row.type || null,
+        disease: row.disease,
+        // Build display path
+        displayPath: row.disease
+    }));
 
     // Get hospitals
     const hospitals = usersDb.prepare(`
@@ -644,7 +659,7 @@ function getUserProfile(user_id) {
 
     return {
         ...user,
-        disease_tags: diseaseTags,
+        disease_history: diseaseHistory,
         hospitals: hospitals,
         communities: communitiesWithDetails
     };
@@ -656,7 +671,7 @@ function updateUserProfile(user_id, {
     location_living_district, location_living_street,
     income_individual, income_family, family_size, hukou, education,
     consumption_level, housing_status, economic_dependency,
-    disease_tags, hospitals
+    disease_history, hospitals
 }) {
     const updateUser = usersDb.prepare(`
         UPDATE users
@@ -670,11 +685,16 @@ function updateUserProfile(user_id, {
         WHERE id = @user_id
     `);
 
-    const deleteDiseaseTags = usersDb.prepare(`DELETE FROM user_disease_tags WHERE user_id = ?`);
-    const insertDiseaseTag = usersDb.prepare(`INSERT OR IGNORE INTO user_disease_tags (user_id, tag) VALUES (?, ?)`);
+    const deleteDiseaseHistory = usersDb.prepare(`DELETE FROM user_disease_history WHERE user_id = ?`);
+    const insertDiseaseHistory = usersDb.prepare(`
+        INSERT OR IGNORE INTO user_disease_history (user_id, community_id, stage, type, disease, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `);
 
     const deleteHospitals = usersDb.prepare(`DELETE FROM user_hospitals WHERE user_id = ?`);
     const insertHospital = usersDb.prepare(`INSERT OR IGNORE INTO user_hospitals (user_id, hospital) VALUES (?, ?)`);
+
+    const cstNow = getCSTTimestamp();
 
     const updateAll = usersDb.transaction(() => {
         // Update basic profile fields
@@ -698,12 +718,20 @@ function updateUserProfile(user_id, {
             economic_dependency: economic_dependency || null
         });
 
-        // Update disease tags
-        deleteDiseaseTags.run(user_id);
-        if (disease_tags && Array.isArray(disease_tags)) {
-            for (const tag of disease_tags) {
-                if (tag && tag.trim()) {
-                    insertDiseaseTag.run(user_id, tag.trim());
+        // Update disease history
+        deleteDiseaseHistory.run(user_id);
+        if (disease_history && Array.isArray(disease_history)) {
+            for (const item of disease_history) {
+                if (item.disease && item.disease.trim()) {
+                    const communityId = item.community_id || null;
+                    const stage = item.stage || '';
+                    const type = item.type || '';
+                    insertDiseaseHistory.run(user_id, communityId, stage, type, item.disease.trim(), cstNow);
+
+                    // Auto-join community if community_id is provided
+                    if (communityId) {
+                        joinCommunity(user_id, communityId, stage || null, type || null);
+                    }
                 }
             }
         }
@@ -733,7 +761,7 @@ function findUserByUsernamePublic(username) {
 // Search users with filters
 // community_filters: [{id, stage, type}] - filters by community with optional stage/type
 function searchUsers({
-    community_filters, disease_tag, gender, age_min, age_max, location, location_district, location_street, hospital,
+    username, community_filters, disease_tag, gender, age_min, age_max, location, location_district, location_street, hospital,
     hukou, education, income_individual, income_family, consumption_level,
     housing_status, economic_dependency,
     exclude_user, limit = 50, offset = 0
@@ -741,6 +769,18 @@ function searchUsers({
     // Start with all users who have some profile info
     let userIds = new Set();
     let hasFilter = false;
+
+    // Filter by username (partial match)
+    if (username && username.trim()) {
+        hasFilter = true;
+        const searchTerm = `%${username.trim()}%`;
+        const rows = usersDb.prepare(`
+            SELECT id FROM users WHERE username LIKE ?
+        `).all(searchTerm);
+
+        const usernameUserIds = new Set(rows.map(r => r.id));
+        userIds = usernameUserIds;
+    }
 
     // Filter by community membership (with optional stage/type)
     if (community_filters && community_filters.length > 0) {
@@ -796,12 +836,12 @@ function searchUsers({
         }
     }
 
-    // Filter by disease tag (fuzzy match)
+    // Filter by disease (fuzzy match on disease_history)
     if (disease_tag && disease_tag.trim()) {
         hasFilter = true;
         const searchTerm = `%${disease_tag.trim()}%`;
         const rows = usersDb.prepare(`
-            SELECT DISTINCT user_id FROM user_disease_tags WHERE tag LIKE ?
+            SELECT DISTINCT user_id FROM user_disease_history WHERE disease LIKE ?
         `).all(searchTerm);
 
         const diseaseUserIds = new Set(rows.map(r => r.user_id));
@@ -971,9 +1011,9 @@ function searchUsers({
             `).all(...communityIds);
         }
 
-        const diseaseTags = usersDb.prepare(`
-            SELECT tag FROM user_disease_tags WHERE user_id = ?
-        `).all(user.id).map(r => r.tag);
+        const diseaseHistory = usersDb.prepare(`
+            SELECT disease FROM user_disease_history WHERE user_id = ?
+        `).all(user.id).map(r => r.disease);
 
         const hospitals = usersDb.prepare(`
             SELECT hospital FROM user_hospitals WHERE user_id = ?
@@ -982,7 +1022,7 @@ function searchUsers({
         return {
             ...user,
             communities,
-            disease_tags: diseaseTags,
+            disease_history: diseaseHistory,
             hospitals
         };
     });
@@ -1025,15 +1065,29 @@ function initThreadsDb() {
         threadsDb.exec(`ALTER TABLE thread_communities ADD COLUMN type TEXT`);
     }
 
+    // Junction table for thread-disease relationship (diseases selected when creating thread)
+    threadsDb.exec(`
+        CREATE TABLE IF NOT EXISTS thread_diseases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id INTEGER NOT NULL,
+            community_id INTEGER,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            disease TEXT NOT NULL,
+            UNIQUE (thread_id, community_id, stage, type, disease)
+        )
+    `);
+
     const count = threadsDb.prepare('SELECT COUNT(*) as count FROM threads').get();
     console.log(`Threads DB: ${count.count} threads`);
 }
 
-// Create a new thread with optional community links
+// Create a new thread with optional community links and diseases
 // community_links can be:
 //   - Array of IDs: [1, 2, 3] (legacy format, binds to Level I only)
 //   - Array of objects: [{id: 1, stage: '', type: ''}, {id: 1, stage: '0期', type: '三阴性'}]
-function createThread({ user_id, title, content, community_ids = [], community_links = [] }) {
+// diseases: [{community_id, stage, type, disease}]
+function createThread({ user_id, title, content, community_ids = [], community_links = [], diseases = [] }) {
     const insertThread = threadsDb.prepare(`
         INSERT INTO threads (user_id, title, content, created_at)
         VALUES (@user_id, @title, @content, @created_at)
@@ -1044,7 +1098,12 @@ function createThread({ user_id, title, content, community_ids = [], community_l
         VALUES (?, ?, ?, ?)
     `);
 
-    const createWithCommunities = threadsDb.transaction(({ user_id, title, content, community_ids, community_links }) => {
+    const insertDiseaseLink = threadsDb.prepare(`
+        INSERT OR IGNORE INTO thread_diseases (thread_id, community_id, stage, type, disease)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
+    const createWithCommunities = threadsDb.transaction(({ user_id, title, content, community_ids, community_links, diseases }) => {
         const result = insertThread.run({ user_id, title, content, created_at: getCSTTimestamp() });
         const threadId = result.lastInsertRowid;
 
@@ -1060,10 +1119,21 @@ function createThread({ user_id, title, content, community_ids = [], community_l
             insertCommunityLink.run(threadId, link.id, stage, type);
         }
 
+        // Insert disease links
+        for (const disease of diseases) {
+            insertDiseaseLink.run(
+                threadId,
+                disease.community_id || null,
+                disease.stage || '',
+                disease.type || '',
+                disease.disease
+            );
+        }
+
         return threadId;
     });
 
-    return createWithCommunities({ user_id, title, content, community_ids, community_links });
+    return createWithCommunities({ user_id, title, content, community_ids, community_links, diseases });
 }
 
 // Get all threads for a user
@@ -1079,10 +1149,21 @@ function getThreadsByUserId(user_id) {
         SELECT community_id FROM thread_communities WHERE thread_id = ?
     `);
 
+    // Get thread's selected diseases (from thread_diseases table)
+    const getThreadDiseases = threadsDb.prepare(`
+        SELECT community_id, stage, type, disease FROM thread_diseases WHERE thread_id = ?
+    `);
+
     return threads.map(thread => ({
         ...thread,
         community_ids: getCommunityIds.all(thread.id).map(row => row.community_id),
-        reply_count: getReplyCountByThreadId(thread.id)
+        reply_count: getReplyCountByThreadId(thread.id),
+        author_disease_history: getThreadDiseases.all(thread.id).map(row => ({
+            community_id: row.community_id,
+            stage: row.stage,
+            type: row.type,
+            disease: row.disease
+        }))
     }));
 }
 
@@ -1095,7 +1176,17 @@ function getThreadById(id) {
         SELECT community_id FROM thread_communities WHERE thread_id = ?
     `).all(id).map(row => row.community_id);
 
-    return { ...thread, community_ids };
+    // Get thread's selected diseases (from thread_diseases table)
+    const author_disease_history = threadsDb.prepare(`
+        SELECT community_id, stage, type, disease FROM thread_diseases WHERE thread_id = ?
+    `).all(id).map(row => ({
+        community_id: row.community_id,
+        stage: row.stage,
+        type: row.type,
+        disease: row.disease
+    }));
+
+    return { ...thread, community_ids, author_disease_history };
 }
 
 // Get thread community details with stage/type info
@@ -1105,13 +1196,15 @@ function getThreadCommunityDetails(threadId) {
     `).all(threadId);
 }
 
-// Delete a thread (and its community links and replies)
+// Delete a thread (and its community links, disease links, and replies)
 function deleteThread(id, user_id) {
-    const deleteLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
+    const deleteCommunityLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
+    const deleteDiseaseLinks = threadsDb.prepare('DELETE FROM thread_diseases WHERE thread_id = ?');
     const deleteThreadStmt = threadsDb.prepare('DELETE FROM threads WHERE id = ? AND user_id = ?');
 
     const deleteWithLinks = threadsDb.transaction((id, user_id) => {
-        deleteLinks.run(id);
+        deleteCommunityLinks.run(id);
+        deleteDiseaseLinks.run(id);
         const result = deleteThreadStmt.run(id, user_id);
         if (result.changes > 0) {
             // Also delete all replies for this thread
@@ -1182,8 +1275,19 @@ function getThreadsByCommunityId(community_id, limit = 10, offset = 0, stage = n
         SELECT community_id, stage, type FROM thread_communities WHERE thread_id = ?
     `);
 
+    // Get thread's selected diseases (from thread_diseases table)
+    const getThreadDiseases = threadsDb.prepare(`
+        SELECT community_id, stage, type, disease FROM thread_diseases WHERE thread_id = ?
+    `);
+
     const threadsWithCommunities = threads.map(thread => {
         const communityInfo = getCommunityInfo.all(thread.id);
+        const threadDiseases = getThreadDiseases.all(thread.id).map(row => ({
+            community_id: row.community_id,
+            stage: row.stage,
+            type: row.type,
+            disease: row.disease
+        }));
         return {
             ...thread,
             community_ids: communityInfo.map(row => row.community_id),
@@ -1193,7 +1297,8 @@ function getThreadsByCommunityId(community_id, limit = 10, offset = 0, stage = n
                 community_id: row.community_id,
                 stage: row.stage || null,
                 type: row.type || null
-            }))
+            })),
+            author_disease_history: threadDiseases
         };
     });
 
@@ -1202,38 +1307,53 @@ function getThreadsByCommunityId(community_id, limit = 10, offset = 0, stage = n
 
 // Update a thread
 // community_links: [{id: 1, stage: '', type: ''}, {id: 1, stage: '0期', type: '三阴性'}]
-function updateThread({ id, user_id, title, content, community_ids = [], community_links = [] }) {
+// diseases: [{community_id, stage, type, disease}]
+function updateThread({ id, user_id, title, content, community_ids = [], community_links = [], diseases = [] }) {
     const updateThreadStmt = threadsDb.prepare(`
         UPDATE threads SET title = @title, content = @content
         WHERE id = @id AND user_id = @user_id
     `);
 
-    const deleteLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
-    const insertLink = threadsDb.prepare('INSERT OR IGNORE INTO thread_communities (thread_id, community_id, stage, type) VALUES (?, ?, ?, ?)');
+    const deleteCommunityLinks = threadsDb.prepare('DELETE FROM thread_communities WHERE thread_id = ?');
+    const deleteDiseaseLinks = threadsDb.prepare('DELETE FROM thread_diseases WHERE thread_id = ?');
+    const insertCommunityLink = threadsDb.prepare('INSERT OR IGNORE INTO thread_communities (thread_id, community_id, stage, type) VALUES (?, ?, ?, ?)');
+    const insertDiseaseLink = threadsDb.prepare('INSERT OR IGNORE INTO thread_diseases (thread_id, community_id, stage, type, disease) VALUES (?, ?, ?, ?, ?)');
 
-    const updateWithCommunities = threadsDb.transaction(({ id, user_id, title, content, community_ids, community_links }) => {
+    const updateWithCommunities = threadsDb.transaction(({ id, user_id, title, content, community_ids, community_links, diseases }) => {
         const result = updateThreadStmt.run({ id, user_id, title, content });
         if (result.changes === 0) return false;
 
         // Update community links
-        deleteLinks.run(id);
+        deleteCommunityLinks.run(id);
 
         // Handle legacy format (array of IDs)
         for (const communityId of community_ids) {
-            insertLink.run(id, communityId, '', '');
+            insertCommunityLink.run(id, communityId, '', '');
         }
 
         // Handle new format (array of objects with stage/type)
         for (const link of community_links) {
             const stage = link.stage || '';
             const type = link.type || '';
-            insertLink.run(id, link.id, stage, type);
+            insertCommunityLink.run(id, link.id, stage, type);
+        }
+
+        // Update disease links
+        deleteDiseaseLinks.run(id);
+        for (const disease of diseases) {
+            insertDiseaseLink.run(
+                id,
+                disease.community_id || null,
+                disease.stage || '',
+                disease.type || '',
+                disease.disease
+            );
         }
 
         return true;
     });
 
-    return updateWithCommunities({ id, user_id, title, content, community_ids, community_links });
+    return updateWithCommunities({ id, user_id, title, content, community_ids, community_links, diseases });
 }
 
 // ============ Replies Database ============
@@ -1424,6 +1544,21 @@ function getUserAllCommunities(userId) {
     });
 }
 
+// Get user's disease history (for guru pages)
+function getUserDiseaseHistory(userId) {
+    return usersDb.prepare(`
+        SELECT id, community_id, stage, type, disease
+        FROM user_disease_history
+        WHERE user_id = ?
+    `).all(userId).map(row => ({
+        id: row.id,
+        community_id: row.community_id,
+        stage: row.stage || null,
+        type: row.type || null,
+        disease: row.disease
+    }));
+}
+
 // Update guru intro (guru can edit their own intro)
 function updateGuruIntro(userId, intro) {
     const stmt = usersDb.prepare('UPDATE users SET guru_intro = ? WHERE id = ? AND is_guru = 1');
@@ -1570,6 +1705,7 @@ module.exports = {
     getGuruByUsername,
     getUserLevel1CommunityIds,
     getUserAllCommunities,
+    getUserDiseaseHistory,
     updateGuruIntro,
     createGuruQuestion,
     getGuruQuestions,

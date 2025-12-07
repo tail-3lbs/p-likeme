@@ -213,10 +213,11 @@ router.get('/:id/public', (req, res) => {
  *   - content: string (required)
  *   - community_ids: number[] (legacy format, Level I only)
  *   - community_links: {id: number, stage?: string, type?: string}[] (new format with sub-community support)
+ *   - diseases: {community_id?: number, stage?: string, type?: string, disease: string}[] (disease tags)
  */
 router.post('/', authMiddleware, (req, res) => {
     try {
-        const { title, content, community_ids = [], community_links = [] } = req.body;
+        const { title, content, community_ids = [], community_links = [], diseases = [] } = req.body;
 
         // Validate input
         if (!title || !title.trim()) {
@@ -257,6 +258,12 @@ router.post('/', authMiddleware, (req, res) => {
                 id: parseInt(link.id, 10),
                 stage: link.stage || '',
                 type: link.type || ''
+            })),
+            diseases: diseases.map(d => ({
+                community_id: d.community_id ? parseInt(d.community_id, 10) : null,
+                stage: d.stage || '',
+                type: d.type || '',
+                disease: d.disease
             }))
         });
 
@@ -284,10 +291,11 @@ router.post('/', authMiddleware, (req, res) => {
  *   - content: string (required)
  *   - community_ids: number[] (legacy format, Level I only)
  *   - community_links: {id: number, stage?: string, type?: string}[] (new format with sub-community support)
+ *   - diseases: {community_id?: number, stage?: string, type?: string, disease: string}[] (disease tags)
  */
 router.put('/:id', authMiddleware, (req, res) => {
     try {
-        const { title, content, community_ids = [], community_links = [] } = req.body;
+        const { title, content, community_ids = [], community_links = [], diseases = [] } = req.body;
 
         // Validate input
         if (!title || !title.trim()) {
@@ -329,6 +337,12 @@ router.put('/:id', authMiddleware, (req, res) => {
                 id: parseInt(link.id, 10),
                 stage: link.stage || '',
                 type: link.type || ''
+            })),
+            diseases: diseases.map(d => ({
+                community_id: d.community_id ? parseInt(d.community_id, 10) : null,
+                stage: d.stage || '',
+                type: d.type || '',
+                disease: d.disease
             }))
         });
 

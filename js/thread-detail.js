@@ -85,10 +85,24 @@ function renderThread(thread) {
     document.getElementById('thread-date').textContent = formatDate(thread.created_at);
     document.getElementById('thread-body').textContent = thread.content;
 
-    // Render communities with full path (including stage/type)
+    // Render disease tags first, then communities
     const communitiesEl = document.getElementById('thread-communities');
+    let tagsHtml = '';
+
+    // Disease tags from author's disease history (clickable if linked to a community)
+    if (thread.author_disease_history && thread.author_disease_history.length > 0) {
+        tagsHtml += thread.author_disease_history.map(item => {
+            if (item.community_id) {
+                return `<a href="community-detail.html?id=${item.community_id}" class="disease-tag">${escapeHtml(item.disease)}</a>`;
+            } else {
+                return `<span class="disease-tag">${escapeHtml(item.disease)}</span>`;
+            }
+        }).join('');
+    }
+
+    // Community tags with full path (including stage/type)
     if (thread.communities && thread.communities.length > 0) {
-        communitiesEl.innerHTML = thread.communities.map(c => {
+        tagsHtml += thread.communities.map(c => {
             // Build URL with stage/type parameters
             let href = `community-detail.html?id=${c.id}`;
             if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
@@ -96,9 +110,9 @@ function renderThread(thread) {
 
             return `<span class="community-tag" data-community-id="${c.id}" data-stage="${c.stage || ''}" data-type="${c.type || ''}" data-href="${href}">${escapeHtml(c.displayPath)}</span>`;
         }).join('');
-    } else {
-        communitiesEl.innerHTML = '';
     }
+
+    communitiesEl.innerHTML = tagsHtml;
 
     // Show edit/delete buttons if user is the author
     const currentUser = getUser();

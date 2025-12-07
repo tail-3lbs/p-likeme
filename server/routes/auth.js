@@ -283,7 +283,7 @@ router.put('/profile', authMiddleware, (req, res) => {
             location_from, location_living, location_living_district, location_living_street,
             hukou, education, family_size,
             income_individual, income_family, consumption_level, housing_status, economic_dependency,
-            disease_tags, hospitals
+            disease_history, hospitals
         } = req.body;
 
         // Validate age if provided
@@ -315,25 +315,25 @@ router.put('/profile', authMiddleware, (req, res) => {
             }
         }
 
-        // Validate disease_tags
-        if (disease_tags) {
-            if (!Array.isArray(disease_tags)) {
+        // Validate disease_history
+        if (disease_history) {
+            if (!Array.isArray(disease_history)) {
                 return res.status(400).json({
                     success: false,
-                    error: '疾病标签格式错误'
+                    error: '患病经历格式错误'
                 });
             }
-            if (disease_tags.length > INPUT_LIMITS.MAX_DISEASE_TAGS) {
+            if (disease_history.length > INPUT_LIMITS.MAX_DISEASE_TAGS) {
                 return res.status(400).json({
                     success: false,
-                    error: `疾病标签最多${INPUT_LIMITS.MAX_DISEASE_TAGS}个`
+                    error: `患病经历最多${INPUT_LIMITS.MAX_DISEASE_TAGS}个`
                 });
             }
-            for (const tag of disease_tags) {
-                if (tag.length > INPUT_LIMITS.DISEASE_TAG_MAX) {
+            for (const item of disease_history) {
+                if (!item.disease || item.disease.length > INPUT_LIMITS.DISEASE_TAG_MAX) {
                     return res.status(400).json({
                         success: false,
-                        error: `疾病标签不能超过${INPUT_LIMITS.DISEASE_TAG_MAX}个字符`
+                        error: `疾病名称不能超过${INPUT_LIMITS.DISEASE_TAG_MAX}个字符`
                     });
                 }
             }
@@ -381,7 +381,7 @@ router.put('/profile', authMiddleware, (req, res) => {
             consumption_level,
             housing_status,
             economic_dependency,
-            disease_tags,
+            disease_history,
             hospitals
         });
 
@@ -416,6 +416,7 @@ router.put('/profile', authMiddleware, (req, res) => {
 router.get('/users/search', (req, res) => {
     try {
         const {
+            username,  // username search (partial match)
             communities,  // comma-separated community IDs (legacy)
             community_filters,  // JSON array [{id, stage, type}]
             disease_tag,
@@ -455,6 +456,7 @@ router.get('/users/search', (req, res) => {
         }
 
         const result = searchUsers({
+            username,
             community_filters: parsedCommunityFilters,
             disease_tag,
             gender,

@@ -81,15 +81,15 @@
                                 <h3 class="section-group-title">健康信息</h3>
                                 <div class="section-group-content">
                                     <div class="profile-subsection">
-                                        <label>已加入的社区</label>
-                                        <div class="profile-tags" id="display-communities">
-                                            <span class="empty-hint">暂未加入任何社区</span>
+                                        <label>实际患病经历</label>
+                                        <div class="profile-tags" id="display-disease-tags">
+                                            <span class="empty-hint">暂未添加</span>
                                         </div>
                                     </div>
                                     <div class="profile-subsection">
-                                        <label>关注的健康话题</label>
-                                        <div class="profile-tags" id="display-disease-tags">
-                                            <span class="empty-hint">暂未添加</span>
+                                        <label>已加入的社区</label>
+                                        <div class="profile-tags" id="display-communities">
+                                            <span class="empty-hint">暂未加入任何社区</span>
                                         </div>
                                     </div>
                                     <div class="profile-subsection">
@@ -211,11 +211,31 @@
                             <div class="form-section-group">
                                 <h3 class="section-group-title">健康信息</h3>
                                 <div class="form-section">
-                                    <label class="form-section-label">关注的健康话题</label>
-                                    <p class="form-hint">添加你关注的健康话题，用逗号或回车分隔</p>
-                                    <div class="tags-input-wrapper">
-                                        <div class="tags-display" id="disease-tags-display"></div>
-                                        <input type="text" id="disease-tags-input" placeholder="输入后按回车添加，如：乳腺癌、糖尿病">
+                                    <label class="form-section-label">实际患病经历</label>
+                                    <p class="form-hint">选择你实际患有或曾经患有的疾病</p>
+
+                                    <!-- Community-based disease selection -->
+                                    <div class="disease-selector" id="disease-selector">
+                                        <div class="disease-community-list" id="disease-community-list">
+                                            <!-- Dynamically populated: communities with/without dimensions -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Free-text input for diseases not in community list -->
+                                    <div class="disease-freetext">
+                                        <p class="form-hint-small">没有找到你的疾病？手动输入：</p>
+                                        <div class="disease-freetext-input">
+                                            <input type="text" id="disease-freetext-input" placeholder="输入疾病名称">
+                                            <button type="button" id="disease-freetext-add" class="btn-add-small">添加</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Selected diseases display -->
+                                    <div class="disease-selected">
+                                        <p class="form-hint-small">已选择的患病经历：</p>
+                                        <div class="disease-selected-tags" id="disease-selected-tags">
+                                            <span class="empty-hint">暂未选择</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="form-section">

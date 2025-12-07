@@ -1,19 +1,36 @@
 /**
  * Complete Database Seed Script
- * Clears all data and generates consistent test data
+ * Removes db folder, recreates it, and generates consistent test data
  *
- * Run from server folder: node scripts/seed-database.js
+ * Run: node server/scripts/seed-database.js
  */
 
 const Database = require('better-sqlite3');
 const bcrypt = require('bcrypt');
 const path = require('path');
+const fs = require('fs');
+
+// Path to the db folder
+const dbFolder = path.join(__dirname, '..', 'db');
+
+// Step 0: Remove and recreate db folder
+console.log('Removing existing db folder...');
+if (fs.existsSync(dbFolder)) {
+    fs.rmSync(dbFolder, { recursive: true, force: true });
+    console.log('  ✓ Removed existing db folder');
+} else {
+    console.log('  ✓ No existing db folder found');
+}
+
+console.log('Creating fresh db folder...');
+fs.mkdirSync(dbFolder, { recursive: true });
+console.log('  ✓ Created db folder\n');
 
 // Database connections
-const communitiesDbPath = path.join(__dirname, '..', 'db', 'communities.db');
-const usersDbPath = path.join(__dirname, '..', 'db', 'users.db');
-const threadsDbPath = path.join(__dirname, '..', 'db', 'threads.db');
-const repliesDbPath = path.join(__dirname, '..', 'db', 'replies.db');
+const communitiesDbPath = path.join(dbFolder, 'communities.db');
+const usersDbPath = path.join(dbFolder, 'users.db');
+const threadsDbPath = path.join(dbFolder, 'threads.db');
+const repliesDbPath = path.join(dbFolder, 'replies.db');
 
 const communitiesDb = new Database(communitiesDbPath);
 const usersDb = new Database(usersDbPath);
@@ -83,7 +100,6 @@ const communities = [
     {
         name: '乳腺癌',
         description: '抗癌路上，我们同行。分享乳腺癌治疗经验，传递希望与力量。',
-        keywords: '乳腺癌 乳腺 癌症 肿瘤 化疗 乳房',
         dimensions: JSON.stringify({
             stage: { label: '分期', values: ['0期', 'I期', 'II期', 'III期', 'IV期'] },
             type: { label: '分子分型', values: ['Luminal A型', 'Luminal B型', 'HER2阳性型', '三阴性'] }
@@ -92,48 +108,43 @@ const communities = [
     {
         name: '宫颈癌',
         description: '分享宫颈癌防治经验，交流治疗心得，互相支持共同面对。',
-        keywords: '宫颈癌 宫颈 HPV 癌症 肿瘤 筛查',
         dimensions: JSON.stringify({
             stage: { label: '分期', values: ['I期', 'II期', 'III期', 'IV期'] },
             type: { label: 'HPV分型', values: ['高危型', '低危型'] }
         })
     },
-    { name: '卵巢癌', description: '分享卵巢癌治疗经验，传递希望与力量，抗癌路上我们同行。', keywords: '卵巢癌 卵巢 癌症 肿瘤 化疗 CA125', dimensions: null },
-    { name: '子宫内膜癌', description: '交流子宫内膜癌的治疗经验，分享康复心得，互相支持。', keywords: '子宫内膜癌 子宫癌 癌症 肿瘤 子宫', dimensions: null },
-    { name: '心血管疾病', description: '关注女性心血管健康，分享预防和治疗经验，守护心脏健康。', keywords: '心血管 心脏病 冠心病 高血压 心肌梗死', dimensions: null },
-    { name: '脑卒中', description: '分享脑卒中预防和康复经验，交流治疗心得，互相鼓励。', keywords: '脑卒中 中风 脑梗 脑出血 康复 偏瘫', dimensions: null },
+    { name: '卵巢癌', description: '分享卵巢癌治疗经验，传递希望与力量，抗癌路上我们同行。', dimensions: null },
+    { name: '子宫内膜癌', description: '交流子宫内膜癌的治疗经验，分享康复心得，互相支持。', dimensions: null },
+    { name: '心血管疾病', description: '关注女性心血管健康，分享预防和治疗经验，守护心脏健康。', dimensions: null },
+    { name: '脑卒中', description: '分享脑卒中预防和康复经验，交流治疗心得，互相鼓励。', dimensions: null },
     {
         name: '糖尿病',
         description: '分享血糖管理经验，交流饮食和运动心得，互相鼓励共同面对糖尿病。',
-        keywords: '糖尿病 血糖 胰岛素 糖尿 妊娠糖尿病',
         dimensions: JSON.stringify({
             type: { label: '分型', values: ['1型糖尿病', '2型糖尿病', '妊娠期糖尿病', '特殊类型糖尿病'] }
         })
     },
-    { name: '阿尔茨海默症', description: '为阿尔茨海默症患者及家属提供支持，分享护理经验和应对方法。', keywords: '阿尔茨海默症 老年痴呆 记忆 认知障碍 痴呆', dimensions: null },
+    { name: '阿尔茨海默症', description: '为阿尔茨海默症患者及家属提供支持，分享护理经验和应对方法。', dimensions: null },
     {
         name: '子宫内膜异位症',
         description: '分享子宫内膜异位症的治疗经验，交流缓解疼痛的方法，互相鼓励。',
-        keywords: '子宫内膜异位症 内异症 痛经 月经 巧克力囊肿',
         dimensions: JSON.stringify({
             stage: { label: '分期', values: ['I期（轻微）', 'II期（轻度）', 'III期（中度）', 'IV期（重度）'] }
         })
     },
-    { name: '子宫肌瘤', description: '交流子宫肌瘤的治疗方案，分享康复经验，互相支持。', keywords: '子宫肌瘤 肌瘤 子宫 月经 出血', dimensions: null },
-    { name: '经前综合征', description: '分享缓解经前综合征的方法，交流调理经验，互相理解与支持。', keywords: '经前综合征 PMS 经前期 月经 情绪波动 痛经', dimensions: null },
+    { name: '子宫肌瘤', description: '交流子宫肌瘤的治疗方案，分享康复经验，互相支持。', dimensions: null },
+    { name: '经前综合征', description: '分享缓解经前综合征的方法，交流调理经验，互相理解与支持。', dimensions: null },
     {
         name: '不孕症',
         description: '分享备孕和治疗经验，交流心路历程，互相鼓励共同面对不孕困扰。',
-        keywords: '不孕症 不孕 备孕 试管婴儿 IVF 生育',
         dimensions: JSON.stringify({
             type: { label: '类型', values: ['原发性不孕', '继发性不孕'] }
         })
     },
-    { name: '性传播感染', description: '分享性传播感染的防治知识，交流治疗经验，消除偏见互相支持。', keywords: '性传播感染 STI STD 性病 HPV 衣原体', dimensions: null },
+    { name: '性传播感染', description: '分享性传播感染的防治知识，交流治疗经验，消除偏见互相支持。', dimensions: null },
     {
         name: '抑郁症',
         description: '在这里你不孤单。分享心路历程，获得理解与支持，一起走向阳光。',
-        keywords: '抑郁症 抑郁 心理 情绪 心理健康 产后抑郁',
         dimensions: JSON.stringify({
             type: { label: '严重程度', values: ['轻度', '中度', '重度'] }
         })
@@ -141,7 +152,6 @@ const communities = [
     {
         name: '焦虑症',
         description: '分享应对焦虑的方法，交流放松技巧，互相支持共同面对焦虑。',
-        keywords: '焦虑症 焦虑 紧张 恐慌 心理 压力',
         dimensions: JSON.stringify({
             type: { label: '类型', values: ['广泛性焦虑症', '社交焦虑症', '惊恐障碍'] }
         })
@@ -381,7 +391,6 @@ function initDb() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             description TEXT NOT NULL,
-            keywords TEXT NOT NULL,
             member_count INTEGER DEFAULT 0,
             dimensions TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -466,13 +475,17 @@ function initDb() {
         )
     `);
 
-    // User disease tags
+    // User disease history (actual diseases they have/had)
     usersDb.exec(`
-        CREATE TABLE IF NOT EXISTS user_disease_tags (
+        CREATE TABLE IF NOT EXISTS user_disease_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            tag TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            community_id INTEGER,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            disease TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, community_id, stage, type, disease)
         )
     `);
 
@@ -511,6 +524,19 @@ function initDb() {
         )
     `);
 
+    // Thread-disease links (diseases shown with a thread)
+    threadsDb.exec(`
+        CREATE TABLE IF NOT EXISTS thread_diseases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id INTEGER NOT NULL,
+            community_id INTEGER,
+            stage TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            disease TEXT NOT NULL,
+            UNIQUE(thread_id, community_id, stage, type, disease)
+        )
+    `);
+
     // Replies table
     repliesDb.exec(`
         CREATE TABLE IF NOT EXISTS replies (
@@ -542,11 +568,11 @@ function clearAllData() {
     usersDb.exec('DELETE FROM guru_question_replies');
     usersDb.exec('DELETE FROM guru_questions');
     usersDb.exec('DELETE FROM user_communities');
-    usersDb.exec('DELETE FROM user_disease_tags');
+    usersDb.exec('DELETE FROM user_disease_history');
     usersDb.exec('DELETE FROM user_hospitals');
     usersDb.exec('DELETE FROM users');
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='users'");
-    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_disease_tags'");
+    usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_disease_history'");
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='user_hospitals'");
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='guru_questions'");
     usersDb.exec("DELETE FROM sqlite_sequence WHERE name='guru_question_replies'");
@@ -563,8 +589,8 @@ function seedCommunities() {
     console.log('Step 2: Seeding 15 communities...');
 
     const insert = communitiesDb.prepare(`
-        INSERT INTO communities (name, description, keywords, member_count, dimensions)
-        VALUES (@name, @description, @keywords, 0, @dimensions)
+        INSERT INTO communities (name, description, member_count, dimensions)
+        VALUES (@name, @description, 0, @dimensions)
     `);
 
     const insertMany = communitiesDb.transaction((items) => {
@@ -572,7 +598,6 @@ function seedCommunities() {
             insert.run({
                 name: item.name,
                 description: item.description,
-                keywords: item.keywords,
                 dimensions: item.dimensions || null
             });
         }
@@ -588,6 +613,9 @@ function seedCommunities() {
 function seedUsers() {
     console.log('Step 3: Seeding 100 test users with profile data...');
 
+    // Get communities from DB with IDs
+    const dbCommunities = communitiesDb.prepare('SELECT id, name FROM communities').all();
+
     const insertUser = usersDb.prepare(`
         INSERT INTO users (username, password_hash, gender, age, profession, marriage_status,
             location_from, location_living, location_living_district, location_living_street,
@@ -599,12 +627,25 @@ function seedUsers() {
     // Randomly select 8 users to be gurus (user IDs 5, 12, 23, 34, 45, 56, 67, 78)
     const guruUserNumbers = [5, 12, 23, 34, 45, 56, 67, 78];
 
-    const insertDiseaseTag = usersDb.prepare(`
-        INSERT INTO user_disease_tags (user_id, tag) VALUES (?, ?)
+    const insertDiseaseHistory = usersDb.prepare(`
+        INSERT INTO user_disease_history (user_id, community_id, stage, type, disease) VALUES (?, ?, ?, ?, ?)
     `);
 
     const insertHospital = usersDb.prepare(`
         INSERT INTO user_hospitals (user_id, hospital) VALUES (?, ?)
+    `);
+
+    // Also insert community membership when user has a disease linked to a community
+    const insertMembership = usersDb.prepare(`
+        INSERT OR IGNORE INTO user_communities (user_id, community_id, stage, type)
+        VALUES (?, ?, ?, ?)
+    `);
+
+    const insertSubCommunityCount = communitiesDb.prepare(`
+        INSERT INTO sub_community_members (community_id, stage, type, member_count)
+        VALUES (?, ?, ?, 1)
+        ON CONFLICT(community_id, stage, type)
+        DO UPDATE SET member_count = member_count + 1
     `);
 
     // Helper to pick random item from array
@@ -615,6 +656,10 @@ function seedUsers() {
         const shuffled = [...arr].sort(() => Math.random() - 0.5);
         return shuffled.slice(0, n);
     };
+
+    // Track user disease history and community memberships for later use in threads
+    const userDiseaseHistoryMap = {}; // userId -> [{ community_id, stage, type, disease }]
+    const userCommunitiesFromDiseases = {}; // userId -> [{ id, stage, type }]
 
     const generateUsers = usersDb.transaction(() => {
         for (let i = 1; i <= 100; i++) {
@@ -661,12 +706,99 @@ function seedUsers() {
             );
             const userId = Number(result.lastInsertRowid);
 
-            // Add 0-4 disease tags (70% chance to have at least one)
+            userDiseaseHistoryMap[userId] = [];
+            userCommunitiesFromDiseases[userId] = [];
+
+            // Add 0-4 disease history entries (70% chance to have at least one)
+            // Use community-based diseases when possible, with Level II/III sub-community details
             if (Math.random() < 0.7) {
-                const numTags = Math.floor(Math.random() * 4) + 1;
-                const userTags = pickRandomN(diseaseTags, numTags);
-                for (const tag of userTags) {
-                    insertDiseaseTag.run(userId, tag);
+                const numDiseases = Math.floor(Math.random() * 4) + 1;
+                const userDiseases = pickRandomN(diseaseTags, numDiseases);
+                for (const disease of userDiseases) {
+                    // Try to match with a community from DB
+                    const matchedCommunity = dbCommunities.find(c => c.name === disease);
+                    if (matchedCommunity) {
+                        // Find the community definition to get dimensions
+                        const communityDef = communities.find(c => c.name === disease);
+                        const dimensions = communityDef && communityDef.dimensions
+                            ? JSON.parse(communityDef.dimensions)
+                            : null;
+
+                        let stage = '';
+                        let type = '';
+                        let displayName = disease;
+
+                        if (dimensions) {
+                            // 60% chance to pick a sub-level if dimensions exist
+                            if (Math.random() < 0.6) {
+                                const stages = dimensions.stage?.values || [];
+                                const types = dimensions.type?.values || [];
+
+                                if (stages.length > 0 && types.length > 0) {
+                                    // Has both - 50% Level II (type only), 50% Level III (type + stage)
+                                    type = pickRandom(types);
+                                    if (Math.random() < 0.5) {
+                                        stage = pickRandom(stages);
+                                        displayName = `${disease} > ${type} · ${stage}`;
+                                    } else {
+                                        displayName = `${disease} > ${type}`;
+                                    }
+                                } else if (types.length > 0) {
+                                    // Only type dimension
+                                    type = pickRandom(types);
+                                    displayName = `${disease} > ${type}`;
+                                } else if (stages.length > 0) {
+                                    // Only stage dimension
+                                    stage = pickRandom(stages);
+                                    displayName = `${disease} > ${stage}`;
+                                }
+                            }
+                        }
+
+                        // Community-based disease (with optional sub-community)
+                        insertDiseaseHistory.run(userId, matchedCommunity.id, stage, type, displayName);
+                        userDiseaseHistoryMap[userId].push({
+                            community_id: matchedCommunity.id,
+                            stage,
+                            type,
+                            disease: displayName
+                        });
+
+                        // IMPORTANT: Also join the community when user has this disease
+                        // Always join Level I (base community)
+                        insertMembership.run(userId, matchedCommunity.id, '', '');
+
+                        // Check if we already have this community in the list (Level I)
+                        const hasLevelI = userCommunitiesFromDiseases[userId].some(
+                            c => c.id === matchedCommunity.id && c.stage === '' && c.type === ''
+                        );
+                        if (!hasLevelI) {
+                            userCommunitiesFromDiseases[userId].push({ id: matchedCommunity.id, stage: '', type: '' });
+                        }
+
+                        // If sub-community, also join that level
+                        if (stage || type) {
+                            insertMembership.run(userId, matchedCommunity.id, stage, type);
+                            insertSubCommunityCount.run(matchedCommunity.id, stage, type);
+
+                            // Add to tracking if not already there
+                            const hasSubCommunity = userCommunitiesFromDiseases[userId].some(
+                                c => c.id === matchedCommunity.id && c.stage === stage && c.type === type
+                            );
+                            if (!hasSubCommunity) {
+                                userCommunitiesFromDiseases[userId].push({ id: matchedCommunity.id, stage, type });
+                            }
+                        }
+                    } else {
+                        // Free-text disease
+                        insertDiseaseHistory.run(userId, null, '', '', disease);
+                        userDiseaseHistoryMap[userId].push({
+                            community_id: null,
+                            stage: '',
+                            type: '',
+                            disease
+                        });
+                    }
                 }
             }
 
@@ -683,21 +815,23 @@ function seedUsers() {
 
     generateUsers();
 
-    const diseaseTagCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_disease_tags').get();
+    const diseaseHistoryCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_disease_history').get();
     const hospitalCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_hospitals').get();
 
     const guruCount = usersDb.prepare('SELECT COUNT(*) as count FROM users WHERE is_guru = 1').get();
 
     console.log('   100 users created with profile data.');
     console.log(`   ${guruCount.count} users designated as gurus (明星).`);
-    console.log(`   ${diseaseTagCount.count} disease tags assigned.`);
+    console.log(`   ${diseaseHistoryCount.count} disease history entries created.`);
     console.log(`   ${hospitalCount.count} hospital records created.`);
     console.log('   Username format: user001 to user100');
     console.log('   Password format: Pass001! to Pass100!');
+
+    return { userDiseaseHistoryMap, userCommunitiesFromDiseases };
 }
 
-function linkUsersToCommunities() {
-    console.log('Step 4: Linking users to communities (with sub-communities)...');
+function linkUsersToCommunities(userCommunitiesFromDiseases) {
+    console.log('Step 4: Linking users to additional communities (with sub-communities)...');
 
     // Get all user IDs and communities (with dimensions)
     const users = usersDb.prepare('SELECT id FROM users').all();
@@ -718,19 +852,37 @@ function linkUsersToCommunities() {
     // Helper to pick random item from array
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    // Track memberships for thread generation (including sub-community info)
+    // Start with communities from disease history
     const userCommunities = {};
+    for (const userId of Object.keys(userCommunitiesFromDiseases)) {
+        userCommunities[userId] = [...userCommunitiesFromDiseases[userId]];
+    }
 
     const linkUsers = usersDb.transaction(() => {
         let subCommunityJoins = 0;
 
         for (const user of users) {
-            // Each user joins 1-5 random communities
-            const numCommunities = Math.floor(Math.random() * 5) + 1;
-            const shuffled = [...allCommunities].sort(() => Math.random() - 0.5);
-            const selectedCommunities = shuffled.slice(0, numCommunities);
+            // Initialize if not already
+            if (!userCommunities[user.id]) {
+                userCommunities[user.id] = [];
+            }
 
-            userCommunities[user.id] = [];
+            // Get communities user already joined from disease history
+            const existingCommunityIds = new Set(
+                userCommunities[user.id]
+                    .filter(c => c.stage === '' && c.type === '')
+                    .map(c => c.id)
+            );
+
+            // Filter out already joined communities
+            const availableCommunities = allCommunities.filter(c => !existingCommunityIds.has(c.id));
+
+            // Each user joins 0-3 additional random communities (beyond disease-based ones)
+            const numCommunities = Math.floor(Math.random() * 4); // 0-3
+            if (numCommunities === 0 || availableCommunities.length === 0) continue;
+
+            const shuffled = [...availableCommunities].sort(() => Math.random() - 0.5);
+            const selectedCommunities = shuffled.slice(0, Math.min(numCommunities, shuffled.length));
 
             for (const community of selectedCommunities) {
                 // Always join Level I (parent community)
@@ -823,13 +975,13 @@ function linkUsersToCommunities() {
 
     const membershipCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_communities').get();
     console.log(`   ${membershipCount.count} user-community links created.`);
-    console.log(`   ${subCommunityJoins} sub-community memberships created.`);
+    console.log(`   ${subCommunityJoins} additional sub-community memberships created.`);
 
     return userCommunities;
 }
 
-function generateThreads(userCommunities) {
-    console.log('Step 5: Generating threads (with sub-communities)...');
+function generateThreads(userCommunities, userDiseaseHistoryMap) {
+    console.log('Step 5: Generating threads (with sub-communities and diseases)...');
 
     const insertThread = threadsDb.prepare(`
         INSERT INTO threads (user_id, title, content, created_at)
@@ -841,11 +993,18 @@ function generateThreads(userCommunities) {
         VALUES (?, ?, ?, ?)
     `);
 
+    const insertThreadDisease = threadsDb.prepare(`
+        INSERT OR IGNORE INTO thread_diseases (thread_id, community_id, stage, type, disease)
+        VALUES (?, ?, ?, ?, ?)
+    `);
+
     const generateAllThreads = threadsDb.transaction(() => {
         let threadCount = 0;
+        let threadDiseaseCount = 0;
 
         for (const [userIdStr, joinedCommunities] of Object.entries(userCommunities)) {
             const userId = parseInt(userIdStr, 10);
+            const userDiseases = userDiseaseHistoryMap[userId] || [];
 
             // Each user creates 0-3 threads
             const numThreads = Math.floor(Math.random() * 4);
@@ -875,17 +1034,38 @@ function generateThreads(userCommunities) {
                         insertThreadCommunity.run(threadId, community.id, community.stage || '', community.type || '');
                     }
                 }
+
+                // Link diseases from user's disease history (80% chance to include diseases if user has any)
+                if (userDiseases.length > 0 && Math.random() < 0.8) {
+                    // Include 1 to all diseases (weighted towards fewer)
+                    const maxDiseases = Math.min(3, userDiseases.length);
+                    const numDiseases = Math.floor(Math.random() * maxDiseases) + 1;
+                    const shuffledDiseases = [...userDiseases].sort(() => Math.random() - 0.5);
+                    const linkedDiseases = shuffledDiseases.slice(0, numDiseases);
+
+                    for (const disease of linkedDiseases) {
+                        insertThreadDisease.run(
+                            threadId,
+                            disease.community_id,
+                            disease.stage || '',
+                            disease.type || '',
+                            disease.disease
+                        );
+                        threadDiseaseCount++;
+                    }
+                }
             }
         }
 
-        return threadCount;
+        return { threadCount, threadDiseaseCount };
     });
 
-    const threadCount = generateAllThreads();
+    const { threadCount, threadDiseaseCount } = generateAllThreads();
     const threadCommunityCount = threadsDb.prepare('SELECT COUNT(*) as count FROM thread_communities').get();
 
     console.log(`   ${threadCount} threads created.`);
     console.log(`   ${threadCommunityCount.count} thread-community links created.`);
+    console.log(`   ${threadDiseaseCount} thread-disease links created.`);
 }
 
 function generateReplies() {
@@ -1071,8 +1251,10 @@ function printSummary() {
     const userCount = usersDb.prepare('SELECT COUNT(*) as count FROM users').get();
     const guruCount = usersDb.prepare('SELECT COUNT(*) as count FROM users WHERE is_guru = 1').get();
     const membershipCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_communities').get();
+    const diseaseHistoryCount = usersDb.prepare('SELECT COUNT(*) as count FROM user_disease_history').get();
     const threadCount = threadsDb.prepare('SELECT COUNT(*) as count FROM threads').get();
     const threadCommunityCount = threadsDb.prepare('SELECT COUNT(*) as count FROM thread_communities').get();
+    const threadDiseaseCount = threadsDb.prepare('SELECT COUNT(*) as count FROM thread_diseases').get();
     const replyCount = repliesDb.prepare('SELECT COUNT(*) as count FROM replies').get();
     const topLevelReplyCount = repliesDb.prepare('SELECT COUNT(*) as count FROM replies WHERE parent_reply_id IS NULL').get();
     const guruQuestionCount = usersDb.prepare('SELECT COUNT(*) as count FROM guru_questions').get();
@@ -1083,8 +1265,10 @@ function printSummary() {
     console.log(`  Users:                  ${userCount.count}`);
     console.log(`    - Gurus (明星):       ${guruCount.count}`);
     console.log(`  User-Community links:   ${membershipCount.count}`);
+    console.log(`  User Disease History:   ${diseaseHistoryCount.count}`);
     console.log(`  Threads:                ${threadCount.count}`);
     console.log(`  Thread-Community links: ${threadCommunityCount.count}`);
+    console.log(`  Thread-Disease links:   ${threadDiseaseCount.count}`);
     console.log(`  Replies:                ${replyCount.count}`);
     console.log(`    - Top-level (cards):  ${topLevelReplyCount.count}`);
     console.log(`    - Stacked:            ${replyCount.count - topLevelReplyCount.count}`);
@@ -1110,16 +1294,16 @@ function printSummary() {
 // ============ RUN ============
 
 function main() {
-    console.log('\n====================================');
+    console.log('====================================');
     console.log('   P-LikeMe Database Seed Script');
     console.log('====================================\n');
 
     initDb();
-    clearAllData();
+    // clearAllData() - not needed since we recreate db folder
     seedCommunities();
-    seedUsers();
-    const userCommunities = linkUsersToCommunities();
-    generateThreads(userCommunities);
+    const { userDiseaseHistoryMap, userCommunitiesFromDiseases } = seedUsers();
+    const userCommunities = linkUsersToCommunities(userCommunitiesFromDiseases);
+    generateThreads(userCommunities, userDiseaseHistoryMap);
     generateReplies();
     generateGuruQuestions();
     printSummary();

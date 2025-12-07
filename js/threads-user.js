@@ -11,6 +11,12 @@ const viewUsername = urlParams.get('user');
 // State
 let isOwnPage = false;
 let viewingUser = null;
+let userCommunities = []; // User's joined communities for selectors
+let userDiseases = []; // User's disease history for selectors
+let threadSelectedDiseases = []; // Selected diseases for new thread
+let threadSelectedCommunities = []; // Selected communities for new thread
+let editSelectedDiseases = []; // Selected diseases for edit
+let editSelectedCommunities = []; // Selected communities for edit
 
 // DOM Elements
 const loginRequired = document.getElementById('login-required');
@@ -26,17 +32,12 @@ const threadModal = document.getElementById('thread-modal');
 const threadModalClose = document.getElementById('thread-modal-close');
 const threadForm = document.getElementById('thread-form');
 const threadError = document.getElementById('thread-error');
-const communityCheckboxes = document.getElementById('community-checkboxes');
 
 // Edit Modal Elements
 const editModal = document.getElementById('edit-modal');
 const editModalClose = document.getElementById('edit-modal-close');
 const editForm = document.getElementById('edit-form');
 const editError = document.getElementById('edit-error');
-const editCommunityCheckboxes = document.getElementById('edit-community-checkboxes');
-
-// Store user communities for edit modal
-let userCommunities = [];
 
 // API Base
 const THREADS_API = '/api/threads';
@@ -84,25 +85,554 @@ function checkLoginState() {
     sharesContent.style.display = 'block';
     loadThreads();
 
-    // Only load communities for own page (for create/edit forms)
+    // Only load user data for own page (for create/edit forms)
     if (isOwnPage) {
-        loadCommunities();
+        loadUserData();
     }
 }
 
 /**
- * Get fetch options with credentials
+ * Load user's joined communities and disease history for the selectors
  */
-function getFetchOptions(method = 'GET', body = null) {
-    const options = {
-        method,
-        credentials: 'include'
-    };
-    if (body) {
-        options.headers = { 'Content-Type': 'application/json' };
-        options.body = JSON.stringify(body);
+async function loadUserData() {
+    try {
+        // Load user's joined communities and disease history in parallel
+        const [communitiesRes, diseasesRes] = await Promise.all([
+            fetch('/api/user/communities?details=true', { credentials: 'include' }),
+            fetch('/api/user/diseases', { credentials: 'include' })
+        ]);
+
+        const communitiesData = await communitiesRes.json();
+        const diseasesData = await diseasesRes.json();
+
+        if (communitiesData.success) {
+            userCommunities = communitiesData.data;
+        }
+
+        if (diseasesData.success) {
+            userDiseases = diseasesData.data;
+        }
+
+        // Initialize the selectors
+        initDiseaseSelector('thread');
+        initCommunitySelector('thread');
+        initDiseaseSelector('edit');
+        initCommunitySelector('edit');
+    } catch (error) {
+        console.error('Error loading user data:', error);
     }
-    return options;
+}
+
+/**
+ * Initialize disease selector for a form (thread or edit)
+ */
+function initDiseaseSelector(prefix) {
+    const listEl = document.getElementById(`${prefix}-disease-list`);
+    const triggerEl = document.getElementById(`${prefix}-disease-trigger`);
+    const selectorEl = document.getElementById(`${prefix}-disease-selector`);
+
+    if (!listEl) return;
+
+    // Render disease list from user's disease history
+    renderDiseaseList(listEl, prefix);
+
+    // Toggle dropdown
+    triggerEl.addEventListener('click', () => {
+        selectorEl.classList.toggle('open');
+    });
+}
+
+/**
+ * Generate unique checkbox ID for disease in threads
+ */
+function generateThreadDiseaseCheckboxId(prefix, index) {
+    return `${prefix}-disease-cb-${index}`;
+}
+
+/**
+ * Check if a disease is already selected in threads
+ */
+function isDiseaseSelectedInThreads(prefix, communityId, stage, type, disease) {
+    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
+    return selectedList.some(d =>
+        d.community_id === communityId &&
+        (d.stage || '') === (stage || '') &&
+        (d.type || '') === (type || '') &&
+        d.disease === disease
+    );
+}
+
+/**
+ * Render disease list from user's disease history
+ */
+function renderDiseaseList(listEl, prefix) {
+    if (userDiseases.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-list-hint">
+                <p>你还没有添加任何疾病</p>
+                <p><a href="profile.html">去个人资料页添加</a></p>
+            </div>
+        `;
+        return;
+    }
+
+    // Render user's diseases as checkboxes
+    listEl.innerHTML = userDiseases.map((d, index) => {
+        const checkboxId = generateThreadDiseaseCheckboxId(prefix, index);
+        const isChecked = isDiseaseSelectedInThreads(prefix, d.community_id, d.stage, d.type, d.disease);
+        return `
+            <div class="filter-checkbox-row">
+                <input type="checkbox" id="${checkboxId}"
+                       data-prefix="${prefix}"
+                       data-index="${index}"
+                       data-community-id="${d.community_id || ''}"
+                       data-stage="${d.stage || ''}"
+                       data-type="${d.type || ''}"
+                       data-disease="${escapeHtml(d.disease)}"
+                       ${isChecked ? 'checked' : ''}>
+                <label for="${checkboxId}">${escapeHtml(d.disease)}</label>
+            </div>
+        `;
+    }).join('');
+
+    // Add change listeners for checkboxes
+    listEl.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleThreadDiseaseCheckboxChange);
+    });
+}
+
+/**
+ * Handle disease checkbox change in threads
+ */
+function handleThreadDiseaseCheckboxChange(e) {
+    const checkbox = e.target;
+    const prefix = checkbox.dataset.prefix;
+    const communityId = checkbox.dataset.communityId ? parseInt(checkbox.dataset.communityId, 10) : null;
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const disease = checkbox.dataset.disease;
+
+    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
+
+    if (checkbox.checked) {
+        // Add to selected diseases
+        if (!isDiseaseSelectedInThreads(prefix, communityId, stage, type, disease)) {
+            selectedList.push({
+                community_id: communityId,
+                stage: stage,
+                type: type,
+                disease: disease
+            });
+        }
+    } else {
+        // Remove from selected diseases
+        const idx = selectedList.findIndex(d =>
+            d.community_id === communityId &&
+            (d.stage || '') === stage &&
+            (d.type || '') === type &&
+            d.disease === disease
+        );
+        if (idx !== -1) {
+            selectedList.splice(idx, 1);
+        }
+    }
+
+    renderSelectedDiseases(prefix);
+    updateDiseaseTriggerText(prefix);
+}
+
+/**
+ * Render selected disease tags
+ */
+function renderSelectedDiseases(prefix) {
+    const selectedEl = document.getElementById(`${prefix}-disease-selected`);
+    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
+
+    if (!selectedEl) return;
+
+    if (selectedList.length === 0) {
+        selectedEl.innerHTML = '';
+        return;
+    }
+
+    selectedEl.innerHTML = selectedList.map((d, index) =>
+        `<span class="disease-filter-tag">
+            ${escapeHtml(d.disease)}
+            <span class="remove-tag" data-prefix="${prefix}" data-index="${index}">&times;</span>
+        </span>`
+    ).join('');
+
+    // Add remove listeners
+    selectedEl.querySelectorAll('.remove-tag').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pf = e.target.dataset.prefix;
+            const index = parseInt(e.target.dataset.index, 10);
+            const removed = pf === 'thread' ? threadSelectedDiseases[index] : editSelectedDiseases[index];
+
+            if (pf === 'thread') {
+                threadSelectedDiseases.splice(index, 1);
+            } else {
+                editSelectedDiseases.splice(index, 1);
+            }
+
+            // Find and uncheck the corresponding checkbox
+            const diseaseIndex = userDiseases.findIndex(d =>
+                d.community_id === removed.community_id &&
+                (d.stage || '') === (removed.stage || '') &&
+                (d.type || '') === (removed.type || '') &&
+                d.disease === removed.disease
+            );
+            if (diseaseIndex !== -1) {
+                const checkboxId = generateThreadDiseaseCheckboxId(pf, diseaseIndex);
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox) checkbox.checked = false;
+            }
+
+            renderSelectedDiseases(pf);
+            updateDiseaseTriggerText(pf);
+        });
+    });
+}
+
+/**
+ * Update disease trigger text
+ */
+function updateDiseaseTriggerText(prefix) {
+    const triggerEl = document.getElementById(`${prefix}-disease-trigger`);
+    const selectedList = prefix === 'thread' ? threadSelectedDiseases : editSelectedDiseases;
+
+    if (!triggerEl) return;
+    const span = triggerEl.querySelector('.trigger-text');
+    if (selectedList.length === 0) {
+        span.textContent = '选择疾病...';
+    } else {
+        span.textContent = `已选择 ${selectedList.length} 个疾病`;
+    }
+}
+
+/**
+ * Initialize community selector for a form (thread or edit)
+ */
+function initCommunitySelector(prefix) {
+    const listEl = document.getElementById(`${prefix}-community-list`);
+    const triggerEl = document.getElementById(`${prefix}-community-trigger`);
+    const selectorEl = document.getElementById(`${prefix}-community-selector`);
+
+    if (!listEl) return;
+
+    // Render community list (accordion style)
+    renderCommunityList(listEl, prefix);
+
+    // Toggle dropdown
+    triggerEl.addEventListener('click', () => {
+        selectorEl.classList.toggle('open');
+    });
+}
+
+/**
+ * Generate unique checkbox ID for community in threads
+ */
+function generateThreadCommunityCheckboxId(prefix, communityId, stage, type) {
+    return `${prefix}-community-cb-${communityId}-${stage || 'none'}-${type || 'none'}`;
+}
+
+/**
+ * Check if a community is already selected in threads
+ */
+function isCommunitySelectedInThreads(prefix, communityId, stage, type) {
+    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
+    return selectedList.some(c =>
+        c.id === communityId &&
+        (c.stage || '') === (stage || '') &&
+        (c.type || '') === (type || '')
+    );
+}
+
+/**
+ * Render community list from user's joined communities
+ */
+function renderCommunityList(listEl, prefix) {
+    if (userCommunities.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-list-hint">
+                <p>你还没有加入任何社区</p>
+                <p><a href="community.html">去社区页面加入</a></p>
+            </div>
+        `;
+        return;
+    }
+
+    // Render user's joined communities with accordion for dimensions
+    listEl.innerHTML = userCommunities.map(c => {
+        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
+        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
+
+        if (hasDimensions) {
+            // Community with dimensions - show accordion with nested options
+            let contentHtml = '<div class="community-filter-item-content">';
+
+            // Add Level I option (base community)
+            const levelIId = generateThreadCommunityCheckboxId(prefix, c.id, '', '');
+            const levelIChecked = isCommunitySelectedInThreads(prefix, c.id, '', '');
+            contentHtml += `
+                <div class="filter-checkbox-row">
+                    <input type="checkbox" id="${levelIId}"
+                           data-prefix="${prefix}"
+                           data-community-id="${c.id}"
+                           data-stage="" data-type=""
+                           data-name="${escapeHtml(c.name)}"
+                           ${levelIChecked ? 'checked' : ''}>
+                    <label for="${levelIId}">${escapeHtml(c.name)} (仅大类)</label>
+                </div>
+            `;
+
+            const stages = dimensions.stage?.values || [];
+            const types = dimensions.type?.values || [];
+
+            // Stage dimension section (if available)
+            if (stages.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.stage.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    const stageId = generateThreadCommunityCheckboxId(prefix, c.id, stage, '');
+                    const stageChecked = isCommunitySelectedInThreads(prefix, c.id, stage, '');
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${stageId}"
+                                   data-prefix="${prefix}"
+                                   data-community-id="${c.id}"
+                                   data-stage="${escapeHtml(stage)}" data-type=""
+                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)}"
+                                   ${stageChecked ? 'checked' : ''}>
+                            <label for="${stageId}">${escapeHtml(stage)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Type dimension section (if available)
+            if (types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.type.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const type of types) {
+                    const typeId = generateThreadCommunityCheckboxId(prefix, c.id, '', type);
+                    const typeChecked = isCommunitySelectedInThreads(prefix, c.id, '', type);
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${typeId}"
+                                   data-prefix="${prefix}"
+                                   data-community-id="${c.id}"
+                                   data-stage="" data-type="${escapeHtml(type)}"
+                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(type)}"
+                                   ${typeChecked ? 'checked' : ''}>
+                            <label for="${typeId}">${escapeHtml(type)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Combined section (if both dimensions exist)
+            if (stages.length > 0 && types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">组合选择</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    for (const type of types) {
+                        const comboId = generateThreadCommunityCheckboxId(prefix, c.id, stage, type);
+                        const comboChecked = isCommunitySelectedInThreads(prefix, c.id, stage, type);
+                        contentHtml += `
+                            <div class="filter-checkbox-row">
+                                <input type="checkbox" id="${comboId}"
+                                       data-prefix="${prefix}"
+                                       data-community-id="${c.id}"
+                                       data-stage="${escapeHtml(stage)}" data-type="${escapeHtml(type)}"
+                                       data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)} · ${escapeHtml(type)}"
+                                       ${comboChecked ? 'checked' : ''}>
+                                <label for="${comboId}">${escapeHtml(stage)} · ${escapeHtml(type)}</label>
+                            </div>
+                        `;
+                    }
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            contentHtml += '</div>';
+
+            return `
+                <div class="community-filter-item" data-community-id="${c.id}">
+                    <div class="community-filter-item-header">
+                        <span class="filter-expand-icon">▶</span>
+                        <span class="community-filter-item-name">${escapeHtml(c.name)}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
+        } else {
+            // Simple community - just show with checkbox
+            const checkboxId = generateThreadCommunityCheckboxId(prefix, c.id, '', '');
+            const isChecked = isCommunitySelectedInThreads(prefix, c.id, '', '');
+            return `
+                <div class="community-filter-item" data-community-id="${c.id}">
+                    <div class="filter-checkbox-row">
+                        <input type="checkbox" id="${checkboxId}"
+                               data-prefix="${prefix}"
+                               data-community-id="${c.id}"
+                               data-stage="" data-type=""
+                               data-name="${escapeHtml(c.name)}"
+                               ${isChecked ? 'checked' : ''}>
+                        <label for="${checkboxId}">${escapeHtml(c.name)}</label>
+                    </div>
+                </div>
+            `;
+        }
+    }).join('');
+
+    // Add accordion toggle listeners for community headers
+    listEl.querySelectorAll('.community-filter-item-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add accordion toggle listeners for dimension headers
+    listEl.querySelectorAll('.filter-dimension-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add change listeners for checkboxes
+    listEl.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleThreadCommunityCheckboxChange);
+    });
+}
+
+/**
+ * Handle community checkbox change in threads
+ */
+function handleThreadCommunityCheckboxChange(e) {
+    const checkbox = e.target;
+    const prefix = checkbox.dataset.prefix;
+    const communityId = parseInt(checkbox.dataset.communityId, 10);
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const name = checkbox.dataset.name;
+
+    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
+
+    if (checkbox.checked) {
+        // Add to selected communities
+        if (!isCommunitySelectedInThreads(prefix, communityId, stage, type)) {
+            selectedList.push({
+                id: communityId,
+                name: name,
+                stage: stage,
+                type: type
+            });
+        }
+    } else {
+        // Remove from selected communities
+        const idx = selectedList.findIndex(c =>
+            c.id === communityId &&
+            (c.stage || '') === stage &&
+            (c.type || '') === type
+        );
+        if (idx !== -1) {
+            selectedList.splice(idx, 1);
+        }
+    }
+
+    renderSelectedCommunities(prefix);
+    updateCommunityTriggerText(prefix);
+}
+
+/**
+ * Render selected community tags
+ */
+function renderSelectedCommunities(prefix) {
+    const selectedEl = document.getElementById(`${prefix}-community-selected`);
+    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
+
+    if (!selectedEl) return;
+
+    if (selectedList.length === 0) {
+        selectedEl.innerHTML = '';
+        return;
+    }
+
+    selectedEl.innerHTML = selectedList.map((c, index) =>
+        `<span class="community-filter-tag">
+            ${escapeHtml(c.name)}
+            <span class="remove-tag" data-prefix="${prefix}" data-index="${index}">&times;</span>
+        </span>`
+    ).join('');
+
+    // Add remove listeners
+    selectedEl.querySelectorAll('.remove-tag').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pf = e.target.dataset.prefix;
+            const index = parseInt(e.target.dataset.index, 10);
+            const removed = pf === 'thread' ? threadSelectedCommunities[index] : editSelectedCommunities[index];
+
+            if (pf === 'thread') {
+                threadSelectedCommunities.splice(index, 1);
+            } else {
+                editSelectedCommunities.splice(index, 1);
+            }
+
+            // Uncheck the corresponding checkbox
+            const checkboxId = generateThreadCommunityCheckboxId(pf, removed.id, removed.stage || '', removed.type || '');
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) checkbox.checked = false;
+
+            renderSelectedCommunities(pf);
+            updateCommunityTriggerText(pf);
+        });
+    });
+}
+
+/**
+ * Update community trigger text
+ */
+function updateCommunityTriggerText(prefix) {
+    const triggerEl = document.getElementById(`${prefix}-community-trigger`);
+    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
+
+    if (!triggerEl) return;
+    const span = triggerEl.querySelector('.trigger-text');
+    if (selectedList.length === 0) {
+        span.textContent = '选择社区...';
+    } else {
+        span.textContent = `已选择 ${selectedList.length} 个社区`;
+    }
 }
 
 /**
@@ -160,156 +690,51 @@ function renderThreads(threads) {
 
     noThreads.style.display = 'none';
 
-    threadsList.innerHTML = threads.map(thread => `
-        <div class="thread-card" data-id="${thread.id}">
-            <a href="thread-detail.html?id=${thread.id}" class="thread-card-clickable">
-                <div class="thread-card-header">
-                    <h3>${escapeHtml(thread.title)}</h3>
-                    <span class="thread-card-date">${formatDate(thread.created_at)}</span>
-                </div>
-                <p>${escapeHtml(thread.content)}</p>
-            </a>
-            <div class="thread-card-info">
-                <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
-                <div class="thread-communities">
-                    ${thread.communities.map(c => `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`).join('')}
-                </div>
-            </div>
-            ${isOwnPage ? `
-            <div class="thread-card-footer">
-                <div class="thread-actions">
-                    <button class="btn-edit" onclick="openEditModal(${thread.id})">编辑</button>
-                    <button class="btn-delete" onclick="deleteThread(${thread.id})">删除</button>
-                </div>
-            </div>
-            ` : ''}
-        </div>
-    `).join('');
-}
-
-/**
- * Load user's joined communities for the form
- */
-async function loadCommunities() {
-    try {
-        const response = await fetch('/api/user/communities?details=true', {
-            credentials: 'include'
-        });
-        const data = await response.json();
-
-        if (data.success && data.data.length > 0) {
-            userCommunities = data.data;
-            renderCommunityCheckboxes(communityCheckboxes, data.data, 'communities');
-        } else {
-            userCommunities = [];
-            communityCheckboxes.innerHTML = `
-                <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
-            `;
+    threadsList.innerHTML = threads.map(thread => {
+        // Build disease tags (clickable if linked to a community)
+        let diseaseTags = '';
+        if (thread.author_disease_history && thread.author_disease_history.length > 0) {
+            diseaseTags = thread.author_disease_history.map(item => {
+                if (item.community_id) {
+                    return `<a href="community-detail.html?id=${item.community_id}" class="disease-tag">${escapeHtml(item.disease)}</a>`;
+                } else {
+                    return `<span class="disease-tag">${escapeHtml(item.disease)}</span>`;
+                }
+            }).join('');
         }
-    } catch (error) {
-        console.error('Error loading communities:', error);
-    }
-}
 
-/**
- * Render community checkboxes with dimension options
- */
-function renderCommunityCheckboxes(container, communities, prefix, selectedLinks = []) {
-    // Build a map of selected links for easy lookup
-    const selectedMap = {};
-    selectedLinks.forEach(link => {
-        const key = `${link.id}-${link.stage || ''}-${link.type || ''}`;
-        selectedMap[key] = true;
-    });
+        // Build community tags
+        const communityTags = thread.communities.map(c =>
+            `<span class="community-tag" data-community-id="${c.id}">${escapeHtml(c.name)}</span>`
+        ).join('');
 
-    container.innerHTML = communities.map(c => {
-        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
-        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
-        const isChecked = selectedLinks.some(link => link.id === c.id);
-
-        let html = `
-            <div class="community-checkbox-group" data-community-id="${c.id}">
-                <div class="community-checkbox">
-                    <input type="checkbox" id="${prefix}-${c.id}" name="${prefix}" value="${c.id}" ${isChecked ? 'checked' : ''}>
-                    <label for="${prefix}-${c.id}">${escapeHtml(c.name)}</label>
+        return `
+            <div class="thread-card" data-id="${thread.id}">
+                <a href="thread-detail.html?id=${thread.id}" class="thread-card-clickable">
+                    <div class="thread-card-header">
+                        <h3>${escapeHtml(thread.title)}</h3>
+                        <span class="thread-card-date">${formatDate(thread.created_at)}</span>
+                    </div>
+                    <p>${escapeHtml(thread.content)}</p>
+                </a>
+                <div class="thread-card-info">
+                    <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
+                    <div class="thread-communities">
+                        ${diseaseTags}
+                        ${communityTags}
+                    </div>
                 </div>
+                ${isOwnPage ? `
+                <div class="thread-card-footer">
+                    <div class="thread-actions">
+                        <button class="btn-edit" onclick="openEditModal(${thread.id})">编辑</button>
+                        <button class="btn-delete" onclick="deleteThread(${thread.id})">删除</button>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
         `;
-
-        // Add dimension options if available
-        if (hasDimensions) {
-            html += `<div class="dimension-options" id="${prefix}-dimensions-${c.id}" style="display: ${isChecked ? 'block' : 'none'};">`;
-
-            // Stage options
-            if (dimensions.stage) {
-                html += `
-                    <div class="dimension-group">
-                        <label class="dimension-label">${escapeHtml(dimensions.stage.label)}（可选）</label>
-                        <select id="${prefix}-stage-${c.id}" class="dimension-select" data-community-id="${c.id}" data-dimension="stage">
-                            <option value="">不限</option>
-                            ${dimensions.stage.values.map(v => {
-                                const isSelected = selectedLinks.some(link => link.id === c.id && link.stage === v);
-                                return `<option value="${escapeHtml(v)}" ${isSelected ? 'selected' : ''}>${escapeHtml(v)}</option>`;
-                            }).join('')}
-                        </select>
-                    </div>
-                `;
-            }
-
-            // Type options
-            if (dimensions.type) {
-                html += `
-                    <div class="dimension-group">
-                        <label class="dimension-label">${escapeHtml(dimensions.type.label)}（可选）</label>
-                        <select id="${prefix}-type-${c.id}" class="dimension-select" data-community-id="${c.id}" data-dimension="type">
-                            <option value="">不限</option>
-                            ${dimensions.type.values.map(v => {
-                                const isSelected = selectedLinks.some(link => link.id === c.id && link.type === v);
-                                return `<option value="${escapeHtml(v)}" ${isSelected ? 'selected' : ''}>${escapeHtml(v)}</option>`;
-                            }).join('')}
-                        </select>
-                    </div>
-                `;
-            }
-
-            html += '</div>';
-        }
-
-        html += '</div>';
-        return html;
     }).join('');
-
-    // Add event listeners for checkbox changes
-    container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const communityId = e.target.value;
-            const dimensionsEl = document.getElementById(`${prefix}-dimensions-${communityId}`);
-            if (dimensionsEl) {
-                dimensionsEl.style.display = e.target.checked ? 'block' : 'none';
-            }
-        });
-    });
-}
-
-/**
- * Get selected community links from a checkbox container
- */
-function getSelectedCommunityLinks(container, prefix) {
-    const links = [];
-    const checkedBoxes = container.querySelectorAll(`input[name="${prefix}"]:checked`);
-
-    checkedBoxes.forEach(checkbox => {
-        const communityId = parseInt(checkbox.value, 10);
-        const stageSelect = document.getElementById(`${prefix}-stage-${communityId}`);
-        const typeSelect = document.getElementById(`${prefix}-type-${communityId}`);
-
-        links.push({
-            id: communityId,
-            stage: stageSelect ? stageSelect.value : '',
-            type: typeSelect ? typeSelect.value : ''
-        });
-    });
-
-    return links;
 }
 
 /**
@@ -319,6 +744,13 @@ function openThreadModal() {
     threadModal.classList.add('active');
     threadForm.reset();
     threadError.textContent = '';
+    // Clear selected diseases and communities
+    threadSelectedDiseases = [];
+    threadSelectedCommunities = [];
+    renderSelectedDiseases('thread');
+    renderSelectedCommunities('thread');
+    updateDiseaseTriggerText('thread');
+    updateCommunityTriggerText('thread');
 }
 
 /**
@@ -338,7 +770,19 @@ async function createThread(e) {
     const content = document.getElementById('thread-content').value;
 
     // Get selected communities with dimension info
-    const communityLinks = getSelectedCommunityLinks(communityCheckboxes, 'communities');
+    const communityLinks = threadSelectedCommunities.map(c => ({
+        id: c.id,
+        stage: c.stage || '',
+        type: c.type || ''
+    }));
+
+    // Get selected diseases
+    const diseases = threadSelectedDiseases.map(d => ({
+        community_id: d.community_id,
+        stage: d.stage || '',
+        type: d.type || '',
+        disease: d.disease
+    }));
 
     try {
         const response = await fetch(THREADS_API, {
@@ -350,7 +794,8 @@ async function createThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_links: communityLinks
+                community_links: communityLinks,
+                diseases: diseases
             })
         });
 
@@ -418,20 +863,26 @@ async function openEditModal(threadId) {
         document.getElementById('edit-title').value = thread.title;
         document.getElementById('edit-content').value = thread.content;
 
-        // Render community checkboxes with dimension options
-        if (userCommunities.length > 0) {
-            // Convert thread communities to links format
-            const selectedLinks = thread.communities.map(c => ({
-                id: c.id,
-                stage: c.stage || '',
-                type: c.type || ''
-            }));
-            renderCommunityCheckboxes(editCommunityCheckboxes, userCommunities, 'edit-communities', selectedLinks);
-        } else {
-            editCommunityCheckboxes.innerHTML = `
-                <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
-            `;
-        }
+        // Load diseases (from thread.diseases or thread.author_disease_history)
+        editSelectedDiseases = (thread.diseases || []).map(d => ({
+            community_id: d.community_id || null,
+            stage: d.stage || '',
+            type: d.type || '',
+            disease: d.disease
+        }));
+
+        // Load communities
+        editSelectedCommunities = (thread.communities || []).map(c => ({
+            id: c.id,
+            name: c.name,
+            stage: c.stage || '',
+            type: c.type || ''
+        }));
+
+        renderSelectedDiseases('edit');
+        renderSelectedCommunities('edit');
+        updateDiseaseTriggerText('edit');
+        updateCommunityTriggerText('edit');
 
         editError.textContent = '';
         editModal.classList.add('active');
@@ -459,7 +910,19 @@ async function updateThread(e) {
     const content = document.getElementById('edit-content').value;
 
     // Get selected communities with dimension info
-    const communityLinks = getSelectedCommunityLinks(editCommunityCheckboxes, 'edit-communities');
+    const communityLinks = editSelectedCommunities.map(c => ({
+        id: c.id,
+        stage: c.stage || '',
+        type: c.type || ''
+    }));
+
+    // Get selected diseases
+    const diseases = editSelectedDiseases.map(d => ({
+        community_id: d.community_id,
+        stage: d.stage || '',
+        type: d.type || '',
+        disease: d.disease
+    }));
 
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
@@ -471,7 +934,8 @@ async function updateThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_links: communityLinks
+                community_links: communityLinks,
+                diseases: diseases
             })
         });
 
@@ -494,6 +958,24 @@ async function updateThread(e) {
  */
 function formatDate(dateStr) {
     return formatCSTDateFull(dateStr);
+}
+
+/**
+ * Handle click outside to close dropdowns
+ */
+function handleClickOutside(e) {
+    // Close disease selector dropdowns
+    document.querySelectorAll('.disease-filter-selector.open').forEach(sel => {
+        if (!sel.contains(e.target)) {
+            sel.classList.remove('open');
+        }
+    });
+    // Close community selector dropdowns
+    document.querySelectorAll('.community-filter-selector.open').forEach(sel => {
+        if (!sel.contains(e.target)) {
+            sel.classList.remove('open');
+        }
+    });
 }
 
 // escapeHtml is defined in main.js
@@ -554,6 +1036,9 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', handleClickOutside);
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

@@ -107,6 +107,9 @@
         // Join date
         document.getElementById('guru-join-date').textContent = `加入于 ${formatCSTDateSimple(guruData.created_at)}`;
 
+        // Disease history
+        renderDiseaseHistory();
+
         // Communities
         renderCommunities();
 
@@ -143,6 +146,37 @@
     }
 
     /**
+     * Render disease history section
+     */
+    function renderDiseaseHistory() {
+        const diseaseEl = document.getElementById('guru-disease-history');
+        if (!diseaseEl) return;
+
+        const diseaseHistory = guruData.disease_history || [];
+
+        if (diseaseHistory.length === 0) {
+            diseaseEl.innerHTML = '';
+            return;
+        }
+
+        diseaseEl.innerHTML = diseaseHistory.map(d => {
+            if (d.community_id) {
+                // Community-based - make it a link
+                let href = `community-detail.html?id=${d.community_id}`;
+                if (d.stage) href += `&stage=${encodeURIComponent(d.stage)}`;
+                if (d.type) href += `&type=${encodeURIComponent(d.type)}`;
+                return `<a href="${href}" class="profile-tag disease-tag">${escapeHtml(d.disease)}</a>`;
+            } else {
+                // Free-text - use same styling (no link)
+                return `<span class="profile-tag disease-tag">${escapeHtml(d.disease)}</span>`;
+            }
+        }).join('');
+
+        // Hide row if empty
+        document.getElementById('guru-disease-row').style.display = diseaseHistory.length > 0 ? 'flex' : 'none';
+    }
+
+    /**
      * Render communities section
      */
     function renderCommunities() {
@@ -151,6 +185,7 @@
 
         if (communities.length === 0) {
             communitiesEl.innerHTML = '';
+            document.getElementById('guru-community-row').style.display = 'none';
             return;
         }
 
@@ -162,8 +197,10 @@
 
             // Use displayPath if available, otherwise just the name
             const displayText = c.displayPath || c.name;
-            return `<a href="${href}" class="community-tag-link">${escapeHtml(displayText)}</a>`;
+            return `<a href="${href}" class="profile-tag community-tag">${escapeHtml(displayText)}</a>`;
         }).join('');
+
+        document.getElementById('guru-community-row').style.display = 'flex';
     }
 
     /**

@@ -7,15 +7,19 @@
 let communities = [];
 // Selected communities with optional stage/type: [{id, stage, type, name, dimensions}]
 let selectedCommunities = [];
+// Selected diseases for filter: [{community_id, stage, type, disease}]
+let selectedDiseases = [];
 let currentOffset = 0;
 let currentTotal = 0;
 const LIMIT = 20;
 
 // DOM Elements (initialized in initDiscover after DOMContentLoaded)
-let searchForm, communityTrigger, communityDropdown, selectedCommunitiesWrapper;
+let searchForm, communityTrigger, communityDropdown, communityFilterList, communityFilterSelected;
+let diseaseFilterTrigger, diseaseFilterDropdown, diseaseFilterList, diseaseFilterSelected;
 let resultsTitle, searchHint, resultsLoading, noResults, userCards;
 let resultsPagination, loadMoreBtn, clearFiltersBtn;
 let autoFindBtn, autoFindLoginHint, autoFindLoginLink;
+let usernameSearchInput, usernameSearchBtn;
 
 /**
  * Initialize page
@@ -25,7 +29,12 @@ async function initDiscover() {
     searchForm = document.getElementById('search-form');
     communityTrigger = document.getElementById('community-trigger');
     communityDropdown = document.getElementById('community-dropdown');
-    selectedCommunitiesWrapper = document.getElementById('selected-communities-wrapper');
+    communityFilterList = document.getElementById('community-filter-list');
+    communityFilterSelected = document.getElementById('community-filter-selected');
+    diseaseFilterTrigger = document.getElementById('disease-filter-trigger');
+    diseaseFilterDropdown = document.getElementById('disease-filter-dropdown');
+    diseaseFilterList = document.getElementById('disease-filter-list');
+    diseaseFilterSelected = document.getElementById('disease-filter-selected');
     resultsTitle = document.getElementById('results-title');
     searchHint = document.getElementById('search-hint');
     resultsLoading = document.getElementById('results-loading');
@@ -37,10 +46,14 @@ async function initDiscover() {
     autoFindBtn = document.getElementById('auto-find-btn');
     autoFindLoginHint = document.getElementById('auto-find-login-hint');
     autoFindLoginLink = document.getElementById('auto-find-login-link');
+    usernameSearchInput = document.getElementById('username-search-input');
+    usernameSearchBtn = document.getElementById('username-search-btn');
 
     await loadCommunities();
     setupEventListeners();
     updateAutoFindState();
+    renderCommunityFilterList();
+    renderDiseaseFilterList();
 }
 
 /**
@@ -67,7 +80,7 @@ async function loadCommunities() {
 
         if (data.success) {
             communities = data.data;
-            renderCommunityDropdown();
+            renderCommunityFilterList();
         }
     } catch (error) {
         console.error('Error loading communities:', error);
@@ -75,135 +88,264 @@ async function loadCommunities() {
 }
 
 /**
- * Render community dropdown options
+ * Generate unique checkbox ID for community filter
  */
-function renderCommunityDropdown() {
-    const html = communities.map(c => `
-        <label class="dropdown-item">
-            <input type="checkbox" value="${c.id}" data-name="${c.name}">
-            <span>${c.name}</span>
-        </label>
-    `).join('');
+function generateCommunityCheckboxId(communityId, stage, type) {
+    return `community-cb-${communityId}-${stage || 'none'}-${type || 'none'}`;
+}
 
-    communityDropdown.innerHTML = html;
+/**
+ * Check if a community filter is already selected
+ */
+function isCommunitySelected(communityId, stage, type) {
+    return selectedCommunities.some(c =>
+        c.id === communityId &&
+        (c.stage || '') === (stage || '') &&
+        (c.type || '') === (type || '')
+    );
+}
 
-    // Add change listeners
-    communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', handleCommunityChange);
+/**
+ * Render community filter list with accordion-style checkboxes
+ */
+function renderCommunityFilterList() {
+    if (!communityFilterList) return;
+
+    // Render communities as accordion items
+    communityFilterList.innerHTML = communities.map(c => {
+        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
+        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
+
+        if (hasDimensions) {
+            // Community with dimensions - show accordion with nested options
+            let contentHtml = '<div class="community-filter-item-content">';
+
+            // Add Level I option (base community)
+            const levelIId = generateCommunityCheckboxId(c.id, '', '');
+            const levelIChecked = isCommunitySelected(c.id, '', '');
+            contentHtml += `
+                <div class="filter-checkbox-row">
+                    <input type="checkbox" id="${levelIId}"
+                           data-community-id="${c.id}"
+                           data-stage="" data-type=""
+                           data-name="${escapeHtml(c.name)}"
+                           ${levelIChecked ? 'checked' : ''}>
+                    <label for="${levelIId}">${escapeHtml(c.name)} (仅大类)</label>
+                </div>
+            `;
+
+            const stages = dimensions.stage?.values || [];
+            const types = dimensions.type?.values || [];
+
+            // Stage dimension section (if available)
+            if (stages.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.stage.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    const stageId = generateCommunityCheckboxId(c.id, stage, '');
+                    const stageChecked = isCommunitySelected(c.id, stage, '');
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${stageId}"
+                                   data-community-id="${c.id}"
+                                   data-stage="${escapeHtml(stage)}" data-type=""
+                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)}"
+                                   ${stageChecked ? 'checked' : ''}>
+                            <label for="${stageId}">${escapeHtml(stage)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Type dimension section (if available)
+            if (types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.type.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const type of types) {
+                    const typeId = generateCommunityCheckboxId(c.id, '', type);
+                    const typeChecked = isCommunitySelected(c.id, '', type);
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${typeId}"
+                                   data-community-id="${c.id}"
+                                   data-stage="" data-type="${escapeHtml(type)}"
+                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(type)}"
+                                   ${typeChecked ? 'checked' : ''}>
+                            <label for="${typeId}">${escapeHtml(type)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Combined section (if both dimensions exist)
+            if (stages.length > 0 && types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">组合选择</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    for (const type of types) {
+                        const comboId = generateCommunityCheckboxId(c.id, stage, type);
+                        const comboChecked = isCommunitySelected(c.id, stage, type);
+                        contentHtml += `
+                            <div class="filter-checkbox-row">
+                                <input type="checkbox" id="${comboId}"
+                                       data-community-id="${c.id}"
+                                       data-stage="${escapeHtml(stage)}" data-type="${escapeHtml(type)}"
+                                       data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)} · ${escapeHtml(type)}"
+                                       ${comboChecked ? 'checked' : ''}>
+                                <label for="${comboId}">${escapeHtml(stage)} · ${escapeHtml(type)}</label>
+                            </div>
+                        `;
+                    }
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            contentHtml += '</div>';
+
+            return `
+                <div class="community-filter-item" data-community-id="${c.id}">
+                    <div class="community-filter-item-header">
+                        <span class="filter-expand-icon">▶</span>
+                        <span class="community-filter-item-name">${escapeHtml(c.name)}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
+        } else {
+            // Simple community - just show with checkbox
+            const checkboxId = generateCommunityCheckboxId(c.id, '', '');
+            const isChecked = isCommunitySelected(c.id, '', '');
+            return `
+                <div class="community-filter-item" data-community-id="${c.id}">
+                    <div class="filter-checkbox-row">
+                        <input type="checkbox" id="${checkboxId}"
+                               data-community-id="${c.id}"
+                               data-stage="" data-type=""
+                               data-name="${escapeHtml(c.name)}"
+                               ${isChecked ? 'checked' : ''}>
+                        <label for="${checkboxId}">${escapeHtml(c.name)}</label>
+                    </div>
+                </div>
+            `;
+        }
+    }).join('');
+
+    // Add accordion toggle listeners for community headers
+    communityFilterList.querySelectorAll('.community-filter-item-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add accordion toggle listeners for dimension headers
+    communityFilterList.querySelectorAll('.filter-dimension-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add change listeners for checkboxes
+    communityFilterList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleCommunityCheckboxChange);
     });
 }
 
 /**
  * Handle community checkbox change
  */
-function handleCommunityChange(e) {
-    const id = parseInt(e.target.value, 10);
-    const name = e.target.dataset.name;
+function handleCommunityCheckboxChange(e) {
+    const checkbox = e.target;
+    const communityId = parseInt(checkbox.dataset.communityId, 10);
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const name = checkbox.dataset.name;
 
-    if (e.target.checked) {
-        // Find the full community object to get dimensions
-        const community = communities.find(c => parseInt(c.id, 10) === id);
-        if (community && !selectedCommunities.find(sc => sc.id === id)) {
+    if (checkbox.checked) {
+        // Add to selected communities
+        if (!isCommunitySelected(communityId, stage, type)) {
+            const community = communities.find(c => parseInt(c.id, 10) === communityId);
             selectedCommunities.push({
-                id,
-                name: community.name,
-                stage: '',
-                type: '',
-                dimensions: community.dimensions ? JSON.parse(community.dimensions) : null
+                id: communityId,
+                name: name,
+                stage: stage,
+                type: type,
+                dimensions: community && community.dimensions ? JSON.parse(community.dimensions) : null
             });
         }
     } else {
-        selectedCommunities = selectedCommunities.filter(sc => sc.id !== id);
+        // Remove from selected communities
+        selectedCommunities = selectedCommunities.filter(c =>
+            !(c.id === communityId &&
+              (c.stage || '') === stage &&
+              (c.type || '') === type)
+        );
     }
 
     renderSelectedCommunities();
-    updateTriggerText();
+    updateCommunityTriggerText();
 }
 
 /**
- * Render selected community tags with optional dimension filters
+ * Render selected community tags
  */
 function renderSelectedCommunities() {
+    if (!communityFilterSelected) return;
+
     if (selectedCommunities.length === 0) {
-        selectedCommunitiesWrapper.innerHTML = '';
+        communityFilterSelected.innerHTML = '';
         return;
     }
 
-    selectedCommunitiesWrapper.innerHTML = selectedCommunities.map(sc => {
-        const hasDimensions = sc.dimensions && (sc.dimensions.stage || sc.dimensions.type);
-
-        let dimensionFiltersHtml = '';
-        if (hasDimensions) {
-            dimensionFiltersHtml = '<div class="community-dimension-filters">';
-
-            if (sc.dimensions.stage) {
-                dimensionFiltersHtml += `
-                    <div class="community-dimension-filter">
-                        <label>${escapeHtml(sc.dimensions.stage.label)}:</label>
-                        <select data-community-id="${sc.id}" data-dimension="stage">
-                            <option value="">不限</option>
-                            ${sc.dimensions.stage.values.map(v =>
-                                `<option value="${escapeHtml(v)}" ${sc.stage === v ? 'selected' : ''}>${escapeHtml(v)}</option>`
-                            ).join('')}
-                        </select>
-                    </div>
-                `;
-            }
-
-            if (sc.dimensions.type) {
-                dimensionFiltersHtml += `
-                    <div class="community-dimension-filter">
-                        <label>${escapeHtml(sc.dimensions.type.label)}:</label>
-                        <select data-community-id="${sc.id}" data-dimension="type">
-                            <option value="">不限</option>
-                            ${sc.dimensions.type.values.map(v =>
-                                `<option value="${escapeHtml(v)}" ${sc.type === v ? 'selected' : ''}>${escapeHtml(v)}</option>`
-                            ).join('')}
-                        </select>
-                    </div>
-                `;
-            }
-
-            dimensionFiltersHtml += '</div>';
-        }
-
-        return `
-            <div class="selected-community-item" data-community-id="${sc.id}">
-                <div class="selected-community-header">
-                    <span class="selected-community-name">${escapeHtml(sc.name)}</span>
-                    <button type="button" class="tag-remove-btn" data-id="${sc.id}">&times;</button>
-                </div>
-                ${dimensionFiltersHtml}
-            </div>
-        `;
-    }).join('');
+    communityFilterSelected.innerHTML = selectedCommunities.map((c, index) =>
+        `<span class="community-filter-tag">
+            ${escapeHtml(c.name)}
+            <span class="remove-tag" data-index="${index}">&times;</span>
+        </span>`
+    ).join('');
 
     // Add remove listeners
-    selectedCommunitiesWrapper.querySelectorAll('.tag-remove-btn').forEach(btn => {
+    communityFilterSelected.querySelectorAll('.remove-tag').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = parseInt(e.target.dataset.id, 10);
-            selectedCommunities = selectedCommunities.filter(sc => sc.id !== id);
+            const index = parseInt(e.target.dataset.index, 10);
+            const removed = selectedCommunities[index];
+            selectedCommunities.splice(index, 1);
 
-            // Uncheck in dropdown
-            const checkbox = communityDropdown.querySelector(`input[value="${id}"]`);
+            // Uncheck the corresponding checkbox
+            const checkboxId = generateCommunityCheckboxId(removed.id, removed.stage || '', removed.type || '');
+            const checkbox = document.getElementById(checkboxId);
             if (checkbox) checkbox.checked = false;
 
             renderSelectedCommunities();
-            updateTriggerText();
-        });
-    });
-
-    // Add dimension select listeners
-    selectedCommunitiesWrapper.querySelectorAll('.community-dimension-filter select').forEach(select => {
-        select.addEventListener('change', (e) => {
-            const communityId = parseInt(e.target.dataset.communityId, 10);
-            const dimension = e.target.dataset.dimension;
-            const value = e.target.value;
-
-            const sc = selectedCommunities.find(c => c.id === communityId);
-            if (sc) {
-                sc[dimension] = value;
-            }
+            updateCommunityTriggerText();
         });
     });
 }
@@ -211,10 +353,11 @@ function renderSelectedCommunities() {
 // escapeHtml is defined in main.js
 
 /**
- * Update trigger text
+ * Update community trigger text
  */
-function updateTriggerText() {
-    const span = communityTrigger.querySelector('span');
+function updateCommunityTriggerText() {
+    if (!communityTrigger) return;
+    const span = communityTrigger.querySelector('.trigger-text');
     if (selectedCommunities.length === 0) {
         span.textContent = '选择社区...';
     } else {
@@ -223,18 +366,335 @@ function updateTriggerText() {
 }
 
 /**
- * Toggle dropdown
+ * Toggle community dropdown
  */
-function toggleDropdown() {
-    communityDropdown.classList.toggle('active');
+function toggleCommunityDropdown() {
+    const selector = document.querySelector('.community-filter-selector');
+    if (selector) {
+        selector.classList.toggle('open');
+    }
 }
 
 /**
  * Close dropdown when clicking outside
  */
 function handleClickOutside(e) {
-    if (!communityTrigger.contains(e.target) && !communityDropdown.contains(e.target)) {
-        communityDropdown.classList.remove('active');
+    // Handle community filter dropdown
+    const communitySelector = document.querySelector('.community-filter-selector');
+    if (communitySelector && !communitySelector.contains(e.target)) {
+        communitySelector.classList.remove('open');
+    }
+    // Handle disease filter dropdown
+    const diseaseSelector = document.querySelector('.disease-filter-selector');
+    if (diseaseSelector && !diseaseSelector.contains(e.target)) {
+        diseaseSelector.classList.remove('open');
+    }
+}
+
+/**
+ * Generate unique checkbox ID for disease filter
+ */
+function generateDiseaseCheckboxId(communityId, stage, type) {
+    return `disease-cb-${communityId}-${stage || 'none'}-${type || 'none'}`;
+}
+
+/**
+ * Check if a disease filter is already selected
+ */
+function isDiseaseSelected(communityId, stage, type) {
+    return selectedDiseases.some(d =>
+        d.community_id === communityId &&
+        (d.stage || '') === (stage || '') &&
+        (d.type || '') === (type || '')
+    );
+}
+
+/**
+ * Render disease filter list with accordion-style checkboxes
+ */
+function renderDiseaseFilterList() {
+    if (!diseaseFilterList) return;
+
+    // Render communities as accordion items
+    diseaseFilterList.innerHTML = communities.map(c => {
+        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
+        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
+
+        if (hasDimensions) {
+            // Community with dimensions - show accordion with nested options
+            let contentHtml = '<div class="disease-filter-community-content">';
+
+            // Add Level I option (base community)
+            const levelIId = generateDiseaseCheckboxId(c.id, '', '');
+            const levelIChecked = isDiseaseSelected(c.id, '', '');
+            contentHtml += `
+                <div class="filter-checkbox-row">
+                    <input type="checkbox" id="${levelIId}"
+                           data-community-id="${c.id}"
+                           data-stage="" data-type=""
+                           data-disease="${escapeHtml(c.name)}"
+                           ${levelIChecked ? 'checked' : ''}>
+                    <label for="${levelIId}">${escapeHtml(c.name)} (仅大类)</label>
+                </div>
+            `;
+
+            const stages = dimensions.stage?.values || [];
+            const types = dimensions.type?.values || [];
+
+            // Stage dimension section (if available)
+            if (stages.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.stage.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    const stageId = generateDiseaseCheckboxId(c.id, stage, '');
+                    const stageChecked = isDiseaseSelected(c.id, stage, '');
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${stageId}"
+                                   data-community-id="${c.id}"
+                                   data-stage="${escapeHtml(stage)}" data-type=""
+                                   data-disease="${escapeHtml(c.name)} - ${escapeHtml(stage)}"
+                                   ${stageChecked ? 'checked' : ''}>
+                            <label for="${stageId}">${escapeHtml(stage)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Type dimension section (if available)
+            if (types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.type.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const type of types) {
+                    const typeId = generateDiseaseCheckboxId(c.id, '', type);
+                    const typeChecked = isDiseaseSelected(c.id, '', type);
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${typeId}"
+                                   data-community-id="${c.id}"
+                                   data-stage="" data-type="${escapeHtml(type)}"
+                                   data-disease="${escapeHtml(c.name)} - ${escapeHtml(type)}"
+                                   ${typeChecked ? 'checked' : ''}>
+                            <label for="${typeId}">${escapeHtml(type)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Combined section (if both dimensions exist)
+            if (stages.length > 0 && types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">组合选择</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    for (const type of types) {
+                        const comboId = generateDiseaseCheckboxId(c.id, stage, type);
+                        const comboChecked = isDiseaseSelected(c.id, stage, type);
+                        contentHtml += `
+                            <div class="filter-checkbox-row">
+                                <input type="checkbox" id="${comboId}"
+                                       data-community-id="${c.id}"
+                                       data-stage="${escapeHtml(stage)}" data-type="${escapeHtml(type)}"
+                                       data-disease="${escapeHtml(c.name)} - ${escapeHtml(stage)} · ${escapeHtml(type)}"
+                                       ${comboChecked ? 'checked' : ''}>
+                                <label for="${comboId}">${escapeHtml(stage)} · ${escapeHtml(type)}</label>
+                            </div>
+                        `;
+                    }
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            contentHtml += '</div>';
+
+            return `
+                <div class="disease-filter-community" data-community-id="${c.id}">
+                    <div class="disease-filter-community-header">
+                        <span class="filter-expand-icon">▶</span>
+                        <span class="disease-filter-community-name">${escapeHtml(c.name)}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
+        } else {
+            // Simple community - just show with checkbox
+            const checkboxId = generateDiseaseCheckboxId(c.id, '', '');
+            const isChecked = isDiseaseSelected(c.id, '', '');
+            return `
+                <div class="disease-filter-community" data-community-id="${c.id}">
+                    <div class="filter-checkbox-row">
+                        <input type="checkbox" id="${checkboxId}"
+                               data-community-id="${c.id}"
+                               data-stage="" data-type=""
+                               data-disease="${escapeHtml(c.name)}"
+                               ${isChecked ? 'checked' : ''}>
+                        <label for="${checkboxId}">${escapeHtml(c.name)}</label>
+                    </div>
+                </div>
+            `;
+        }
+    }).join('');
+
+    // Add accordion toggle listeners for community headers
+    diseaseFilterList.querySelectorAll('.disease-filter-community-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add accordion toggle listeners for dimension headers
+    diseaseFilterList.querySelectorAll('.filter-dimension-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add change listeners for checkboxes
+    diseaseFilterList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleDiseaseCheckboxChange);
+    });
+}
+
+/**
+ * Handle disease checkbox change
+ */
+function handleDiseaseCheckboxChange(e) {
+    const checkbox = e.target;
+    const communityId = parseInt(checkbox.dataset.communityId, 10);
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const disease = checkbox.dataset.disease;
+
+    if (checkbox.checked) {
+        // Add to selected diseases
+        if (!isDiseaseSelected(communityId, stage, type)) {
+            selectedDiseases.push({
+                community_id: communityId,
+                stage: stage,
+                type: type,
+                disease: disease
+            });
+        }
+    } else {
+        // Remove from selected diseases
+        selectedDiseases = selectedDiseases.filter(d =>
+            !(d.community_id === communityId &&
+              (d.stage || '') === stage &&
+              (d.type || '') === type)
+        );
+    }
+
+    renderSelectedDiseases();
+    updateDiseaseTriggerText();
+}
+
+/**
+ * Add free-text disease to filter
+ */
+function addFreetextDiseaseFilter() {
+    const input = document.getElementById('disease-filter-freetext');
+    if (!input) return;
+
+    const value = input.value.trim();
+    if (!value) return;
+
+    // Check if already selected
+    const exists = selectedDiseases.some(d => d.disease === value);
+    if (!exists) {
+        selectedDiseases.push({ community_id: null, stage: '', type: '', disease: value });
+        renderSelectedDiseases();
+        updateDiseaseTriggerText();
+    }
+
+    input.value = '';
+}
+
+/**
+ * Render selected diseases
+ */
+function renderSelectedDiseases() {
+    if (!diseaseFilterSelected) return;
+
+    if (selectedDiseases.length === 0) {
+        diseaseFilterSelected.innerHTML = '';
+        return;
+    }
+
+    diseaseFilterSelected.innerHTML = selectedDiseases.map((d, index) =>
+        `<span class="disease-filter-tag">
+            ${escapeHtml(d.disease)}
+            <span class="remove-tag" data-index="${index}">&times;</span>
+        </span>`
+    ).join('');
+
+    // Add remove listeners
+    diseaseFilterSelected.querySelectorAll('.remove-tag').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index, 10);
+            const removed = selectedDiseases[index];
+            selectedDiseases.splice(index, 1);
+
+            // Uncheck the corresponding checkbox (if it's a community-based disease)
+            if (removed.community_id) {
+                const checkboxId = generateDiseaseCheckboxId(removed.community_id, removed.stage || '', removed.type || '');
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox) checkbox.checked = false;
+            }
+
+            renderSelectedDiseases();
+            updateDiseaseTriggerText();
+        });
+    });
+}
+
+/**
+ * Update disease trigger text
+ */
+function updateDiseaseTriggerText() {
+    if (!diseaseFilterTrigger) return;
+    const span = diseaseFilterTrigger.querySelector('.trigger-text');
+    if (selectedDiseases.length === 0) {
+        span.textContent = '选择疾病...';
+    } else {
+        span.textContent = `已选择 ${selectedDiseases.length} 个疾病`;
+    }
+}
+
+/**
+ * Toggle disease filter dropdown
+ */
+function toggleDiseaseDropdown() {
+    const selector = document.querySelector('.disease-filter-selector');
+    if (selector) {
+        selector.classList.toggle('open');
     }
 }
 
@@ -243,8 +703,30 @@ function handleClickOutside(e) {
  */
 function setupEventListeners() {
     // Community dropdown toggle
-    communityTrigger.addEventListener('click', toggleDropdown);
+    if (communityTrigger) {
+        communityTrigger.addEventListener('click', toggleCommunityDropdown);
+    }
     document.addEventListener('click', handleClickOutside);
+
+    // Disease filter dropdown
+    if (diseaseFilterTrigger) {
+        diseaseFilterTrigger.addEventListener('click', toggleDiseaseDropdown);
+    }
+
+    // Disease filter free-text
+    const diseaseFreetextInput = document.getElementById('disease-filter-freetext');
+    const diseaseFreetextBtn = document.getElementById('disease-filter-freetext-add');
+    if (diseaseFreetextInput) {
+        diseaseFreetextInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addFreetextDiseaseFilter();
+            }
+        });
+    }
+    if (diseaseFreetextBtn) {
+        diseaseFreetextBtn.addEventListener('click', addFreetextDiseaseFilter);
+    }
 
     // Search form submit
     searchForm.addEventListener('submit', handleSearch);
@@ -264,6 +746,19 @@ function setupEventListeners() {
         document.getElementById('login-btn')?.click();
     });
 
+    // Username search
+    if (usernameSearchBtn) {
+        usernameSearchBtn.addEventListener('click', handleUsernameSearch);
+    }
+    if (usernameSearchInput) {
+        usernameSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleUsernameSearch();
+            }
+        });
+    }
+
     // Listen for login state changes (cross-tab via storage event)
     window.addEventListener('storage', (e) => {
         if (e.key === USER_KEY) {
@@ -273,6 +768,47 @@ function setupEventListeners() {
 
     // Listen for login state changes (same-tab via custom event)
     window.addEventListener('authStateChanged', updateAutoFindState);
+}
+
+/**
+ * Handle username search
+ */
+async function handleUsernameSearch() {
+    const username = usernameSearchInput?.value.trim();
+    if (!username) return;
+
+    // Show loading
+    showLoading();
+    resultsTitle.textContent = `搜索用户: ${username}`;
+
+    try {
+        // Search by username
+        const params = new URLSearchParams();
+        params.set('username', username);
+        params.set('limit', LIMIT);
+        params.set('offset', 0);
+
+        const response = await fetch(`/api/auth/users/search?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+            currentOffset = 0;
+            currentTotal = data.data.total;
+            renderResults(data.data.users, data.data.total);
+            if (data.data.total === 0) {
+                resultsTitle.textContent = `未找到用户: ${username}`;
+            } else {
+                resultsTitle.textContent = `找到 ${data.data.total} 位用户`;
+            }
+        } else {
+            showNoResults();
+            resultsTitle.textContent = '搜索失败';
+        }
+    } catch (error) {
+        console.error('Username search error:', error);
+        showNoResults();
+        resultsTitle.textContent = '搜索失败，请稍后再试';
+    }
 }
 
 /**
@@ -301,7 +837,7 @@ async function handleAutoFind() {
 
         // Check if profile has searchable data
         const hasCommunities = profile.communities && profile.communities.length > 0;
-        const hasDiseaseTags = profile.disease_tags && profile.disease_tags.length > 0;
+        const hasDiseaseHistory = profile.disease_history && profile.disease_history.length > 0;
         const hasLocation = profile.location_living || profile.location_from ||
             profile.location_living_district || profile.location_living_street;
         const hasHospitals = profile.hospitals && profile.hospitals.length > 0;
@@ -309,7 +845,7 @@ async function handleAutoFind() {
         const hasEconomicInfo = profile.income_individual || profile.income_family ||
             profile.consumption_level || profile.housing_status || profile.economic_dependency;
 
-        if (!hasCommunities && !hasDiseaseTags && !hasLocation && !hasHospitals && !hasBasicInfo && !hasEconomicInfo) {
+        if (!hasCommunities && !hasDiseaseHistory && !hasLocation && !hasHospitals && !hasBasicInfo && !hasEconomicInfo) {
             showNoResults();
             resultsTitle.textContent = '请先完善个人资料';
             noResults.innerHTML = `
@@ -332,9 +868,9 @@ async function handleAutoFind() {
             }));
             params.set('community_filters', JSON.stringify(communityFilters));
         }
-        if (hasDiseaseTags) {
-            // Use first disease tag for search
-            params.set('disease_tag', profile.disease_tags[0]);
+        if (hasDiseaseHistory) {
+            // Use first disease for search
+            params.set('disease_tag', profile.disease_history[0].disease);
         }
         if (profile.gender) {
             params.set('gender', profile.gender);
@@ -431,18 +967,20 @@ function updateFiltersFromProfile(profile) {
             };
         });
 
-        // Check the checkboxes
-        communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.checked = selectedCommunities.some(sc => sc.id === parseInt(cb.value, 10));
-        });
-
         renderSelectedCommunities();
-        updateTriggerText();
+        updateCommunityTriggerText();
     }
 
-    // Update other filters
-    if (profile.disease_tags && profile.disease_tags.length > 0) {
-        document.getElementById('filter-disease').value = profile.disease_tags[0];
+    // Update disease selection
+    if (profile.disease_history && profile.disease_history.length > 0) {
+        selectedDiseases = profile.disease_history.map(d => ({
+            community_id: d.community_id || null,
+            stage: d.stage || '',
+            type: d.type || '',
+            disease: d.disease
+        }));
+        renderSelectedDiseases();
+        updateDiseaseTriggerText();
     }
     if (profile.gender) {
         document.getElementById('filter-gender').value = profile.gender;
@@ -503,7 +1041,7 @@ async function handleSearch(e) {
  */
 async function performSearch(append = false) {
     // Get filter values
-    const diseaseTag = document.getElementById('filter-disease').value.trim();
+    // Disease filter now uses selectedDiseases array
     const gender = document.getElementById('filter-gender').value;
     const ageMin = document.getElementById('filter-age-min').value;
     const ageMax = document.getElementById('filter-age-max').value;
@@ -520,13 +1058,12 @@ async function performSearch(append = false) {
     const economicDependency = document.getElementById('filter-economic-dependency').value;
 
     // Check if any filter is set
-    const hasAnyFilter = selectedCommunities.length > 0 || diseaseTag || gender || ageMin || ageMax ||
+    const hasAnyFilter = selectedCommunities.length > 0 || selectedDiseases.length > 0 || gender || ageMin || ageMax ||
         location || locationDistrict || locationStreet || hospital || hukou || education || incomeIndividual || incomeFamily ||
         consumptionLevel || housingStatus || economicDependency;
 
     if (!hasAnyFilter) {
         showSearchHint();
-        resultsTitle.textContent = '请选择筛选条件开始搜索';
         return;
     }
 
@@ -546,7 +1083,10 @@ async function performSearch(append = false) {
         }));
         params.set('community_filters', JSON.stringify(communityFilters));
     }
-    if (diseaseTag) params.set('disease_tag', diseaseTag);
+    if (selectedDiseases.length > 0) {
+        // Use first disease name for search (API currently supports single disease_tag)
+        params.set('disease_tag', selectedDiseases[0].disease);
+    }
     if (gender) params.set('gender', gender);
     if (ageMin) params.set('age_min', ageMin);
     if (ageMax) params.set('age_max', ageMax);
@@ -683,10 +1223,16 @@ function createUserCard(user) {
         ? user.communities.map(c => `<span class="user-card-tag community-tag">${c.name}</span>`).join('')
         : '';
 
-    // Disease tags
-    const diseaseTagsHtml = user.disease_tags && user.disease_tags.length > 0
-        ? user.disease_tags.slice(0, 3).map(t => `<span class="user-card-tag disease-tag">${t}</span>`).join('')
-        : '';
+    // Disease history (show up to 3, with "+N" indicator if more)
+    let diseaseTagsHtml = '';
+    if (user.disease_history && user.disease_history.length > 0) {
+        const shown = user.disease_history.slice(0, 3);
+        const remaining = user.disease_history.length - shown.length;
+        diseaseTagsHtml = shown.map(d => `<span class="user-card-tag disease-tag">${d}</span>`).join('');
+        if (remaining > 0) {
+            diseaseTagsHtml += `<span class="user-card-tag disease-tag more-tag">+${remaining}</span>`;
+        }
+    }
 
     // Hospitals
     const hospitalsHtml = user.hospitals && user.hospitals.length > 0
@@ -704,8 +1250,8 @@ function createUserCard(user) {
                     ${infoItems.length > 0 ? `<span class="user-card-info">${infoItems.join(' | ')}</span>` : ''}
                 </div>
                 <div class="user-card-tags">
-                    ${communitiesHtml}
                     ${diseaseTagsHtml}
+                    ${communitiesHtml}
                     ${hospitalsHtml}
                 </div>
             </div>
@@ -732,12 +1278,20 @@ async function loadMore() {
 function clearFilters() {
     // Clear community selection
     selectedCommunities = [];
-    communityDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
     renderSelectedCommunities();
-    updateTriggerText();
+    updateCommunityTriggerText();
+
+    // Clear disease selection
+    selectedDiseases = [];
+    renderSelectedDiseases();
+    updateDiseaseTriggerText();
+
+    // Clear username search
+    if (usernameSearchInput) {
+        usernameSearchInput.value = '';
+    }
 
     // Clear other inputs
-    document.getElementById('filter-disease').value = '';
     document.getElementById('filter-gender').value = '';
     document.getElementById('filter-age-min').value = '';
     document.getElementById('filter-age-max').value = '';
@@ -756,7 +1310,7 @@ function clearFilters() {
     // Reset results
     currentOffset = 0;
     showSearchHint();
-    resultsTitle.textContent = '请选择筛选条件开始搜索';
+    resultsTitle.textContent = '';
 }
 
 // Initialize

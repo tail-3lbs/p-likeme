@@ -3,6 +3,53 @@
  * Base styles - to be expanded while learning
  */
 
+/* CSS Custom Properties - Tag Colors */
+:root {
+    /* Community tag - Green */
+    --tag-community-bg: #e8f5f5;
+    --tag-community-color: #2AB3B1;
+    --tag-community-hover-bg: #2AB3B1;
+    --tag-community-hover-color: #fff;
+
+    /* Disease tag - Orange */
+    --tag-disease-bg: #fff3e0;
+    --tag-disease-color: #e65100;
+    --tag-disease-hover-bg: #e65100;
+    --tag-disease-hover-color: #fff;
+
+    /* Hospital tag - Blue */
+    --tag-hospital-bg: #e3f2fd;
+    --tag-hospital-color: #1565c0;
+    --tag-hospital-hover-bg: #1565c0;
+    --tag-hospital-hover-color: #fff;
+}
+
+/* Base Tag Color Classes */
+.community-tag {
+    background: var(--tag-community-bg);
+    color: var(--tag-community-color);
+}
+
+.community-tag:hover {
+    background: var(--tag-community-hover-bg);
+    color: var(--tag-community-hover-color);
+}
+
+.disease-tag {
+    background: var(--tag-disease-bg);
+    color: var(--tag-disease-color);
+}
+
+a.disease-tag:hover {
+    background: var(--tag-disease-hover-bg);
+    color: var(--tag-disease-hover-color);
+}
+
+.hospital-tag {
+    background: var(--tag-hospital-bg);
+    color: var(--tag-hospital-color);
+}
+
 /* Reset and base styles */
 * {
     margin: 0;
@@ -91,6 +138,7 @@ ul {
 .btn {
     padding: 0.5rem 1.5rem;
     border-radius: 4px;
+    font-size: 1rem;
     font-weight: 500;
     transition: all 0.3s;
     cursor: pointer;
@@ -796,19 +844,14 @@ ul {
     flex-wrap: wrap;
 }
 
-.community-tag {
-    background: #e8f5f5;
-    color: #2AB3B1;
+/* Thread community/disease tags - use base color classes, add sizing */
+.thread-communities .community-tag,
+.thread-communities .disease-tag {
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
     font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s;
-}
-
-.community-tag:hover {
-    background: #2AB3B1;
-    color: #fff;
 }
 
 .thread-actions {
@@ -1174,20 +1217,6 @@ ul {
     gap: 1rem;
 }
 
-.community-keywords {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.keyword-tag {
-    background: #f3f0f5;
-    color: #7c6a8a;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-}
-
 .community-threads-section {
     max-width: 800px;
     margin: 0 auto;
@@ -1266,18 +1295,13 @@ ul {
     flex-wrap: wrap;
 }
 
-.community-tag {
-    background: #f0f9f9;
-    color: #2AB3B1;
+/* Community threads section tags - use base colors, custom sizing */
+.community-threads-section .community-tag,
+.community-threads-section .disease-tag {
     padding: 0.2rem 0.6rem;
     border-radius: 12px;
     font-size: 0.8rem;
     text-decoration: none;
-}
-
-.community-tag:hover {
-    background: #2AB3B1;
-    color: #fff;
 }
 
 .thread-card-clickable {
@@ -1731,26 +1755,23 @@ ul {
     display: inline-block;
 }
 
-.profile-tag.community-tag {
-    background: #e8f5f5;
-    color: #2AB3B1;
+/* Profile tags - inherit base colors, add transitions */
+.profile-tag.community-tag,
+.profile-tag.disease-tag,
+.profile-tag.hospital-tag {
     text-decoration: none;
     transition: all 0.2s;
 }
 
-.profile-tag.community-tag:hover {
-    background: #2AB3B1;
-    color: #fff;
+a.profile-tag.community-tag:hover,
+a.profile-tag.disease-tag:hover {
+    background: var(--tag-community-hover-bg);
+    color: var(--tag-community-hover-color);
 }
 
-.profile-tag.disease-tag {
-    background: #fff3e0;
-    color: #e65100;
-}
-
-.profile-tag.hospital-tag {
-    background: #e3f2fd;
-    color: #1565c0;
+a.profile-tag.disease-tag:hover {
+    background: var(--tag-disease-hover-bg);
+    color: var(--tag-disease-hover-color);
 }
 
 .empty-hint {
@@ -1882,6 +1903,260 @@ ul {
     font-size: 0.95rem;
 }
 
+/* Disease Selector - Accordion style community list */
+.disease-selector {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.disease-community-list {
+    padding: 0.5rem;
+}
+
+/* Community item (Level I) - no dimensions */
+.disease-community-item {
+    margin-bottom: 0.25rem;
+}
+
+.disease-community-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Checkbox row for communities/sub-communities */
+.disease-checkbox-row {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.disease-checkbox-row:hover {
+    background-color: #f5f5f5;
+}
+
+.disease-checkbox-row input[type="checkbox"] {
+    margin-right: 0.75rem;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #2AB3B1;
+}
+
+.disease-checkbox-row label {
+    flex: 1;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.disease-joined-badge {
+    font-size: 0.75rem;
+    color: #2AB3B1;
+    background: rgba(42, 179, 177, 0.1);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+}
+
+/* Expandable community (has dimensions) */
+.disease-community-expandable {
+    margin-bottom: 0.25rem;
+}
+
+.disease-community-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+    user-select: none;
+}
+
+.disease-community-header:hover {
+    background-color: #f5f5f5;
+}
+
+.disease-expand-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.disease-community-expandable.expanded .disease-expand-icon {
+    transform: rotate(90deg);
+}
+
+.disease-community-name {
+    flex: 1;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.disease-community-content {
+    display: none;
+    padding-left: 1.5rem;
+    border-left: 2px solid #eee;
+    margin-left: 1.25rem;
+    margin-top: 0.25rem;
+}
+
+.disease-community-expandable.expanded .disease-community-content {
+    display: block;
+}
+
+/* Dimension grouping (Stage/Type/Combined) */
+.disease-dimension-group {
+    margin-bottom: 0.25rem;
+    margin-left: 0.5rem;
+}
+
+.disease-dimension-header {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+    user-select: none;
+}
+
+.disease-dimension-header:hover {
+    background-color: #f0f0f0;
+}
+
+.disease-dimension-header .disease-expand-icon {
+    font-size: 0.7rem;
+    margin-right: 0.5rem;
+    color: #888;
+    transition: transform 0.2s;
+}
+
+.disease-dimension-group.expanded .disease-dimension-header .disease-expand-icon {
+    transform: rotate(90deg);
+}
+
+.disease-dimension-label {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.disease-dimension-content {
+    display: none;
+    padding-left: 1.5rem;
+}
+
+.disease-dimension-group.expanded .disease-dimension-content {
+    display: block;
+}
+
+/* Free-text input section */
+.disease-freetext {
+    margin-bottom: 1rem;
+}
+
+.form-hint-small {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+}
+
+.disease-freetext-input {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.disease-freetext-input input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+}
+
+.disease-freetext-input input:focus {
+    outline: none;
+    border-color: #2AB3B1;
+    box-shadow: 0 0 0 3px rgba(42, 179, 177, 0.1);
+}
+
+.btn-add-small {
+    padding: 0.5rem 1rem;
+    background: #2AB3B1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-add-small:hover {
+    background: #239997;
+}
+
+/* Selected diseases display */
+.disease-selected {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.disease-selected-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.disease-selected-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #e8f5f5;
+    color: #2AB3B1;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.disease-selected-tag .tag-path {
+    margin-right: 0.5rem;
+}
+
+.disease-selected-tag .tag-remove {
+    background: none;
+    border: none;
+    color: #2AB3B1;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.1rem;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.disease-selected-tag .tag-remove:hover {
+    opacity: 1;
+}
+
+.disease-selected-tags .empty-hint {
+    color: #999;
+    font-size: 0.9rem;
+}
+
 .form-actions {
     display: flex;
     gap: 1rem;
@@ -1923,43 +2198,87 @@ ul {
 
 /* Filter Panel */
 .filter-panel {
-    width: 280px;
+    width: 320px;
     flex-shrink: 0;
-    background: #fff;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     height: fit-content;
     position: sticky;
     top: 100px;
     overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .filter-panel h3 {
     font-size: 1.1rem;
     font-weight: 600;
     color: #333;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid #eee;
 }
 
-/* Auto Find Section */
-.auto-find-section {
+/* Filter Cards */
+.filter-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     text-align: center;
-    padding-bottom: 1rem;
 }
 
-.auto-find-section h3 {
+.filter-card h3 {
     border-bottom: none;
     margin-bottom: 0.5rem;
     padding-bottom: 0;
 }
 
-.auto-find-desc {
+.filter-card-desc {
     font-size: 0.85rem;
     color: #888;
     margin-bottom: 1rem;
+}
+
+.filter-card-large {
+    text-align: left;
+}
+
+.filter-card-large h3 {
+    border-bottom: 1px solid #eee;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+}
+
+/* Username Search Form */
+.username-search-form {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.username-search-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.95rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.username-search-form input:focus {
+    border-color: #2AB3B1;
+}
+
+.username-search-form .btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
 }
 
 .btn-auto-find {
@@ -1968,8 +2287,8 @@ ul {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.9rem 1.5rem;
-    font-size: 1rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
     font-weight: 600;
     background: linear-gradient(135deg, #2AB3B1 0%, #1a8a88 100%);
     color: #fff;
@@ -1992,9 +2311,10 @@ ul {
 }
 
 .auto-find-login-hint {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #888;
-    margin-top: 0.75rem;
+    margin-top: 0.6rem;
+    margin-bottom: 0;
 }
 
 .auto-find-login-hint a {
@@ -2096,6 +2416,455 @@ ul {
 
 .age-range span {
     color: #999;
+}
+
+/* Community Filter Selector */
+.filter-group-community {
+    position: relative;
+}
+
+.community-filter-selector {
+    position: relative;
+}
+
+.community-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color 0.2s;
+}
+
+.community-filter-trigger:hover {
+    border-color: #2AB3B1;
+}
+
+.community-filter-trigger .trigger-text {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.community-filter-trigger .trigger-arrow {
+    color: #999;
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+}
+
+.community-filter-selector.open .trigger-arrow {
+    transform: rotate(180deg);
+}
+
+.community-filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    max-height: 400px;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.community-filter-selector.open .community-filter-dropdown {
+    display: flex;
+}
+
+.community-filter-list {
+    max-height: 350px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+/* Shared Filter Accordion Styles (used by community and disease filters) */
+
+/* Filter checkbox row */
+.filter-checkbox-row {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.15s;
+}
+
+.filter-checkbox-row:hover {
+    background-color: #f5f5f5;
+}
+
+.filter-checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    accent-color: #2AB3B1;
+}
+
+.filter-checkbox-row label {
+    font-size: 0.9rem;
+    color: #333;
+    cursor: pointer;
+    flex: 1;
+}
+
+/* Filter expand icon */
+.filter-expand-icon {
+    font-size: 0.7rem;
+    margin-right: 0.5rem;
+    color: #888;
+    transition: transform 0.2s;
+}
+
+/* Filter dimension group (nested accordion) */
+.filter-dimension-group {
+    margin-bottom: 0.25rem;
+    margin-left: 0.5rem;
+}
+
+.filter-dimension-header {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+    user-select: none;
+}
+
+.filter-dimension-header:hover {
+    background-color: #f0f0f0;
+}
+
+.filter-dimension-group.expanded .filter-dimension-header .filter-expand-icon {
+    transform: rotate(90deg);
+}
+
+.filter-dimension-label {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #555;
+}
+
+.filter-dimension-content {
+    display: none;
+    padding-left: 1.5rem;
+}
+
+.filter-dimension-group.expanded .filter-dimension-content {
+    display: block;
+}
+
+/* Accordion style for community filter */
+.community-filter-item {
+    border: 1px solid #eee;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.community-filter-item:last-child {
+    margin-bottom: 0;
+}
+
+.community-filter-item-header {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    cursor: pointer;
+    background: #fafafa;
+    transition: background-color 0.15s;
+}
+
+.community-filter-item-header:hover {
+    background: #f0f0f0;
+}
+
+.community-filter-item-header .filter-expand-icon {
+    transition: transform 0.2s;
+}
+
+.community-filter-item.expanded > .community-filter-item-header .filter-expand-icon {
+    transform: rotate(90deg);
+}
+
+.community-filter-item-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+}
+
+.community-filter-item-content {
+    display: none;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border-top: 1px solid #eee;
+}
+
+.community-filter-item.expanded > .community-filter-item-content {
+    display: block;
+}
+
+/* Selected communities */
+.community-filter-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.community-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    background: var(--tag-community-bg);
+    color: var(--tag-community-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.community-filter-tag .remove-tag {
+    margin-left: 0.4rem;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.community-filter-tag .remove-tag:hover {
+    opacity: 1;
+}
+
+/* Disease Filter Selector */
+.filter-group-disease {
+    position: relative;
+}
+
+.disease-filter-selector {
+    position: relative;
+}
+
+.disease-filter-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color 0.2s;
+}
+
+.disease-filter-trigger:hover {
+    border-color: #2AB3B1;
+}
+
+.disease-filter-trigger .trigger-text {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.disease-filter-trigger .trigger-arrow {
+    color: #999;
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+}
+
+.disease-filter-selector.open .trigger-arrow {
+    transform: rotate(180deg);
+}
+
+.disease-filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-top: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    max-height: 400px;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.disease-filter-selector.open .disease-filter-dropdown {
+    display: flex;
+}
+
+.disease-filter-list {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+/* Accordion style for disease filter */
+.disease-filter-community {
+    border: 1px solid #eee;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.disease-filter-community:last-child {
+    margin-bottom: 0;
+}
+
+.disease-filter-community-header {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    cursor: pointer;
+    background: #fafafa;
+    transition: background-color 0.15s;
+}
+
+.disease-filter-community-header:hover {
+    background: #f0f0f0;
+}
+
+.disease-filter-community-header .filter-expand-icon {
+    transition: transform 0.2s;
+}
+
+.disease-filter-community.expanded > .disease-filter-community-header .filter-expand-icon {
+    transform: rotate(90deg);
+}
+
+.disease-filter-community-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+}
+
+.disease-filter-community-content {
+    display: none;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border-top: 1px solid #eee;
+}
+
+.disease-filter-community.expanded > .disease-filter-community-content {
+    display: block;
+}
+
+/* Disease filter item (for user's disease list) */
+.disease-filter-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid #eee;
+}
+
+.disease-filter-item:last-child {
+    border-bottom: none;
+}
+
+.disease-filter-item-name {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* Empty list hint (when user has no diseases or communities) */
+.empty-list-hint {
+    padding: 1rem;
+    text-align: center;
+    color: #666;
+}
+
+.empty-list-hint p {
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+}
+
+.empty-list-hint a {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+/* Freetext section */
+.disease-filter-freetext {
+    padding: 0.75rem;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+}
+
+.disease-filter-freetext .freetext-hint {
+    font-size: 0.8rem;
+    color: #888;
+    margin: 0 0 0.5rem 0;
+}
+
+.disease-filter-freetext .freetext-input-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.disease-filter-freetext input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.disease-filter-freetext input:focus {
+    outline: none;
+    border-color: #2AB3B1;
+}
+
+.disease-filter-freetext button {
+    padding: 0.4rem 0.75rem;
+    background: #2AB3B1;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.disease-filter-freetext button:hover {
+    background: #239997;
+}
+
+.disease-filter-selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.disease-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    background: var(--tag-disease-bg);
+    color: var(--tag-disease-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.disease-filter-tag .remove-tag {
+    margin-left: 0.4rem;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.disease-filter-tag .remove-tag:hover {
+    opacity: 1;
 }
 
 /* Community Multi-select */
@@ -2396,19 +3165,11 @@ ul {
     font-size: 0.75rem;
 }
 
-.user-card-tag.community-tag {
-    background: #e8f5f5;
-    color: #2AB3B1;
-}
-
-.user-card-tag.disease-tag {
-    background: #fff3e0;
-    color: #e65100;
-}
-
-.user-card-tag.hospital-tag {
-    background: #e3f2fd;
-    color: #1565c0;
+/* User card tags - inherit base colors from .community-tag, .disease-tag, .hospital-tag */
+.user-card-tag.more-tag {
+    background: #f5f5f5;
+    color: #888;
+    font-size: 0.7rem;
 }
 
 .user-card-arrow {
@@ -2866,8 +3627,16 @@ ul {
 }
 
 .community-tag-small {
-    background: #e8f5f5;
-    color: #2AB3B1;
+    background: var(--tag-community-bg);
+    color: var(--tag-community-color);
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+}
+
+.disease-tag-small {
+    background: var(--tag-disease-bg);
+    color: var(--tag-disease-color);
     padding: 0.15rem 0.5rem;
     border-radius: 10px;
     font-size: 0.75rem;
@@ -2936,25 +3705,46 @@ ul {
     font-size: 0.9rem;
 }
 
+/* Guru Health Card Section */
+.guru-health-section {
+    padding: 1.5rem 0;
+    background: #f8f9fa;
+}
+
+.guru-health-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.guru-health-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0.75rem 0;
+}
+
+.guru-health-row:not(:last-child) {
+    /* No border between rows */
+}
+
+.guru-health-label {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 100px;
+    flex-shrink: 0;
+    padding-top: 0.25rem;
+}
+
+.guru-disease-history,
 .guru-communities {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 0.75rem;
-}
-
-.community-tag-link {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-
-.community-tag-link:hover {
-    background: rgba(255, 255, 255, 0.3);
+    flex: 1;
 }
 
 .guru-actions {
@@ -3474,6 +4264,20 @@ ul {
 
     .guru-actions {
         justify-content: center;
+    }
+
+    .guru-health-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .guru-health-label {
+        min-width: auto;
+    }
+
+    .guru-disease-history,
+    .guru-communities {
+        justify-content: flex-start;
     }
 
     .qa-header {

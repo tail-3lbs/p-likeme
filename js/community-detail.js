@@ -211,13 +211,6 @@ function renderCommunity(community) {
     }
     document.getElementById('community-members').textContent = formatMemberCount(memberCount) + ' 成员';
 
-    // Render keywords
-    const keywordsContainer = document.getElementById('community-keywords');
-    const keywords = community.keywords.split(' ').filter(k => k.trim());
-    keywordsContainer.innerHTML = keywords.map(keyword =>
-        `<span class="keyword-tag">${keyword}</span>`
-    ).join('');
-
     // Update page title
     let pageTitle = community.name;
     if (level === 2) pageTitle += ` - ${currentStage || currentType}`;
@@ -404,6 +397,19 @@ function createThreadCard(thread) {
     div.className = 'thread-card thread-card-clickable';
     div.dataset.href = `thread-detail.html?id=${thread.id}`;
 
+    // Build disease tags (from author's disease history)
+    // If community_id exists, make the tag clickable
+    let diseaseTags = '';
+    if (thread.author_disease_history && thread.author_disease_history.length > 0) {
+        thread.author_disease_history.forEach(item => {
+            if (item.community_id) {
+                diseaseTags += `<a href="community-detail.html?id=${item.community_id}" class="disease-tag">${escapeHtml(item.disease)}</a>`;
+            } else {
+                diseaseTags += `<span class="disease-tag">${escapeHtml(item.disease)}</span>`;
+            }
+        });
+    }
+
     // Build community tags with sub-community info
     let communityTags = '';
     if (thread.communityDetails && thread.communityDetails.length > 0) {
@@ -438,6 +444,7 @@ function createThreadCard(thread) {
                 <span class="thread-reply-count">${thread.reply_count || 0} 回复</span>
             </div>
             <div class="thread-communities">
+                ${diseaseTags}
                 ${communityTags}
             </div>
         </div>
@@ -567,6 +574,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Thread card and community tag clicks
     document.getElementById('threads-list').addEventListener('click', (e) => {
+        // Handle disease tag link click (already an <a> tag, let it navigate naturally)
+        if (e.target.closest('a.disease-tag')) {
+            return;
+        }
+
         // Handle community tag click (with custom URL)
         const tagWithHref = e.target.closest('.community-tag[data-href]');
         if (tagWithHref) {

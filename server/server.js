@@ -7,7 +7,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById, getSubCommunityMemberCounts, isUserInCommunity, getUserSubCommunities } = require('./database');
+const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById, getSubCommunityMemberCounts, isUserInCommunity, getUserSubCommunities, getUserDiseaseHistory } = require('./database');
 const { PORT } = require('./config');
 const { authMiddleware } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
@@ -305,6 +305,26 @@ app.get('/api/user/communities', authMiddleware, (req, res) => {
         res.status(500).json({
             success: false,
             error: '获取已加入社区失败'
+        });
+    }
+});
+
+/**
+ * GET /api/user/diseases
+ * Get the current user's disease history
+ */
+app.get('/api/user/diseases', authMiddleware, (req, res) => {
+    try {
+        const diseases = getUserDiseaseHistory(req.user.id);
+        res.json({
+            success: true,
+            data: diseases
+        });
+    } catch (error) {
+        console.error('Error fetching user diseases:', error);
+        res.status(500).json({
+            success: false,
+            error: '获取疾病历史失败'
         });
     }
 });
