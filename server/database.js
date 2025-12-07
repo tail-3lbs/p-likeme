@@ -489,11 +489,43 @@ function leaveCommunity(user_id, community_id, stage = null, type = null) {
 
         return removed;
     } else {
-        // Leaving specific sub-community only
-        let removed = false;
+        // Leaving specific sub-community (Level II or Level III)
+        // If leaving Level II, also cascade-leave any Level III that depends on it
+        // e.g., leaving (stage='0期', type='') should also leave (stage='0期', type='X') for any X
+        // e.g., leaving (stage='', type='三阴性') should also leave (stage='Y', type='三阴性') for any Y
+        const isLevelII = (stageValue && !typeValue) || (!stageValue && typeValue);
+        let removedSubMemberships = [];
 
         // Atomic transaction for membership deletion in usersDb
         const removeMembership = usersDb.transaction(() => {
+            if (isLevelII) {
+                // Level II: cascade delete Level III memberships that share this stage or type
+                if (stageValue) {
+                    // Leaving stage-only Level II: remove all Level III with this stage
+                    removedSubMemberships = usersDb.prepare(`
+                        SELECT stage, type FROM user_communities
+                        WHERE user_id = ? AND community_id = ? AND stage = ? AND type != ''
+                    `).all(user_id, community_id, stageValue);
+
+                    usersDb.prepare(`
+                        DELETE FROM user_communities
+                        WHERE user_id = ? AND community_id = ? AND stage = ? AND type != ''
+                    `).run(user_id, community_id, stageValue);
+                } else {
+                    // Leaving type-only Level II: remove all Level III with this type
+                    removedSubMemberships = usersDb.prepare(`
+                        SELECT stage, type FROM user_communities
+                        WHERE user_id = ? AND community_id = ? AND stage != '' AND type = ?
+                    `).all(user_id, community_id, typeValue);
+
+                    usersDb.prepare(`
+                        DELETE FROM user_communities
+                        WHERE user_id = ? AND community_id = ? AND stage != '' AND type = ?
+                    `).run(user_id, community_id, typeValue);
+                }
+            }
+
+            // Delete the target membership (Level II or Level III)
             const result = usersDb.prepare(`
                 DELETE FROM user_communities
                 WHERE user_id = ? AND community_id = ? AND stage = ? AND type = ?
@@ -501,14 +533,21 @@ function leaveCommunity(user_id, community_id, stage = null, type = null) {
             return result.changes > 0;
         });
 
-        removed = removeMembership();
+        const removed = removeMembership();
 
-        // Update count in communitiesDb if membership was removed
-        if (removed) {
-            const updateCount = communitiesDb.transaction(() => {
-                updateSubCount.run(community_id, stageValue, typeValue);
+        // Update counts in communitiesDb if memberships were removed
+        if (removed || removedSubMemberships.length > 0) {
+            const updateCounts = communitiesDb.transaction(() => {
+                // Update count for the target membership
+                if (removed) {
+                    updateSubCount.run(community_id, stageValue, typeValue);
+                }
+                // Update counts for cascade-deleted Level III memberships
+                for (const sub of removedSubMemberships) {
+                    updateSubCount.run(community_id, sub.stage, sub.type);
+                }
             });
-            updateCount();
+            updateCounts();
         }
 
         return removed;
