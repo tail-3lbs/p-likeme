@@ -279,7 +279,7 @@ router.get('/profile/:username', (req, res) => {
 router.put('/profile', authMiddleware, (req, res) => {
     try {
         const {
-            gender, age, profession, marriage_status,
+            gender, age, profession, marriage_status, fertility_status,
             location_from, location_living, location_living_district, location_living_street,
             hukou, education, family_size,
             income_individual, income_family, consumption_level, housing_status, economic_dependency,
@@ -369,6 +369,7 @@ router.put('/profile', authMiddleware, (req, res) => {
             age: age ? parseInt(age, 10) : null,
             profession: sanitizeInput(profession),
             marriage_status: sanitizeInput(marriage_status),
+            fertility_status: sanitizeInput(fertility_status),
             location_from: sanitizeInput(location_from),
             location_living: sanitizeInput(location_living),
             location_living_district: sanitizeInput(location_living_district),

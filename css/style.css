@@ -3185,9 +3185,10 @@ a.profile-tag.disease-tag:hover {
 
 .user-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
-    padding: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    min-height: 120px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -3204,6 +3205,7 @@ a.profile-tag.disease-tag:hover {
 .user-card-avatar {
     width: 50px;
     height: 50px;
+    margin-top: 0.25rem;
     background: linear-gradient(135deg, #2AB3B1 0%, #1d8a88 100%);
     border-radius: 50%;
     display: flex;
@@ -3240,6 +3242,24 @@ a.profile-tag.disease-tag:hover {
 
 .user-card-info {
     font-size: 0.85rem;
+    color: #888;
+}
+
+.user-card-info-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.user-card-info-line {
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.4;
+}
+
+.user-card-info-line.secondary {
+    font-size: 0.8rem;
     color: #888;
 }
 

@@ -12,8 +12,10 @@ const viewUsername = urlParams.get('user');
 let isOwnPage = false;
 let viewingUser = null;
 let allCommunities = []; // All available communities for selectors
-let threadSelectedCommunities = []; // Selected communities for new thread
-let editSelectedCommunities = []; // Selected communities for edit
+
+// Community selectors (using shared module)
+let threadCommunitySelector = null;
+let editCommunitySelector = null;
 
 // DOM Elements
 const loginRequired = document.getElementById('login-required');
@@ -101,335 +103,14 @@ async function loadUserData() {
             allCommunities = data.data;
         }
 
-        // Initialize the community selectors
-        initCommunitySelector('thread');
-        initCommunitySelector('edit');
+        // Initialize the community selectors using shared module
+        threadCommunitySelector = new CommunitySelector('thread', allCommunities);
+        threadCommunitySelector.init();
+
+        editCommunitySelector = new CommunitySelector('edit', allCommunities);
+        editCommunitySelector.init();
     } catch (error) {
         console.error('Error loading communities:', error);
-    }
-}
-
-/**
- * Initialize community selector for a form (thread or edit)
- */
-function initCommunitySelector(prefix) {
-    const listEl = document.getElementById(`${prefix}-community-list`);
-    const triggerEl = document.getElementById(`${prefix}-community-trigger`);
-    const selectorEl = document.getElementById(`${prefix}-community-selector`);
-
-    if (!listEl) return;
-
-    // Render community list (accordion style)
-    renderCommunityList(listEl, prefix);
-
-    // Toggle dropdown
-    triggerEl.addEventListener('click', () => {
-        selectorEl.classList.toggle('open');
-    });
-}
-
-/**
- * Generate unique checkbox ID for community in threads
- */
-function generateThreadCommunityCheckboxId(prefix, communityId, stage, type) {
-    return `${prefix}-community-cb-${communityId}-${stage || 'none'}-${type || 'none'}`;
-}
-
-/**
- * Check if a community is already selected in threads
- */
-function isCommunitySelectedInThreads(prefix, communityId, stage, type) {
-    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
-    return selectedList.some(c =>
-        c.id === communityId &&
-        (c.stage || '') === (stage || '') &&
-        (c.type || '') === (type || '')
-    );
-}
-
-/**
- * Render community list from all communities (threads are independent from user profile)
- */
-function renderCommunityList(listEl, prefix) {
-    if (allCommunities.length === 0) {
-        listEl.innerHTML = `
-            <div class="empty-list-hint">
-                <p>暂无可选社区</p>
-            </div>
-        `;
-        return;
-    }
-
-    // Render all communities with accordion for dimensions
-    listEl.innerHTML = allCommunities.map(c => {
-        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
-        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
-
-        if (hasDimensions) {
-            // Community with dimensions - show accordion with nested options
-            let contentHtml = '<div class="community-filter-item-content">';
-
-            // Add Level I option (base community)
-            const levelIId = generateThreadCommunityCheckboxId(prefix, c.id, '', '');
-            const levelIChecked = isCommunitySelectedInThreads(prefix, c.id, '', '');
-            contentHtml += `
-                <div class="filter-checkbox-row">
-                    <input type="checkbox" id="${levelIId}"
-                           data-prefix="${prefix}"
-                           data-community-id="${c.id}"
-                           data-stage="" data-type=""
-                           data-name="${escapeHtml(c.name)}"
-                           ${levelIChecked ? 'checked' : ''}>
-                    <label for="${levelIId}">${escapeHtml(c.name)} (仅大类)</label>
-                </div>
-            `;
-
-            const stages = dimensions.stage?.values || [];
-            const types = dimensions.type?.values || [];
-
-            // Stage dimension section (if available)
-            if (stages.length > 0) {
-                contentHtml += `
-                    <div class="filter-dimension-group">
-                        <div class="filter-dimension-header">
-                            <span class="filter-expand-icon">▶</span>
-                            <span class="filter-dimension-label">${escapeHtml(dimensions.stage.label)}</span>
-                        </div>
-                        <div class="filter-dimension-content">
-                `;
-                for (const stage of stages) {
-                    const stageId = generateThreadCommunityCheckboxId(prefix, c.id, stage, '');
-                    const stageChecked = isCommunitySelectedInThreads(prefix, c.id, stage, '');
-                    contentHtml += `
-                        <div class="filter-checkbox-row">
-                            <input type="checkbox" id="${stageId}"
-                                   data-prefix="${prefix}"
-                                   data-community-id="${c.id}"
-                                   data-stage="${escapeHtml(stage)}" data-type=""
-                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)}"
-                                   ${stageChecked ? 'checked' : ''}>
-                            <label for="${stageId}">${escapeHtml(stage)}</label>
-                        </div>
-                    `;
-                }
-                contentHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Type dimension section (if available)
-            if (types.length > 0) {
-                contentHtml += `
-                    <div class="filter-dimension-group">
-                        <div class="filter-dimension-header">
-                            <span class="filter-expand-icon">▶</span>
-                            <span class="filter-dimension-label">${escapeHtml(dimensions.type.label)}</span>
-                        </div>
-                        <div class="filter-dimension-content">
-                `;
-                for (const type of types) {
-                    const typeId = generateThreadCommunityCheckboxId(prefix, c.id, '', type);
-                    const typeChecked = isCommunitySelectedInThreads(prefix, c.id, '', type);
-                    contentHtml += `
-                        <div class="filter-checkbox-row">
-                            <input type="checkbox" id="${typeId}"
-                                   data-prefix="${prefix}"
-                                   data-community-id="${c.id}"
-                                   data-stage="" data-type="${escapeHtml(type)}"
-                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(type)}"
-                                   ${typeChecked ? 'checked' : ''}>
-                            <label for="${typeId}">${escapeHtml(type)}</label>
-                        </div>
-                    `;
-                }
-                contentHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Combined section (if both dimensions exist)
-            if (stages.length > 0 && types.length > 0) {
-                contentHtml += `
-                    <div class="filter-dimension-group">
-                        <div class="filter-dimension-header">
-                            <span class="filter-expand-icon">▶</span>
-                            <span class="filter-dimension-label">组合选择</span>
-                        </div>
-                        <div class="filter-dimension-content">
-                `;
-                for (const stage of stages) {
-                    for (const type of types) {
-                        const comboId = generateThreadCommunityCheckboxId(prefix, c.id, stage, type);
-                        const comboChecked = isCommunitySelectedInThreads(prefix, c.id, stage, type);
-                        contentHtml += `
-                            <div class="filter-checkbox-row">
-                                <input type="checkbox" id="${comboId}"
-                                       data-prefix="${prefix}"
-                                       data-community-id="${c.id}"
-                                       data-stage="${escapeHtml(stage)}" data-type="${escapeHtml(type)}"
-                                       data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)} · ${escapeHtml(type)}"
-                                       ${comboChecked ? 'checked' : ''}>
-                                <label for="${comboId}">${escapeHtml(stage)} · ${escapeHtml(type)}</label>
-                            </div>
-                        `;
-                    }
-                }
-                contentHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-
-            contentHtml += '</div>';
-
-            return `
-                <div class="community-filter-item" data-community-id="${c.id}">
-                    <div class="community-filter-item-header">
-                        <span class="filter-expand-icon">▶</span>
-                        <span class="community-filter-item-name">${escapeHtml(c.name)}</span>
-                    </div>
-                    ${contentHtml}
-                </div>
-            `;
-        } else {
-            // Simple community - just show with checkbox
-            const checkboxId = generateThreadCommunityCheckboxId(prefix, c.id, '', '');
-            const isChecked = isCommunitySelectedInThreads(prefix, c.id, '', '');
-            return `
-                <div class="community-filter-item" data-community-id="${c.id}">
-                    <div class="filter-checkbox-row">
-                        <input type="checkbox" id="${checkboxId}"
-                               data-prefix="${prefix}"
-                               data-community-id="${c.id}"
-                               data-stage="" data-type=""
-                               data-name="${escapeHtml(c.name)}"
-                               ${isChecked ? 'checked' : ''}>
-                        <label for="${checkboxId}">${escapeHtml(c.name)}</label>
-                    </div>
-                </div>
-            `;
-        }
-    }).join('');
-
-    // Add accordion toggle listeners for community headers
-    listEl.querySelectorAll('.community-filter-item-header').forEach(header => {
-        header.addEventListener('click', () => {
-            header.parentElement.classList.toggle('expanded');
-        });
-    });
-
-    // Add accordion toggle listeners for dimension headers
-    listEl.querySelectorAll('.filter-dimension-header').forEach(header => {
-        header.addEventListener('click', () => {
-            header.parentElement.classList.toggle('expanded');
-        });
-    });
-
-    // Add change listeners for checkboxes
-    listEl.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', handleThreadCommunityCheckboxChange);
-    });
-}
-
-/**
- * Handle community checkbox change in threads
- */
-function handleThreadCommunityCheckboxChange(e) {
-    const checkbox = e.target;
-    const prefix = checkbox.dataset.prefix;
-    const communityId = parseInt(checkbox.dataset.communityId, 10);
-    const stage = checkbox.dataset.stage || '';
-    const type = checkbox.dataset.type || '';
-    const name = checkbox.dataset.name;
-
-    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
-
-    if (checkbox.checked) {
-        // Add to selected communities
-        if (!isCommunitySelectedInThreads(prefix, communityId, stage, type)) {
-            selectedList.push({
-                id: communityId,
-                name: name,
-                stage: stage,
-                type: type
-            });
-        }
-    } else {
-        // Remove from selected communities
-        const idx = selectedList.findIndex(c =>
-            c.id === communityId &&
-            (c.stage || '') === stage &&
-            (c.type || '') === type
-        );
-        if (idx !== -1) {
-            selectedList.splice(idx, 1);
-        }
-    }
-
-    renderSelectedCommunities(prefix);
-    updateCommunityTriggerText(prefix);
-}
-
-/**
- * Render selected community tags
- */
-function renderSelectedCommunities(prefix) {
-    const selectedEl = document.getElementById(`${prefix}-community-selected`);
-    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
-
-    if (!selectedEl) return;
-
-    if (selectedList.length === 0) {
-        selectedEl.innerHTML = '';
-        return;
-    }
-
-    selectedEl.innerHTML = selectedList.map((c, index) =>
-        `<span class="community-filter-tag">
-            ${escapeHtml(c.name)}
-            <span class="remove-tag" data-prefix="${prefix}" data-index="${index}">&times;</span>
-        </span>`
-    ).join('');
-
-    // Add remove listeners
-    selectedEl.querySelectorAll('.remove-tag').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const pf = e.target.dataset.prefix;
-            const index = parseInt(e.target.dataset.index, 10);
-            const removed = pf === 'thread' ? threadSelectedCommunities[index] : editSelectedCommunities[index];
-
-            if (pf === 'thread') {
-                threadSelectedCommunities.splice(index, 1);
-            } else {
-                editSelectedCommunities.splice(index, 1);
-            }
-
-            // Uncheck the corresponding checkbox
-            const checkboxId = generateThreadCommunityCheckboxId(pf, removed.id, removed.stage || '', removed.type || '');
-            const checkbox = document.getElementById(checkboxId);
-            if (checkbox) checkbox.checked = false;
-
-            renderSelectedCommunities(pf);
-            updateCommunityTriggerText(pf);
-        });
-    });
-}
-
-/**
- * Update community trigger text
- */
-function updateCommunityTriggerText(prefix) {
-    const triggerEl = document.getElementById(`${prefix}-community-trigger`);
-    const selectedList = prefix === 'thread' ? threadSelectedCommunities : editSelectedCommunities;
-
-    if (!triggerEl) return;
-    const span = triggerEl.querySelector('.trigger-text');
-    if (selectedList.length === 0) {
-        span.textContent = '选择社区...';
-    } else {
-        span.textContent = `已选择 ${selectedList.length} 个社区`;
     }
 }
 
@@ -535,9 +216,9 @@ function openThreadModal() {
     threadForm.reset();
     threadError.textContent = '';
     // Clear selected communities
-    threadSelectedCommunities = [];
-    renderSelectedCommunities('thread');
-    updateCommunityTriggerText('thread');
+    if (threadCommunitySelector) {
+        threadCommunitySelector.clear();
+    }
 }
 
 /**
@@ -557,11 +238,7 @@ async function createThread(e) {
     const content = document.getElementById('thread-content').value;
 
     // Get selected communities with dimension info
-    const communityLinks = threadSelectedCommunities.map(c => ({
-        id: c.id,
-        stage: c.stage || '',
-        type: c.type || ''
-    }));
+    const communityLinks = threadCommunitySelector ? threadCommunitySelector.getSelected() : [];
 
     try {
         const response = await fetch(THREADS_API, {
@@ -641,20 +318,10 @@ async function openEditModal(threadId) {
         document.getElementById('edit-title').value = thread.title;
         document.getElementById('edit-content').value = thread.content;
 
-        // Load communities
-        editSelectedCommunities = (thread.communities || []).map(c => ({
-            id: c.id,
-            name: c.displayPath || c.name,
-            stage: c.stage || '',
-            type: c.type || ''
-        }));
-
-        // Re-render the community list to update checkbox states
-        const editCommunityListEl = document.getElementById('edit-community-list');
-        if (editCommunityListEl) renderCommunityList(editCommunityListEl, 'edit');
-
-        renderSelectedCommunities('edit');
-        updateCommunityTriggerText('edit');
+        // Load communities using shared selector
+        if (editCommunitySelector) {
+            editCommunitySelector.setSelected(thread.communities || []);
+        }
 
         editError.textContent = '';
         editModal.classList.add('active');
@@ -682,11 +349,7 @@ async function updateThread(e) {
     const content = document.getElementById('edit-content').value;
 
     // Get selected communities with dimension info
-    const communityLinks = editSelectedCommunities.map(c => ({
-        id: c.id,
-        stage: c.stage || '',
-        type: c.type || ''
-    }));
+    const communityLinks = editCommunitySelector ? editCommunitySelector.getSelected() : [];
 
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
@@ -723,19 +386,8 @@ function formatDate(dateStr) {
     return formatCSTDateFull(dateStr);
 }
 
-/**
- * Handle click outside to close dropdowns
- */
-function handleClickOutside(e) {
-    // Close community selector dropdowns
-    document.querySelectorAll('.community-filter-selector.open').forEach(sel => {
-        if (!sel.contains(e.target)) {
-            sel.classList.remove('open');
-        }
-    });
-}
-
 // escapeHtml is defined in main.js
+// handleClickOutside is defined in community-selector.js
 
 // Event Listeners
 if (newShareBtn) {
@@ -794,8 +446,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Close dropdowns when clicking outside
-document.addEventListener('click', handleClickOutside);
+// Note: handleClickOutside for dropdowns is handled in community-selector.js
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

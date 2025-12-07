@@ -631,7 +631,7 @@ function getUserProfile(user_id) {
         SELECT id, username, gender, age, profession, marriage_status,
                location_from, location_living, location_living_district, location_living_street,
                income_individual, income_family, family_size, hukou, education,
-               consumption_level, housing_status, economic_dependency, is_guru, created_at
+               consumption_level, housing_status, economic_dependency, fertility_status, is_guru, created_at
         FROM users WHERE id = ?
     `).get(user_id);
 
@@ -721,7 +721,7 @@ function updateUserProfile(user_id, {
     gender, age, profession, marriage_status, location_from, location_living,
     location_living_district, location_living_street,
     income_individual, income_family, family_size, hukou, education,
-    consumption_level, housing_status, economic_dependency,
+    consumption_level, housing_status, economic_dependency, fertility_status,
     disease_history, hospitals
 }) {
     const updateUser = usersDb.prepare(`
@@ -732,7 +732,8 @@ function updateUserProfile(user_id, {
             location_living_street = @location_living_street, income_individual = @income_individual,
             income_family = @income_family, family_size = @family_size, hukou = @hukou,
             education = @education, consumption_level = @consumption_level,
-            housing_status = @housing_status, economic_dependency = @economic_dependency
+            housing_status = @housing_status, economic_dependency = @economic_dependency,
+            fertility_status = @fertility_status
         WHERE id = @user_id
     `);
 
@@ -766,7 +767,8 @@ function updateUserProfile(user_id, {
             education: education || null,
             consumption_level: consumption_level || null,
             housing_status: housing_status || null,
-            economic_dependency: economic_dependency || null
+            economic_dependency: economic_dependency || null,
+            fertility_status: fertility_status || null
         });
 
         // Update disease history
@@ -950,8 +952,8 @@ function searchUsers({
     if (location && location.trim()) {
         hasFilter = true;
         const searchTerm = `%${location.trim()}%`;
-        conditions.push('(location_from LIKE ? OR location_living LIKE ?)');
-        params.push(searchTerm, searchTerm);
+        conditions.push('location_living LIKE ?');
+        params.push(searchTerm);
     }
 
     if (location_district && location_district.trim()) {
@@ -1008,8 +1010,13 @@ function searchUsers({
 
     if (family_size && family_size.trim()) {
         hasFilter = true;
-        conditions.push('family_size = ?');
-        params.push(family_size.trim());
+        const sizeValue = family_size.trim();
+        if (sizeValue === '5+') {
+            conditions.push('family_size >= 5');
+        } else {
+            conditions.push('family_size = ?');
+            params.push(parseInt(sizeValue, 10));
+        }
     }
 
     if (income_individual && income_individual.trim()) {
@@ -1093,9 +1100,9 @@ function searchUsers({
     const resultUserIds = users.map(u => u.id);
     const userIdPlaceholders = resultUserIds.map(() => '?').join(',');
 
-    // Batch query 1: Get all user_communities for these users
+    // Batch query 1: Get all user_communities for these users (include stage/type for full path)
     const allUserCommunities = usersDb.prepare(`
-        SELECT user_id, community_id FROM user_communities WHERE user_id IN (${userIdPlaceholders})
+        SELECT user_id, community_id, stage, type FROM user_communities WHERE user_id IN (${userIdPlaceholders})
     `).all(...resultUserIds);
 
     // Get unique community IDs and fetch community names
@@ -1109,14 +1116,30 @@ function searchUsers({
         communitiesMap = Object.fromEntries(communities.map(c => [c.id, c]));
     }
 
-    // Build user -> communities map
+    // Build user -> communities map with full path (name + stage + type)
     const userCommunitiesMap = {};
     for (const uc of allUserCommunities) {
         if (!userCommunitiesMap[uc.user_id]) {
             userCommunitiesMap[uc.user_id] = [];
         }
         if (communitiesMap[uc.community_id]) {
-            userCommunitiesMap[uc.user_id].push(communitiesMap[uc.community_id]);
+            const community = communitiesMap[uc.community_id];
+            // Build display path: "name" or "name > stage" or "name > type" or "name > stage · type"
+            let displayPath = community.name;
+            if (uc.stage && uc.type) {
+                displayPath = `${community.name} > ${uc.stage} · ${uc.type}`;
+            } else if (uc.stage) {
+                displayPath = `${community.name} > ${uc.stage}`;
+            } else if (uc.type) {
+                displayPath = `${community.name} > ${uc.type}`;
+            }
+            userCommunitiesMap[uc.user_id].push({
+                id: community.id,
+                name: community.name,
+                stage: uc.stage || '',
+                type: uc.type || '',
+                displayPath: displayPath
+            });
         }
     }
 

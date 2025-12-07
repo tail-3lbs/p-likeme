@@ -287,10 +287,27 @@ const professions = [
 
 const marriageStatuses = ['未婚', '已婚', '已婚', '已婚', '离异', '丧偶']; // Weighted towards married
 
-const cities = [
-    '北京', '上海', '广州', '深圳', '杭州', '南京', '武汉', '成都',
-    '西安', '重庆', '天津', '苏州', '长沙', '郑州', '青岛', '大连',
-    '厦门', '福州', '济南', '合肥', '昆明', '贵阳', '南昌', '太原'
+// 现居城市 (location_living) - major cities where people currently live
+const livingCities = [
+    '北京市', '上海市', '广州市', '深圳市', '杭州市', '南京市', '武汉市', '成都市',
+    '西安市', '重庆市', '天津市', '苏州市', '长沙市', '郑州市', '青岛市', '大连市',
+    '厦门市', '福州市', '济南市', '合肥市', '昆明市', '贵阳市', '南昌市', '太原市'
+];
+
+// 家乡 (location_from) - hometowns including provinces, smaller cities, counties
+const hometowns = [
+    // 省份
+    '山东', '河南', '四川', '江苏', '河北', '湖南', '安徽', '湖北',
+    '浙江', '广东', '云南', '江西', '福建', '山西', '陕西', '贵州',
+    '辽宁', '黑龙江', '吉林', '甘肃', '内蒙古', '新疆', '广西', '海南',
+    // 地级市
+    '临沂', '潍坊', '烟台', '洛阳', '南阳', '邯郸', '保定', '周口',
+    '徐州', '温州', '泉州', '赣州', '宜昌', '襄阳', '绵阳', '南充',
+    '常德', '岳阳', '株洲', '九江', '上饶', '宿迁', '淮安', '连云港',
+    // 县级市/县
+    '沭阳', '义乌', '慈溪', '诸暨', '海宁', '桐乡', '瑞安', '乐清',
+    '晋江', '石狮', '南安', '邳州', '启东', '如皋', '海门', '太仓',
+    '宜兴', '邓州', '汝州', '项城', '禹州', '长葛', '灵宝', '偃师'
 ];
 
 const hospitals = [
@@ -622,32 +639,32 @@ function seedUsers() {
             const password = `Pass${paddedNum}!`;
             const password_hash = bcrypt.hashSync(password, 10);
 
-            // Generate profile data (varying chances to have each field)
-            const gender = Math.random() < 0.8 ? pickRandom(genders) : null;
-            const age = Math.random() < 0.8 ? Math.floor(Math.random() * 50) + 20 : null; // 20-69
-            const profession = Math.random() < 0.7 ? pickRandom(professions) : null;
-            const marriage_status = Math.random() < 0.7 ? pickRandom(marriageStatuses) : null;
-            const location_from = Math.random() < 0.6 ? pickRandom(cities) : null;
-            const location_living = Math.random() < 0.8 ? pickRandom(cities) : null;
+            // Generate profile data (higher probabilities for richer user profiles)
+            const gender = Math.random() < 0.95 ? pickRandom(genders) : null;
+            const age = Math.random() < 0.95 ? Math.floor(Math.random() * 50) + 20 : null; // 20-69
+            const profession = Math.random() < 0.85 ? pickRandom(professions) : null;
+            const marriage_status = Math.random() < 0.90 ? pickRandom(marriageStatuses) : null;
+            const location_from = Math.random() < 0.85 ? pickRandom(hometowns) : null; // 家乡
+            const location_living = Math.random() < 0.95 ? pickRandom(livingCities) : null; // 现居城市
 
             // Generate district and street based on location_living
             let location_living_district = null;
             let location_living_street = null;
             if (location_living && districtsByCity[location_living]) {
-                location_living_district = Math.random() < 0.7 ? pickRandom(districtsByCity[location_living]) : null;
-                location_living_street = Math.random() < 0.5 ? pickRandom(sampleStreets) : null;
+                location_living_district = Math.random() < 0.85 ? pickRandom(districtsByCity[location_living]) : null;
+                location_living_street = Math.random() < 0.70 ? pickRandom(sampleStreets) : null;
             }
 
-            // New profile fields
-            const income_individual = Math.random() < 0.6 ? pickRandom(incomeIndividualLevels) : null;
-            const income_family = Math.random() < 0.5 ? pickRandom(incomeFamilyLevels) : null;
-            const family_size = Math.random() < 0.7 ? Math.floor(Math.random() * 5) + 1 : null; // 1-5
-            const hukou = Math.random() < 0.7 ? pickRandom(hukouTypes) : null;
-            const education = Math.random() < 0.75 ? pickRandom(educationLevels) : null;
-            const consumption_level = Math.random() < 0.5 ? pickRandom(consumptionLevels) : null;
-            const housing_status = Math.random() < 0.6 ? pickRandom(housingStatuses) : null;
-            const economic_dependency = Math.random() < 0.55 ? pickRandom(economicDependencyLevels) : null;
-            const fertility_status = Math.random() < 0.6 ? pickRandom(fertilityStatuses) : null;
+            // New profile fields (higher probabilities)
+            const income_individual = Math.random() < 0.80 ? pickRandom(incomeIndividualLevels) : null;
+            const income_family = Math.random() < 0.75 ? pickRandom(incomeFamilyLevels) : null;
+            const family_size = Math.random() < 0.90 ? Math.floor(Math.random() * 6) + 1 : null; // 1-6
+            const hukou = Math.random() < 0.85 ? pickRandom(hukouTypes) : null;
+            const education = Math.random() < 0.90 ? pickRandom(educationLevels) : null;
+            const consumption_level = Math.random() < 0.75 ? pickRandom(consumptionLevels) : null;
+            const housing_status = Math.random() < 0.80 ? pickRandom(housingStatuses) : null;
+            const economic_dependency = Math.random() < 0.75 ? pickRandom(economicDependencyLevels) : null;
+            const fertility_status = Math.random() < 0.85 ? pickRandom(fertilityStatuses) : null;
 
             // Determine if this user is a guru
             const isGuru = guruUserNumbers.includes(i) ? 1 : 0;
@@ -661,10 +678,10 @@ function seedUsers() {
             );
             const userId = Number(result.lastInsertRowid);
 
-            // Add 0-4 disease history entries (70% chance to have at least one)
+            // Add 1-5 disease history entries (90% chance to have at least one)
             // Use community-based diseases when possible, with Level II/III sub-community details
-            if (Math.random() < 0.7) {
-                const numDiseases = Math.floor(Math.random() * 4) + 1;
+            if (Math.random() < 0.90) {
+                const numDiseases = Math.floor(Math.random() * 5) + 1; // 1-5 diseases
                 const userDiseases = pickRandomN(diseaseTags, numDiseases);
                 for (const disease of userDiseases) {
                     // Try to match with a community from DB
@@ -719,9 +736,9 @@ function seedUsers() {
                 }
             }
 
-            // Add 0-2 hospitals (50% chance to have at least one)
-            if (Math.random() < 0.5) {
-                const numHospitals = Math.floor(Math.random() * 2) + 1;
+            // Add 1-3 hospitals (75% chance to have at least one)
+            if (Math.random() < 0.75) {
+                const numHospitals = Math.floor(Math.random() * 3) + 1; // 1-3 hospitals
                 const userHospitals = pickRandomN(hospitals, numHospitals);
                 for (const hospital of userHospitals) {
                     insertHospital.run(userId, hospital);
@@ -771,8 +788,8 @@ function linkUsersToCommunities() {
         let subCommunityJoins = 0;
 
         for (const user of users) {
-            // Each user joins 1-5 random communities (independent from disease history)
-            const numCommunities = Math.floor(Math.random() * 5) + 1; // 1-5
+            // Each user joins 3-8 random communities (independent from disease history)
+            const numCommunities = Math.floor(Math.random() * 6) + 3; // 3-8
 
             const shuffled = [...allCommunities].sort(() => Math.random() - 0.5);
             const selectedCommunities = shuffled.slice(0, Math.min(numCommunities, shuffled.length));
@@ -781,8 +798,8 @@ function linkUsersToCommunities() {
                 // Always join Level I (parent community)
                 insertMembership.run(user.id, community.id, '', '');
 
-                // If community has dimensions, 60% chance to join a sub-community
-                if (community.dimensions && Math.random() < 0.6) {
+                // If community has dimensions, 80% chance to join a sub-community
+                if (community.dimensions && Math.random() < 0.80) {
                     const dims = JSON.parse(community.dimensions);
                     const hasStage = dims.stage && dims.stage.values;
                     const hasType = dims.type && dims.type.values;
