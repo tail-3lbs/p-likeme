@@ -7,6 +7,7 @@ const express = require('express');
 const { createReply, getRepliesByThreadId, getReplyById, deleteReply, getThreadById, findUserById } = require('../database');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 const { INPUT_LIMITS } = require('../config');
+const { sanitizeInput } = require('../utils/sanitize');
 
 const router = express.Router();
 
@@ -106,7 +107,7 @@ router.post('/:threadId/replies', authMiddleware, (req, res) => {
         const replyId = createReply({
             thread_id: threadId,
             user_id: req.user.id,
-            content: content.trim(),
+            content: sanitizeInput(content),
             parent_reply_id: parentReplyId
         });
 

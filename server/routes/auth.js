@@ -9,8 +9,9 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { createUser, findUserByUsername, findUserById, usernameExists, getUserProfile, updateUserProfile, findUserByUsernamePublic, searchUsers } = require('../database');
-const { JWT_SECRET, JWT_EXPIRES_IN, PASSWORD_RULES, INPUT_LIMITS } = require('../config');
-const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
+const { JWT_SECRET, JWT_EXPIRES_IN, PASSWORD_RULES, INPUT_LIMITS, PAGINATION, BCRYPT_SALT_ROUNDS } = require('../config');
+const { authMiddleware } = require('../middleware/auth');
+const { sanitizeInput, sanitizeArray, sanitizeObject } = require('../utils/sanitize');
 
 const router = express.Router();
 
@@ -102,8 +103,7 @@ router.post('/signup', async (req, res) => {
         }
 
         // Hash password
-        const saltRounds = 10;
-        const password_hash = await bcrypt.hash(password, saltRounds);
+        const password_hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
         // Create user
         const userId = createUser({ username, password_hash });
@@ -363,26 +363,26 @@ router.put('/profile', authMiddleware, (req, res) => {
             }
         }
 
-        // Update profile
+        // Update profile (sanitize all string inputs)
         const updatedProfile = updateUserProfile(req.user.id, {
-            gender,
+            gender: sanitizeInput(gender),
             age: age ? parseInt(age, 10) : null,
-            profession,
-            marriage_status,
-            location_from,
-            location_living,
-            location_living_district,
-            location_living_street,
-            hukou,
-            education,
+            profession: sanitizeInput(profession),
+            marriage_status: sanitizeInput(marriage_status),
+            location_from: sanitizeInput(location_from),
+            location_living: sanitizeInput(location_living),
+            location_living_district: sanitizeInput(location_living_district),
+            location_living_street: sanitizeInput(location_living_street),
+            hukou: sanitizeInput(hukou),
+            education: sanitizeInput(education),
             family_size: family_size ? parseInt(family_size, 10) : null,
-            income_individual,
-            income_family,
-            consumption_level,
-            housing_status,
-            economic_dependency,
-            disease_history,
-            hospitals
+            income_individual: sanitizeInput(income_individual),
+            income_family: sanitizeInput(income_family),
+            consumption_level: sanitizeInput(consumption_level),
+            housing_status: sanitizeInput(housing_status),
+            economic_dependency: sanitizeInput(economic_dependency),
+            disease_history: sanitizeArray(disease_history),
+            hospitals: sanitizeArray(hospitals)
         });
 
         res.json({
@@ -407,11 +407,7 @@ router.put('/profile', authMiddleware, (req, res) => {
  *   - communities: comma-separated community IDs (legacy)
  *   - community_filters: JSON array [{id, stage, type}] for sub-community filtering
  *
- * TODO: Response format inconsistency
- * This endpoint returns: { success, data: { users, total } }
- * Other list endpoints return: { success, data: [...], count, total }
- * Consider normalizing to: { success, data: [...], total } for consistency.
- * This would require updating discover.js to use data.data instead of data.data.users
+ * Response: { success, data: [...users], total }
  */
 router.get('/users/search', (req, res) => {
     try {
@@ -484,15 +480,14 @@ router.get('/users/search', (req, res) => {
             housing_status,
             economic_dependency,
             exclude_user,
-            limit: parseInt(limit, 10) || 50,
+            limit: Math.min(parseInt(limit, 10) || PAGINATION.DEFAULT_LIMIT, PAGINATION.MAX_LIMIT),
             offset: parseInt(offset, 10) || 0
         });
 
-        console.log('[DEBUG] searchUsers result:', { total: result.total, usersCount: result.users?.length });
-
         res.json({
             success: true,
-            data: result
+            data: result.users,
+            total: result.total
         });
 
     } catch (error) {
@@ -507,4 +502,3 @@ router.get('/users/search', (req, res) => {
 module.exports = router;
 // Re-export middleware for backward compatibility
 module.exports.authMiddleware = authMiddleware;
-module.exports.optionalAuthMiddleware = optionalAuthMiddleware;

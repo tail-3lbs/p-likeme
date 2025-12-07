@@ -14,7 +14,6 @@ const editModal = document.getElementById('edit-modal');
 const editModalClose = document.getElementById('edit-modal-close');
 const editForm = document.getElementById('edit-form');
 const editError = document.getElementById('edit-error');
-const editCommunityCheckboxes = document.getElementById('edit-community-checkboxes');
 
 // Reply Elements
 const replyFormContainer = document.getElementById('reply-form-container');
@@ -32,7 +31,8 @@ const THREADS_API = '/api/threads';
 // Current thread data
 let currentThread = null;
 let currentReplies = [];
-let userCommunities = [];
+let allCommunities = []; // All available communities for selectors
+let editSelectedCommunities = []; // Selected communities for edit
 let replyingTo = null; // Track which reply we're responding to
 
 /**
@@ -107,7 +107,7 @@ function renderThread(thread) {
     const currentUser = getUser();
     if (currentUser && thread.user_id === currentUser.id) {
         threadActionsBar.style.display = 'flex';
-        loadUserCommunities();
+        loadAllCommunities();
     }
 
     // Show content, hide loading
@@ -137,21 +137,342 @@ function formatDate(dateStr) {
 // escapeHtml is defined in main.js
 
 /**
- * Load user's joined communities for edit form
+ * Load all communities for edit form (relaxed constraint - user can link to any community)
  */
-async function loadUserCommunities() {
+async function loadAllCommunities() {
     try {
-        const response = await fetch('/api/user/communities?details=true', {
+        const response = await fetch('/api/communities', {
             credentials: 'include'
         });
         const data = await response.json();
 
         if (data.success) {
-            userCommunities = data.data;
+            allCommunities = data.data;
+            initCommunitySelector();
         }
     } catch (error) {
         console.error('Error loading communities:', error);
     }
+}
+
+/**
+ * Initialize community selector for edit form
+ */
+function initCommunitySelector() {
+    const listEl = document.getElementById('edit-community-list');
+    const triggerEl = document.getElementById('edit-community-trigger');
+    const selectorEl = document.getElementById('edit-community-selector');
+
+    if (!listEl || !triggerEl || !selectorEl) return;
+
+    // Render community list (accordion style)
+    renderCommunityList(listEl);
+
+    // Toggle dropdown
+    triggerEl.addEventListener('click', () => {
+        selectorEl.classList.toggle('open');
+    });
+}
+
+/**
+ * Generate unique checkbox ID for community
+ */
+function generateCommunityCheckboxId(communityId, stage, type) {
+    return `edit-community-cb-${communityId}-${stage || 'none'}-${type || 'none'}`;
+}
+
+/**
+ * Check if a community is already selected
+ */
+function isCommunitySelected(communityId, stage, type) {
+    return editSelectedCommunities.some(c =>
+        c.id === communityId &&
+        (c.stage || '') === (stage || '') &&
+        (c.type || '') === (type || '')
+    );
+}
+
+/**
+ * Render community list with accordion style
+ */
+function renderCommunityList(listEl) {
+    if (allCommunities.length === 0) {
+        listEl.innerHTML = `
+            <div class="empty-list-hint">
+                <p>暂无可选社区</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Render all communities with accordion for dimensions
+    listEl.innerHTML = allCommunities.map(c => {
+        const dimensions = c.dimensions ? JSON.parse(c.dimensions) : null;
+        const hasDimensions = dimensions && (dimensions.stage || dimensions.type);
+
+        if (hasDimensions) {
+            // Community with dimensions - show accordion with nested options
+            let contentHtml = '<div class="community-filter-item-content">';
+
+            // Add Level I option (base community)
+            const levelIId = generateCommunityCheckboxId(c.id, '', '');
+            const levelIChecked = isCommunitySelected(c.id, '', '');
+            contentHtml += `
+                <div class="filter-checkbox-row">
+                    <input type="checkbox" id="${levelIId}"
+                           data-community-id="${c.id}"
+                           data-stage="" data-type=""
+                           data-name="${escapeHtml(c.name)}"
+                           ${levelIChecked ? 'checked' : ''}>
+                    <label for="${levelIId}">${escapeHtml(c.name)} (仅大类)</label>
+                </div>
+            `;
+
+            const stages = dimensions.stage?.values || [];
+            const types = dimensions.type?.values || [];
+
+            // Stage dimension section (if available)
+            if (stages.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.stage.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    const stageId = generateCommunityCheckboxId(c.id, stage, '');
+                    const stageChecked = isCommunitySelected(c.id, stage, '');
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${stageId}"
+                                   data-community-id="${c.id}"
+                                   data-stage="${escapeHtml(stage)}" data-type=""
+                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)}"
+                                   ${stageChecked ? 'checked' : ''}>
+                            <label for="${stageId}">${escapeHtml(stage)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Type dimension section (if available)
+            if (types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">${escapeHtml(dimensions.type.label)}</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const type of types) {
+                    const typeId = generateCommunityCheckboxId(c.id, '', type);
+                    const typeChecked = isCommunitySelected(c.id, '', type);
+                    contentHtml += `
+                        <div class="filter-checkbox-row">
+                            <input type="checkbox" id="${typeId}"
+                                   data-community-id="${c.id}"
+                                   data-stage="" data-type="${escapeHtml(type)}"
+                                   data-name="${escapeHtml(c.name)} - ${escapeHtml(type)}"
+                                   ${typeChecked ? 'checked' : ''}>
+                            <label for="${typeId}">${escapeHtml(type)}</label>
+                        </div>
+                    `;
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Combined section (if both dimensions exist)
+            if (stages.length > 0 && types.length > 0) {
+                contentHtml += `
+                    <div class="filter-dimension-group">
+                        <div class="filter-dimension-header">
+                            <span class="filter-expand-icon">▶</span>
+                            <span class="filter-dimension-label">组合选择</span>
+                        </div>
+                        <div class="filter-dimension-content">
+                `;
+                for (const stage of stages) {
+                    for (const type of types) {
+                        const comboId = generateCommunityCheckboxId(c.id, stage, type);
+                        const comboChecked = isCommunitySelected(c.id, stage, type);
+                        contentHtml += `
+                            <div class="filter-checkbox-row">
+                                <input type="checkbox" id="${comboId}"
+                                       data-community-id="${c.id}"
+                                       data-stage="${escapeHtml(stage)}" data-type="${escapeHtml(type)}"
+                                       data-name="${escapeHtml(c.name)} - ${escapeHtml(stage)} · ${escapeHtml(type)}"
+                                       ${comboChecked ? 'checked' : ''}>
+                                <label for="${comboId}">${escapeHtml(stage)} · ${escapeHtml(type)}</label>
+                            </div>
+                        `;
+                    }
+                }
+                contentHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            contentHtml += '</div>';
+
+            return `
+                <div class="community-filter-item" data-community-id="${c.id}">
+                    <div class="community-filter-item-header">
+                        <span class="filter-expand-icon">▶</span>
+                        <span class="community-filter-item-name">${escapeHtml(c.name)}</span>
+                    </div>
+                    ${contentHtml}
+                </div>
+            `;
+        } else {
+            // Simple community - just show with checkbox
+            const checkboxId = generateCommunityCheckboxId(c.id, '', '');
+            const isChecked = isCommunitySelected(c.id, '', '');
+            return `
+                <div class="community-filter-item" data-community-id="${c.id}">
+                    <div class="filter-checkbox-row">
+                        <input type="checkbox" id="${checkboxId}"
+                               data-community-id="${c.id}"
+                               data-stage="" data-type=""
+                               data-name="${escapeHtml(c.name)}"
+                               ${isChecked ? 'checked' : ''}>
+                        <label for="${checkboxId}">${escapeHtml(c.name)}</label>
+                    </div>
+                </div>
+            `;
+        }
+    }).join('');
+
+    // Add accordion toggle listeners for community headers
+    listEl.querySelectorAll('.community-filter-item-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add accordion toggle listeners for dimension headers
+    listEl.querySelectorAll('.filter-dimension-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
+
+    // Add change listeners for checkboxes
+    listEl.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', handleCommunityCheckboxChange);
+    });
+}
+
+/**
+ * Handle community checkbox change
+ */
+function handleCommunityCheckboxChange(e) {
+    const checkbox = e.target;
+    const communityId = parseInt(checkbox.dataset.communityId, 10);
+    const stage = checkbox.dataset.stage || '';
+    const type = checkbox.dataset.type || '';
+    const name = checkbox.dataset.name;
+
+    if (checkbox.checked) {
+        // Add to selected communities
+        if (!isCommunitySelected(communityId, stage, type)) {
+            editSelectedCommunities.push({
+                id: communityId,
+                name: name,
+                stage: stage,
+                type: type
+            });
+        }
+    } else {
+        // Remove from selected communities
+        const idx = editSelectedCommunities.findIndex(c =>
+            c.id === communityId &&
+            (c.stage || '') === stage &&
+            (c.type || '') === type
+        );
+        if (idx !== -1) {
+            editSelectedCommunities.splice(idx, 1);
+        }
+    }
+
+    renderSelectedCommunities();
+    updateCommunityTriggerText();
+}
+
+/**
+ * Render selected community tags
+ */
+function renderSelectedCommunities() {
+    const selectedEl = document.getElementById('edit-community-selected');
+
+    if (!selectedEl) return;
+
+    if (editSelectedCommunities.length === 0) {
+        selectedEl.innerHTML = '';
+        return;
+    }
+
+    selectedEl.innerHTML = editSelectedCommunities.map((c, index) =>
+        `<span class="community-filter-tag">
+            ${escapeHtml(c.name)}
+            <span class="remove-tag" data-index="${index}">&times;</span>
+        </span>`
+    ).join('');
+
+    // Add remove listeners
+    selectedEl.querySelectorAll('.remove-tag').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const index = parseInt(e.target.dataset.index, 10);
+            const removed = editSelectedCommunities[index];
+
+            editSelectedCommunities.splice(index, 1);
+
+            // Uncheck the corresponding checkbox
+            const checkboxId = generateCommunityCheckboxId(removed.id, removed.stage || '', removed.type || '');
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) checkbox.checked = false;
+
+            renderSelectedCommunities();
+            updateCommunityTriggerText();
+        });
+    });
+}
+
+/**
+ * Update community trigger text
+ */
+function updateCommunityTriggerText() {
+    const triggerEl = document.getElementById('edit-community-trigger');
+
+    if (!triggerEl) return;
+    const span = triggerEl.querySelector('.trigger-text');
+    if (editSelectedCommunities.length === 0) {
+        span.textContent = '选择社区...';
+    } else {
+        span.textContent = `已选择 ${editSelectedCommunities.length} 个社区`;
+    }
+}
+
+/**
+ * Handle click outside to close dropdowns
+ */
+function handleClickOutside(e) {
+    // Close community selector dropdowns
+    document.querySelectorAll('.community-filter-selector.open').forEach(sel => {
+        if (!sel.contains(e.target)) {
+            sel.classList.remove('open');
+        }
+    });
 }
 
 /**
@@ -165,20 +486,20 @@ function openEditModal() {
     document.getElementById('edit-title').value = currentThread.title;
     document.getElementById('edit-content').value = currentThread.content;
 
-    // Render community checkboxes
-    if (userCommunities.length > 0) {
-        const linkedIds = currentThread.communities.map(c => c.id);
-        editCommunityCheckboxes.innerHTML = userCommunities.map(c => `
-            <div class="community-checkbox">
-                <input type="checkbox" id="edit-community-${c.id}" name="edit-communities" value="${c.id}" ${linkedIds.includes(c.id) ? 'checked' : ''}>
-                <label for="edit-community-${c.id}">${escapeHtml(c.name)}</label>
-            </div>
-        `).join('');
-    } else {
-        editCommunityCheckboxes.innerHTML = `
-            <p class="no-communities-hint">您还没有加入任何社区。请先到<a href="community.html">社区页面</a>加入感兴趣的社区。</p>
-        `;
-    }
+    // Load selected communities from current thread
+    editSelectedCommunities = (currentThread.communities || []).map(c => ({
+        id: c.id,
+        name: c.displayPath || c.name,
+        stage: c.stage || '',
+        type: c.type || ''
+    }));
+
+    // Re-render the community list to update checkbox states
+    const listEl = document.getElementById('edit-community-list');
+    if (listEl) renderCommunityList(listEl);
+
+    renderSelectedCommunities();
+    updateCommunityTriggerText();
 
     editError.textContent = '';
     editModal.classList.add('active');
@@ -201,10 +522,12 @@ async function updateThread(e) {
     const title = document.getElementById('edit-title').value;
     const content = document.getElementById('edit-content').value;
 
-    // Get selected communities
-    const selectedCommunities = Array.from(
-        document.querySelectorAll('input[name="edit-communities"]:checked')
-    ).map(cb => parseInt(cb.value, 10));
+    // Get selected communities with dimension info
+    const communityLinks = editSelectedCommunities.map(c => ({
+        id: c.id,
+        stage: c.stage || '',
+        type: c.type || ''
+    }));
 
     try {
         const response = await fetch(`${THREADS_API}/${threadId}`, {
@@ -216,7 +539,7 @@ async function updateThread(e) {
             body: JSON.stringify({
                 title,
                 content,
-                community_ids: selectedCommunities
+                community_links: communityLinks
             })
         });
 
@@ -532,6 +855,9 @@ document.addEventListener('keydown', (e) => {
         closeEditModal();
     }
 });
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', handleClickOutside);
 
 // Reply form submit
 if (replyForm) {

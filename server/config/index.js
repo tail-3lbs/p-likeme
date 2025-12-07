@@ -3,10 +3,18 @@
  * In production, these should come from environment variables
  */
 
+const crypto = require('crypto');
+
+// Generate a random secret if not provided (unique per server restart)
+const defaultSecret = crypto.randomBytes(32).toString('hex');
+
 module.exports = {
     // JWT Configuration
-    JWT_SECRET: process.env.JWT_SECRET || 'p-likeme-secret-key-change-in-production',
+    JWT_SECRET: process.env.JWT_SECRET || defaultSecret,
     JWT_EXPIRES_IN: '7d',
+
+    // Bcrypt configuration
+    BCRYPT_SALT_ROUNDS: 10,
 
     // Password validation rules
     PASSWORD_RULES: {
@@ -51,5 +59,13 @@ module.exports = {
     },
 
     // Server configuration
-    PORT: process.env.PORT || 3000
+    PORT: process.env.PORT || 3000,
+
+    // Pagination limits
+    // Frontend uses: discover.js LIMIT=20, community-detail.js THREADS_PER_PAGE=10
+    // Set MAX_LIMIT higher than frontend needs but low enough to prevent abuse
+    PAGINATION: {
+        MAX_LIMIT: 100,
+        DEFAULT_LIMIT: 20
+    }
 };

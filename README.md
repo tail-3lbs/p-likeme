@@ -65,6 +65,23 @@ If using PM2:
 pm2 restart p-likeme
 ```
 
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CORS_ORIGIN` | Allowed origins for CORS (comma-separated for multiple) | `http://localhost:3000,http://47.99.111.141:3000` |
+| `JWT_SECRET` | Secret key for JWT tokens | (built-in default) |
+| `PORT` | Server port | `3000` |
+
+Example for custom CORS origin:
+```bash
+# Single origin
+CORS_ORIGIN=http://your-server-ip:3000 node server.js
+
+# Multiple origins
+CORS_ORIGIN=http://localhost:3000,http://192.168.1.100:3000 node server.js
+```
+
 ## What This Project Contains
 
 - My own HTML/CSS/JS code written while learning

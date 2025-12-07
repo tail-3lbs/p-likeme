@@ -4,9 +4,11 @@
  */
 
 const express = require('express');
-const { createThread, getThreadsByUserId, getThreadById, getThreadCommunityDetails, deleteThread, updateThread, getAllCommunities, getCommunityById, findUserById, findUserByUsernamePublic } = require('../database');
+const { createThread, getThreadsByUserId, getThreadById, deleteThread, updateThread, findUserById, findUserByUsernamePublic } = require('../database');
 const { authMiddleware } = require('../middleware/auth');
 const { INPUT_LIMITS } = require('../config');
+const { sanitizeInput } = require('../utils/sanitize');
+const { getThreadCommunitiesWithDetails, enrichThreadsWithCommunities } = require('../utils/community');
 
 const router = express.Router();
 
@@ -17,43 +19,11 @@ const router = express.Router();
 router.get('/', authMiddleware, (req, res) => {
     try {
         const threads = getThreadsByUserId(req.user.id);
-
-        const threadsWithNames = threads.map(thread => {
-            // Get community details with stage/type
-            const communityDetails = getThreadCommunityDetails(thread.id);
-
-            // Build community info with names and full path
-            const communities = communityDetails.map(detail => {
-                const community = getCommunityById(detail.community_id);
-                const communityName = community ? community.name : '未知社区';
-
-                // Build display path based on stage/type
-                let displayPath = communityName;
-                const parts = [];
-                if (detail.stage) parts.push(detail.stage);
-                if (detail.type) parts.push(detail.type);
-                if (parts.length > 0) {
-                    displayPath = `${communityName} > ${parts.join(' · ')}`;
-                }
-
-                return {
-                    id: detail.community_id,
-                    name: communityName,
-                    stage: detail.stage || null,
-                    type: detail.type || null,
-                    displayPath
-                };
-            });
-
-            return {
-                ...thread,
-                communities
-            };
-        });
+        const threadsWithCommunities = enrichThreadsWithCommunities(threads);
 
         res.json({
             success: true,
-            data: threadsWithNames,
+            data: threadsWithCommunities,
             count: threads.length
         });
     } catch (error) {
@@ -83,43 +53,11 @@ router.get('/user/:username', authMiddleware, (req, res) => {
         }
 
         const threads = getThreadsByUserId(user.id);
-
-        const threadsWithNames = threads.map(thread => {
-            // Get community details with stage/type
-            const communityDetails = getThreadCommunityDetails(thread.id);
-
-            // Build community info with names and full path
-            const communities = communityDetails.map(detail => {
-                const community = getCommunityById(detail.community_id);
-                const communityName = community ? community.name : '未知社区';
-
-                // Build display path based on stage/type
-                let displayPath = communityName;
-                const parts = [];
-                if (detail.stage) parts.push(detail.stage);
-                if (detail.type) parts.push(detail.type);
-                if (parts.length > 0) {
-                    displayPath = `${communityName} > ${parts.join(' · ')}`;
-                }
-
-                return {
-                    id: detail.community_id,
-                    name: communityName,
-                    stage: detail.stage || null,
-                    type: detail.type || null,
-                    displayPath
-                };
-            });
-
-            return {
-                ...thread,
-                communities
-            };
-        });
+        const threadsWithCommunities = enrichThreadsWithCommunities(threads);
 
         res.json({
             success: true,
-            data: threadsWithNames,
+            data: threadsWithCommunities,
             count: threads.length,
             user: {
                 id: user.id,
@@ -159,37 +97,11 @@ router.get('/:id', authMiddleware, (req, res) => {
             });
         }
 
-        // Get community details with stage/type
-        const communityDetails = getThreadCommunityDetails(threadId);
-
-        // Build community info with names and full path
-        const communities = communityDetails.map(detail => {
-            const community = getCommunityById(detail.community_id);
-            const communityName = community ? community.name : '未知社区';
-
-            // Build display path based on stage/type
-            let displayPath = communityName;
-            const parts = [];
-            if (detail.stage) parts.push(detail.stage);
-            if (detail.type) parts.push(detail.type);
-            if (parts.length > 0) {
-                displayPath = `${communityName} > ${parts.join(' · ')}`;
-            }
-
-            return {
-                id: detail.community_id,
-                name: communityName,
-                stage: detail.stage || null,
-                type: detail.type || null,
-                displayPath
-            };
-        });
-
         res.json({
             success: true,
             data: {
                 ...thread,
-                communities
+                communities: getThreadCommunitiesWithDetails(threadId)
             }
         });
     } catch (error) {
@@ -221,38 +133,12 @@ router.get('/:id/public', (req, res) => {
         // Get author info
         const author = findUserById(thread.user_id);
 
-        // Get community details with stage/type
-        const communityDetails = getThreadCommunityDetails(threadId);
-
-        // Build community info with names and full path
-        const communities = communityDetails.map(detail => {
-            const community = getCommunityById(detail.community_id);
-            const communityName = community ? community.name : '未知社区';
-
-            // Build display path based on stage/type
-            let displayPath = communityName;
-            const parts = [];
-            if (detail.stage) parts.push(detail.stage);
-            if (detail.type) parts.push(detail.type);
-            if (parts.length > 0) {
-                displayPath = `${communityName} > ${parts.join(' · ')}`;
-            }
-
-            return {
-                id: detail.community_id,
-                name: communityName,
-                stage: detail.stage || null,
-                type: detail.type || null,
-                displayPath
-            };
-        });
-
         res.json({
             success: true,
             data: {
                 ...thread,
                 author: author ? author.username : '匿名用户',
-                communities
+                communities: getThreadCommunitiesWithDetails(threadId)
             }
         });
     } catch (error) {
@@ -306,11 +192,11 @@ router.post('/', authMiddleware, (req, res) => {
             });
         }
 
-        // Create thread
+        // Create thread (sanitize inputs)
         const threadId = createThread({
             user_id: req.user.id,
-            title: title.trim(),
-            content: content.trim(),
+            title: sanitizeInput(title),
+            content: sanitizeInput(content),
             community_ids: community_ids.map(id => parseInt(id, 10)),
             community_links: community_links.map(link => ({
                 id: parseInt(link.id, 10),
@@ -377,12 +263,12 @@ router.put('/:id', authMiddleware, (req, res) => {
             });
         }
 
-        // Update thread
+        // Update thread (sanitize inputs)
         const updated = updateThread({
             id: parseInt(req.params.id, 10),
             user_id: req.user.id,
-            title: title.trim(),
-            content: content.trim(),
+            title: sanitizeInput(title),
+            content: sanitizeInput(content),
             community_ids: community_ids.map(id => parseInt(id, 10)),
             community_links: community_links.map(link => ({
                 id: parseInt(link.id, 10),

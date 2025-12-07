@@ -110,9 +110,6 @@
         // Disease history
         renderDiseaseHistory();
 
-        // Communities
-        renderCommunities();
-
         // View profile link
         document.getElementById('view-profile-btn').href = `profile.html?user=${encodeURIComponent(guruData.username)}`;
 
@@ -155,7 +152,7 @@
         const diseaseHistory = guruData.disease_history || [];
 
         if (diseaseHistory.length === 0) {
-            diseaseEl.innerHTML = '';
+            diseaseEl.innerHTML = '<p class="empty-hint">暂无患病经历</p>';
             return;
         }
 
@@ -172,36 +169,6 @@
                 return `<span class="profile-tag disease-tag">${escapeHtml(displayText)}</span>`;
             }
         }).join('');
-
-        // Hide row if empty
-        document.getElementById('guru-disease-row').style.display = diseaseHistory.length > 0 ? 'flex' : 'none';
-    }
-
-    /**
-     * Render communities section
-     */
-    function renderCommunities() {
-        const communitiesEl = document.getElementById('guru-communities');
-        const communities = guruData.communities || [];
-
-        if (communities.length === 0) {
-            communitiesEl.innerHTML = '';
-            document.getElementById('guru-community-row').style.display = 'none';
-            return;
-        }
-
-        communitiesEl.innerHTML = communities.map(c => {
-            // Build URL with stage/type parameters
-            let href = `community-detail.html?id=${c.id}`;
-            if (c.stage) href += `&stage=${encodeURIComponent(c.stage)}`;
-            if (c.type) href += `&type=${encodeURIComponent(c.type)}`;
-
-            // Use displayPath if available, otherwise just the name
-            const displayText = c.displayPath || c.name;
-            return `<a href="${href}" class="profile-tag community-tag">${escapeHtml(displayText)}</a>`;
-        }).join('');
-
-        document.getElementById('guru-community-row').style.display = 'flex';
     }
 
     /**

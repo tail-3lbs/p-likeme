@@ -1046,35 +1046,74 @@ function searchUsers({
 
     const users = usersDb.prepare(sql).all(...params);
 
-    // Enrich with communities, disease tags, and hospitals
-    const enrichedUsers = users.map(user => {
-        const communityIds = getUserCommunityIds(user.id);
-        let communities = [];
-        if (communityIds.length > 0) {
-            const placeholders = communityIds.map(() => '?').join(',');
-            communities = communitiesDb.prepare(`
-                SELECT id, name FROM communities WHERE id IN (${placeholders})
-            `).all(...communityIds);
+    // Batch enrich to avoid N+1 queries
+    if (users.length === 0) {
+        return { users: [], total };
+    }
+
+    const resultUserIds = users.map(u => u.id);
+    const userIdPlaceholders = resultUserIds.map(() => '?').join(',');
+
+    // Batch query 1: Get all user_communities for these users
+    const allUserCommunities = usersDb.prepare(`
+        SELECT user_id, community_id FROM user_communities WHERE user_id IN (${userIdPlaceholders})
+    `).all(...resultUserIds);
+
+    // Get unique community IDs and fetch community names
+    const communityIds = [...new Set(allUserCommunities.map(uc => uc.community_id))];
+    let communitiesMap = {};
+    if (communityIds.length > 0) {
+        const communityPlaceholders = communityIds.map(() => '?').join(',');
+        const communities = communitiesDb.prepare(`
+            SELECT id, name FROM communities WHERE id IN (${communityPlaceholders})
+        `).all(...communityIds);
+        communitiesMap = Object.fromEntries(communities.map(c => [c.id, c]));
+    }
+
+    // Build user -> communities map
+    const userCommunitiesMap = {};
+    for (const uc of allUserCommunities) {
+        if (!userCommunitiesMap[uc.user_id]) {
+            userCommunitiesMap[uc.user_id] = [];
         }
+        if (communitiesMap[uc.community_id]) {
+            userCommunitiesMap[uc.user_id].push(communitiesMap[uc.community_id]);
+        }
+    }
 
-        const diseaseHistory = usersDb.prepare(`
-            SELECT disease, onset_date FROM user_disease_history WHERE user_id = ?
-        `).all(user.id).map(r => ({
-            disease: r.disease,
-            onset_date: r.onset_date || null
-        }));
+    // Batch query 2: Get all disease history for these users
+    const allDiseaseHistory = usersDb.prepare(`
+        SELECT user_id, disease, onset_date FROM user_disease_history WHERE user_id IN (${userIdPlaceholders})
+    `).all(...resultUserIds);
 
-        const hospitals = usersDb.prepare(`
-            SELECT hospital FROM user_hospitals WHERE user_id = ?
-        `).all(user.id).map(r => r.hospital);
+    const userDiseaseMap = {};
+    for (const d of allDiseaseHistory) {
+        if (!userDiseaseMap[d.user_id]) {
+            userDiseaseMap[d.user_id] = [];
+        }
+        userDiseaseMap[d.user_id].push({ disease: d.disease, onset_date: d.onset_date || null });
+    }
 
-        return {
-            ...user,
-            communities,
-            disease_history: diseaseHistory,
-            hospitals
-        };
-    });
+    // Batch query 3: Get all hospitals for these users
+    const allHospitals = usersDb.prepare(`
+        SELECT user_id, hospital FROM user_hospitals WHERE user_id IN (${userIdPlaceholders})
+    `).all(...resultUserIds);
+
+    const userHospitalsMap = {};
+    for (const h of allHospitals) {
+        if (!userHospitalsMap[h.user_id]) {
+            userHospitalsMap[h.user_id] = [];
+        }
+        userHospitalsMap[h.user_id].push(h.hospital);
+    }
+
+    // Map enriched data to users
+    const enrichedUsers = users.map(user => ({
+        ...user,
+        communities: userCommunitiesMap[user.id] || [],
+        disease_history: userDiseaseMap[user.id] || [],
+        hospitals: userHospitalsMap[user.id] || []
+    }));
 
     return { users: enrichedUsers, total };
 }

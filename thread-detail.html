@@ -121,10 +121,22 @@
                         <label for="edit-content">内容</label>
                         <textarea id="edit-content" name="content" required placeholder="分享你的经历、感受或建议..." rows="6"></textarea>
                     </div>
+                    <!-- 关联社区 -->
                     <div class="form-group">
-                        <label>关联已加入的社区（可选）</label>
-                        <div class="community-checkboxes" id="edit-community-checkboxes">
-                            <!-- Communities will be loaded here -->
+                        <label>关联社区（可选）</label>
+                        <div class="community-filter-selector" id="edit-community-selector">
+                            <div class="community-filter-trigger" id="edit-community-trigger">
+                                <span class="trigger-text">选择社区...</span>
+                                <span class="trigger-arrow">▼</span>
+                            </div>
+                            <div class="community-filter-dropdown" id="edit-community-dropdown">
+                                <div class="community-filter-list" id="edit-community-list">
+                                    <!-- Dynamically populated with accordion -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="community-filter-selected" id="edit-community-selected">
+                            <!-- Selected communities shown here -->
                         </div>
                     </div>
                     <div class="form-error" id="edit-error"></div>

@@ -9,13 +9,8 @@ const {
     getGuruByUsername,
     updateGuruIntro,
     getThreadsByUserId,
-    getAllCommunities,
-    getCommunityById,
-    getThreadCommunityDetails,
-    getUserLevel1CommunityIds,
     getUserAllCommunities,
     getUserDiseaseHistory,
-    findUserByUsernamePublic,
     createGuruQuestion,
     getGuruQuestions,
     getGuruQuestionById,
@@ -28,6 +23,8 @@ const {
 } = require('../database');
 const { authMiddleware } = require('../middleware/auth');
 const { INPUT_LIMITS } = require('../config');
+const { sanitizeInput } = require('../utils/sanitize');
+const { enrichThreadsWithCommunities } = require('../utils/community');
 
 const router = express.Router();
 
@@ -86,39 +83,7 @@ router.get('/:username', (req, res) => {
 
         // Get guru's threads with full details (similar to thread-detail API)
         const threads = getThreadsByUserId(guru.id);
-
-        const threadsWithDetails = threads.map(thread => {
-            // Get community details with stage/type
-            const communityDetails = getThreadCommunityDetails(thread.id);
-
-            // Build community info with names and full path
-            const communities = communityDetails.map(detail => {
-                const community = getCommunityById(detail.community_id);
-                const communityName = community ? community.name : '未知社区';
-
-                // Build display path based on stage/type
-                let displayPath = communityName;
-                const parts = [];
-                if (detail.stage) parts.push(detail.stage);
-                if (detail.type) parts.push(detail.type);
-                if (parts.length > 0) {
-                    displayPath = `${communityName} > ${parts.join(' · ')}`;
-                }
-
-                return {
-                    id: detail.community_id,
-                    name: communityName,
-                    stage: detail.stage || null,
-                    type: detail.type || null,
-                    displayPath
-                };
-            });
-
-            return {
-                ...thread,
-                communities
-            };
-        });
+        const threadsWithDetails = enrichThreadsWithCommunities(threads);
 
         res.json({
             success: true,
@@ -172,7 +137,7 @@ router.put('/intro', authMiddleware, (req, res) => {
             });
         }
 
-        const success = updateGuruIntro(userId, intro || '');
+        const success = updateGuruIntro(userId, sanitizeInput(intro) || '');
 
         if (success) {
             res.json({
@@ -295,8 +260,8 @@ router.post('/:username/questions', authMiddleware, (req, res) => {
         const questionId = createGuruQuestion({
             guru_user_id: guru.id,
             asker_user_id: askerId,
-            title: title.trim(),
-            content: content.trim()
+            title: sanitizeInput(title),
+            content: sanitizeInput(content)
         });
 
         res.status(201).json({
@@ -490,7 +455,7 @@ router.post('/questions/:questionId/replies', authMiddleware, (req, res) => {
         const replyId = createGuruQuestionReply({
             question_id: questionId,
             user_id: userId,
-            content: content.trim(),
+            content: sanitizeInput(content),
             parent_reply_id: parentId
         });
 

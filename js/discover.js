@@ -793,12 +793,12 @@ async function handleUsernameSearch() {
 
         if (data.success) {
             currentOffset = 0;
-            currentTotal = data.data.total;
-            renderResults(data.data.users, data.data.total);
-            if (data.data.total === 0) {
+            currentTotal = data.total;
+            renderResults(data.data, data.total);
+            if (data.total === 0) {
                 resultsTitle.textContent = `未找到用户: ${username}`;
             } else {
-                resultsTitle.textContent = `找到 ${data.data.total} 位用户`;
+                resultsTitle.textContent = `找到 ${data.total} 位用户`;
             }
         } else {
             showNoResults();
@@ -928,13 +928,13 @@ async function handleAutoFind() {
 
         if (searchData.success) {
             currentOffset = 0;
-            currentTotal = searchData.data.total;
+            currentTotal = searchData.total;
 
             // Update filters UI to show what was searched
             updateFiltersFromProfile(profile);
 
-            renderResults(searchData.data.users, searchData.data.total);
-            resultsTitle.textContent = `找到 ${searchData.data.total} 位相似的病友`;
+            renderResults(searchData.data, searchData.total);
+            resultsTitle.textContent = `找到 ${searchData.total} 位相似的病友`;
         } else {
             showNoResults();
         }
@@ -1127,12 +1127,12 @@ async function performSearch(append = false) {
         const data = await response.json();
 
         if (data.success) {
-            currentTotal = data.data.total;
+            currentTotal = data.total;
 
             if (append) {
-                appendResults(data.data.users);
+                appendResults(data.data);
             } else {
-                renderResults(data.data.users, data.data.total);
+                renderResults(data.data, data.total);
             }
         } else {
             showNoResults();

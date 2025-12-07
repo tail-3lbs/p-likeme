@@ -8,7 +8,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const { getAllCommunities, searchCommunities, getCommunityById, joinCommunity, leaveCommunity, getUserCommunityIds, getUserCommunities, getThreadsByCommunityId, findUserById, getSubCommunityMemberCounts, isUserInCommunity, getUserSubCommunities, getUserDiseaseHistory } = require('./database');
-const { PORT } = require('./config');
+const { PORT, PAGINATION } = require('./config');
 const { authMiddleware } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const threadsRoutes = require('./routes/threads');
@@ -19,8 +19,21 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: true, // Allow same-origin requests
-    credentials: true // Allow cookies to be sent
+    origin: function(origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(',')
+            : ['http://localhost:3000', 'http://47.99.111.141:3000'];
+
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
 }));
 app.use(cookieParser());
 app.use(express.json());
@@ -220,7 +233,7 @@ app.get('/api/communities/:id/threads', (req, res) => {
             });
         }
 
-        const limit = parseInt(req.query.limit, 10) || 10;
+        const limit = Math.min(parseInt(req.query.limit, 10) || PAGINATION.DEFAULT_LIMIT, PAGINATION.MAX_LIMIT);
         const offset = parseInt(req.query.offset, 10) || 0;
         const stage = req.query.stage || null;
         const type = req.query.type || null;
